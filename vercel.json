@@ -1,0 +1,10 @@
+{
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/atrapanieblas_preview-1.html",
+      "destination": "/",
+      "permanent": false
+    }
+  ]
+}

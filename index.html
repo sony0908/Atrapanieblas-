@@ -51,7 +51,13 @@
     .chip-sep { width: 1px; height: 12px; background: rgba(255, 255, 255, 0.16); margin: 0 2px; }
 
     .mini-bar { display: inline-block; width: 34px; height: 4px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); overflow: hidden; margin-left: 2px; }
-    .mini-bar-fill { display: block; height: 100%; width: 15%; background: linear-gradient(90deg, #2d8ee8, #70d6ff); transition: width 0.25s ease; }
+    .mini-bar-fill { display: block; height: 100%; width: 15%; background: linear-gradient(90deg, #2d8ee8, #70d6ff); transition: width 0.25s ease, background 0.25s ease; }
+    .mini-bar-fill.warn { background: linear-gradient(90deg, #e88b2d, #ffcf5c); }
+    .mini-bar-fill.danger { background: linear-gradient(90deg, #d93829, #ff6b52); }
+
+    .chip.warn .chip-val { color: #ffd470; }
+    .chip.danger .chip-val { color: #ff8066; animation: pulseUrgent 0.65s infinite alternate; }
+    .chip.danger .chip-sub { color: #ffb3a3; }
 
     .timer-mini {
       pointer-events: auto; display: inline-flex; align-items: center; gap: 5px;
@@ -68,6 +74,7 @@
       font-size: 11px; font-weight: 600; box-shadow: 0 4px 12px rgba(15, 35, 54, 0.18);
       opacity: 0; transform: translateY(-4px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none;
     }
+    .micro-toast.warn { background: rgba(186, 54, 34, 0.94); }
     .micro-toast.visible { opacity: 1; transform: translateY(0); }
 
     .micro-hint {
@@ -206,15 +213,16 @@
       <div class="hud-top">
         <div class="hud-top-left">
           <div class="stats-mini" role="status">
-            <div class="chip" title="Agua almacenada">
+            <div id="water-chip" class="chip" title="Agua almacenada y consumo">
               <span class="chip-ico">💧</span>
               <span id="water-val" class="chip-val">18/120L</span>
+              <span id="water-drain-tag" class="chip-sub">-1.3/s</span>
               <span class="mini-bar"><span id="water-bar" class="mini-bar-fill"></span></span>
             </div>
             <span class="chip-sep"></span>
             <div class="chip" title="Recursos"><span class="chip-ico">🪙</span><span id="funds-val" class="chip-val">$60</span></div>
             <span class="chip-sep"></span>
-            <div class="chip" title="Población"><span class="chip-ico">🏘️</span><span id="pop-val" class="chip-val">12</span></div>
+            <div id="pop-chip" class="chip" title="Población"><span class="chip-ico">🏘️</span><span id="pop-val" class="chip-val">12</span></div>
             <span class="chip-sep"></span>
             <div class="chip" title="Transportistas"><span class="chip-ico">🚶</span><span id="carriers-val" class="chip-val">2/2</span></div>
             <span class="chip-sep"></span>
@@ -353,8 +361,8 @@
     ];
 
     const MODE_CONFIG = {
-      exhibition: { id: 'exhibition', durationSeconds: 60, startFunds: 60, startWater: 18, startCarriers: 2, meshBaseCost: 30, meshCostStep: 8, fillSpeedMult: 2.35, carrierSpeedBase: 7.4, waterPerDrum: 32, fundsPerDelivery: 24, passiveFundsPerOrchard: 1.6, milestoneScale: 0.72, storageCostScale: 0.75 },
-      endless: { id: 'endless', durationSeconds: null, startFunds: 55, startWater: 15, startCarriers: 2, meshBaseCost: 35, meshCostStep: 10, fillSpeedMult: 1.15, carrierSpeedBase: 5.0, waterPerDrum: 28, fundsPerDelivery: 22, passiveFundsPerOrchard: 1.1, milestoneScale: 1.0, storageCostScale: 1.0 },
+      exhibition: { id: 'exhibition', durationSeconds: 60, startFunds: 60, startWater: 24, startCarriers: 2, meshBaseCost: 30, meshCostStep: 8, fillSpeedMult: 2.35, carrierSpeedBase: 7.4, waterPerDrum: 32, fundsPerDelivery: 24, passiveFundsPerOrchard: 1.6, milestoneScale: 0.72, storageCostScale: 0.75, waterDrainPerPop: 0.11, droughtTickSeconds: 3.2, recoveryWaterMin: 16 },
+      endless: { id: 'endless', durationSeconds: null, startFunds: 55, startWater: 22, startCarriers: 2, meshBaseCost: 35, meshCostStep: 10, fillSpeedMult: 1.15, carrierSpeedBase: 5.0, waterPerDrum: 28, fundsPerDelivery: 22, passiveFundsPerOrchard: 1.1, milestoneScale: 1.0, storageCostScale: 1.0, waterDrainPerPop: 0.06, droughtTickSeconds: 4.8, recoveryWaterMin: 20 },
     };
 
     const EDUCATIONAL_FACTS = [
@@ -405,6 +413,7 @@
       playDeliver() { this._tone(523.25, 0.09, 'sine', 0.08, 0, 680); this._tone(659.25, 0.1, 'triangle', 0.08, 0.06); this._tone(783.99, 0.15, 'triangle', 0.09, 0.12); }
       playGrowth() { [392, 493.88, 587.33, 783.99].forEach((n, i) => this._tone(n, 0.16, 'triangle', 0.08, i * 0.07)); }
       playUpgrade() { [329.63, 440, 554.37, 659.25, 880].forEach((n, i) => this._tone(n, 0.18, 'triangle', 0.09, i * 0.065)); }
+      playDrought() { this._tone(280, 0.16, 'triangle', 0.08, 0, 210); this._tone(210, 0.22, 'sawtooth', 0.05, 0.12, 140); }
       playError() { this._tone(180, 0.12, 'sawtooth', 0.06, 0, 130); }
       playFinish() { [523.25, 659.25, 783.99, 1046.5].forEach((n, i) => this._tone(n, 0.28, 'triangle', 0.095, i * 0.09)); }
     }
@@ -679,24 +688,45 @@
       else { ctx.fillStyle = '#3e77b8'; ctx.fillRect(x + 2, y - 5, 3, 4); }
     }
 
-    function drawHouse(ctx, wx, wy, house, anim = 1) {
+    function drawHouse(ctx, wx, wy, house, anim = 1, time = 0) {
       const cx = Math.round(wx), cy = Math.round(wy) + 4;
+      const ab = Boolean(house.abandoned);
+      const wallCol = ab ? '#8c8379' : house.wall;
+      const roofCol = ab ? '#57514c' : house.roof;
       ctx.save(); ctx.translate(cx, cy); if (anim < 1) { const s = 0.4 + anim * 0.6; ctx.scale(s, s); }
       ctx.fillStyle = 'rgba(65, 48, 28, 0.24)'; ctx.fillRect(-13, 1, 27, 7);
       if (house.style === 'flat') {
-        ctx.fillStyle = house.wall; for (let i = 0; i < 11; i++) ctx.fillRect(-11 + i, -9 + Math.floor(i * 0.5), 1, 11);
-        ctx.fillStyle = shadeColor(house.wall, -22); for (let i = 0; i < 11; i++) ctx.fillRect(i, -4 - Math.floor(i * 0.5), 1, 11);
-        ctx.fillStyle = house.roof; for (let r = 0; r < 11; r++) { const h = r < 6 ? (r + 1) * 2 : (11 - r) * 2; ctx.fillRect(-h, -14 + r, h * 2, 1); }
-        ctx.fillStyle = '#4c3424'; ctx.fillRect(-8, -3, 3, 5); ctx.fillStyle = '#e8f4f8'; ctx.fillRect(-3, -3, 2, 2); ctx.fillRect(4, -3, 2, 2); ctx.fillRect(7, -5, 2, 2);
-        ctx.fillStyle = '#195eb0'; ctx.fillRect(-2, -16, 5, 5); ctx.fillStyle = '#3d99f5'; ctx.fillRect(-1, -15, 3, 3);
+        ctx.fillStyle = wallCol; for (let i = 0; i < 11; i++) ctx.fillRect(-11 + i, -9 + Math.floor(i * 0.5), 1, 11);
+        ctx.fillStyle = shadeColor(wallCol, -22); for (let i = 0; i < 11; i++) ctx.fillRect(i, -4 - Math.floor(i * 0.5), 1, 11);
+        ctx.fillStyle = roofCol; for (let r = 0; r < 11; r++) { const h = r < 6 ? (r + 1) * 2 : (11 - r) * 2; ctx.fillRect(-h, -14 + r, h * 2, 1); }
+        ctx.fillStyle = ab ? '#2f2622' : '#4c3424'; ctx.fillRect(-8, -3, 3, 5);
+        if (ab) {
+          ctx.fillStyle = '#2d2623'; ctx.fillRect(-3, -3, 2, 2); ctx.fillRect(4, -3, 2, 2); ctx.fillRect(7, -5, 2, 2);
+          ctx.fillStyle = '#7a5a3a'; ctx.fillRect(-8, -2, 3, 1); ctx.fillRect(-8, 0, 3, 1);
+          ctx.fillStyle = '#5d656e'; ctx.fillRect(-2, -16, 5, 5); ctx.fillStyle = '#737c85'; ctx.fillRect(-1, -15, 3, 3);
+        } else {
+          ctx.fillStyle = '#e8f4f8'; ctx.fillRect(-3, -3, 2, 2); ctx.fillRect(4, -3, 2, 2); ctx.fillRect(7, -5, 2, 2);
+          ctx.fillStyle = '#195eb0'; ctx.fillRect(-2, -16, 5, 5); ctx.fillStyle = '#3d99f5'; ctx.fillRect(-1, -15, 3, 3);
+        }
       } else {
-        ctx.fillStyle = house.wall; for (let i = 0; i < 12; i++) ctx.fillRect(-12 + i, -9 + Math.floor(i * 0.5), 1, 11);
-        ctx.fillStyle = shadeColor(house.wall, -20); for (let i = 0; i < 12; i++) ctx.fillRect(i, -3 - Math.floor(i * 0.5), 1, 11);
-        const rd = shadeColor(house.roof, -24);
-        for (let st = 0; st < 8; st++) { ctx.fillStyle = house.roof; ctx.fillRect(-13 + st, -10 - st, 14 - st, 2); ctx.fillStyle = rd; ctx.fillRect(0, -17 + st, 13 - Math.floor(st * 0.3), 2); }
-        ctx.fillStyle = shadeColor(house.roof, 14); ctx.fillRect(-5, -17, 11, 2);
-        ctx.fillStyle = '#6c5a4d'; ctx.fillRect(-3, -22, 3, 6);
-        ctx.fillStyle = '#5c3d28'; ctx.fillRect(-9, -3, 3, 5); ctx.fillStyle = '#eef7fa'; ctx.fillRect(-4, -2, 2, 2); ctx.fillRect(4, -2, 3, 2);
+        ctx.fillStyle = wallCol; for (let i = 0; i < 12; i++) ctx.fillRect(-12 + i, -9 + Math.floor(i * 0.5), 1, 11);
+        ctx.fillStyle = shadeColor(wallCol, -20); for (let i = 0; i < 12; i++) ctx.fillRect(i, -3 - Math.floor(i * 0.5), 1, 11);
+        const rd = shadeColor(roofCol, -24);
+        for (let st = 0; st < 8; st++) { ctx.fillStyle = roofCol; ctx.fillRect(-13 + st, -10 - st, 14 - st, 2); ctx.fillStyle = rd; ctx.fillRect(0, -17 + st, 13 - Math.floor(st * 0.3), 2); }
+        ctx.fillStyle = shadeColor(roofCol, 14); ctx.fillRect(-5, -17, 11, 2);
+        ctx.fillStyle = ab ? '#4f4a46' : '#6c5a4d'; ctx.fillRect(-3, -22, 3, 6);
+        ctx.fillStyle = ab ? '#2f2622' : '#5c3d28'; ctx.fillRect(-9, -3, 3, 5);
+        if (ab) {
+          ctx.fillStyle = '#2d2623'; ctx.fillRect(-4, -2, 2, 2); ctx.fillRect(4, -2, 3, 2);
+          ctx.fillStyle = '#7a5a3a'; ctx.fillRect(-9, -2, 3, 1); ctx.fillRect(4, -1, 3, 1);
+        } else {
+          ctx.fillStyle = '#eef7fa'; ctx.fillRect(-4, -2, 2, 2); ctx.fillRect(4, -2, 3, 2);
+        }
+      }
+      if (ab && Math.sin(time * 4.5 + cx) > -0.2) {
+        ctx.fillStyle = '#3d1b16'; ctx.fillRect(-3, -25, 6, 5);
+        ctx.fillStyle = '#e8684a'; ctx.fillRect(-2, -24, 4, 3);
+        ctx.fillStyle = '#fff0d6'; ctx.fillRect(-1, -24, 1, 2); ctx.fillRect(1, -23, 1, 1);
       }
       ctx.restore();
     }
@@ -705,7 +735,7 @@
       const cx = Math.round(wx), cy = Math.round(wy) + 4;
       ctx.fillStyle = 'rgba(70, 50, 28, 0.22)'; ctx.fillRect(cx - 12, cy - 1, 26, 8);
       [[-9,-3],[0,-6],[8,-2],[-4,2],[4,3]].forEach(([ox, oy], idx) => {
-        const x = cx + ox, y = cy + oy, a = ratio >= idx * 0.16;
+        const x = cx + ox, y = cy + oy, a = ratio > 0.01 && ratio >= idx * 0.16;
         ctx.fillStyle = a ? '#155099' : '#3d5673'; ctx.fillRect(x - 3, y - 8, 7, 9);
         ctx.fillStyle = a ? '#257ee0' : '#577394'; ctx.fillRect(x - 2, y - 7, 5, 7);
         ctx.fillStyle = a ? '#73c6ff' : '#85a2c2'; ctx.fillRect(x - 1, y - 6, 1, 5);
@@ -719,7 +749,7 @@
       ctx.fillStyle = '#a8a7a1'; ctx.beginPath(); ctx.ellipse(cx, cy, 21, 10, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = ratio > 0.08 ? '#2b86e3' : '#59748f'; ctx.beginPath(); ctx.ellipse(cx, cy, 17, 7.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = ratio > 0.08 ? '#49a6f7' : '#6c8aa8'; ctx.beginPath(); ctx.ellipse(cx, cy + 1, 14, 5.8, 0, 0, Math.PI * 2); ctx.fill();
-      const s = Math.round(Math.sin(time * 3.5) * 2); ctx.fillStyle = '#a6dcff'; ctx.fillRect(cx - 7 + s, cy - 2, 5, 1); ctx.fillRect(cx + 2 - s, cy + 1, 6, 1);
+      if (ratio > 0.08) { const s = Math.round(Math.sin(time * 3.5) * 2); ctx.fillStyle = '#a6dcff'; ctx.fillRect(cx - 7 + s, cy - 2, 5, 1); ctx.fillRect(cx + 2 - s, cy + 1, 6, 1); }
     }
     function drawStorageCopa(ctx, wx, wy, time) {
       const cx = Math.round(wx), cy = Math.round(wy) + 4;
@@ -731,14 +761,14 @@
       ctx.fillStyle = '#5c6873'; ctx.fillRect(cx - 8, cy - 32, 16, 2); ctx.fillRect(cx - 6, cy - 34, 12, 2); ctx.fillRect(cx - 3, cy - 36, 6, 2);
       if (Math.sin(time * 4) > -0.3) { ctx.fillStyle = '#57c4ff'; ctx.fillRect(cx - 1, cy - 24, 2, 2); }
     }
-    function drawOrchard(ctx, wx, wy, anim = 1) {
+    function drawOrchard(ctx, wx, wy, anim = 1, dried = false) {
       const cx = Math.round(wx), cy = Math.round(wy) + 3;
       ctx.save(); ctx.translate(cx, cy); if (anim < 1) { const s = 0.35 + anim * 0.65; ctx.scale(s, s); }
-      fillIsoDiamond(ctx, 0, -4, '#7d5f3c');
-      ctx.fillStyle = '#479939'; ctx.fillRect(-10, 0, 20, 2); ctx.fillRect(-8, -2, 16, 6); ctx.fillRect(-5, -3, 10, 8);
-      ctx.fillStyle = '#68bf4e'; ctx.fillRect(-7, -1, 14, 1); ctx.fillRect(-6, 1, 12, 1); ctx.fillRect(-4, 3, 8, 1);
-      ctx.fillStyle = '#306e26'; ctx.fillRect(-7, 0, 14, 1); ctx.fillRect(-5, 2, 10, 1);
-      ctx.fillStyle = '#3d9fe8'; ctx.fillRect(-9, 2, 4, 1); ctx.fillRect(-6, 4, 4, 1);
+      fillIsoDiamond(ctx, 0, -4, dried ? '#8a7254' : '#7d5f3c');
+      ctx.fillStyle = dried ? '#9e8846' : '#479939'; ctx.fillRect(-10, 0, 20, 2); ctx.fillRect(-8, -2, 16, 6); ctx.fillRect(-5, -3, 10, 8);
+      ctx.fillStyle = dried ? '#baa45d' : '#68bf4e'; ctx.fillRect(-7, -1, 14, 1); ctx.fillRect(-6, 1, 12, 1); ctx.fillRect(-4, 3, 8, 1);
+      ctx.fillStyle = dried ? '#756230' : '#306e26'; ctx.fillRect(-7, 0, 14, 1); ctx.fillRect(-5, 2, 10, 1);
+      if (!dried) { ctx.fillStyle = '#3d9fe8'; ctx.fillRect(-9, 2, 4, 1); ctx.fillRect(-6, 4, 4, 1); }
       ctx.restore();
     }
     function drawTree(ctx, wx, wy, anim = 1) {
@@ -802,7 +832,9 @@
         this.funds = this.cfg.startFunds; this.population = 12; this.storageTier = 0;
         this.maxCarriers = this.cfg.startCarriers; this.meshesBuilt = 0;
         this.milestoneIndex = 0; this.tutorialStep = 0;
-        this.houses = this.map.houseSlots.filter((s) => s.starter).map((s) => ({ ...s, anim: 1 }));
+        this.droughtActive = false; this.droughtTimer = 0; this.recoveryTimer = 0;
+        this.waterDrainRate = this.population * this.cfg.waterDrainPerPop;
+        this.houses = this.map.houseSlots.filter((s) => s.starter).map((s) => ({ ...s, anim: 1, abandoned: false }));
         this.orchards = []; this.trees = this.map.treeSlots.slice(0, 2).map((s) => ({ ...s, anim: 1 }));
         this.carriers = []; for (let i = 0; i < this.maxCarriers; i++) this._createCarrier(i);
         this.dispatchQueue = []; this.particles = []; this.floatingTexts = [];
@@ -926,11 +958,49 @@
           this.remaining = Math.max(0, this.cfg.durationSeconds - this.elapsed);
           if (this.remaining <= 0 && !this.finished) {
             this.finished = true; this.sound.playFinish(); this._emitHUD(true);
-            this.callbacks.onFinish?.({ totalWaterHarvested: Math.round(this.totalWaterHarvested), storageName: this.getStorageTierObj().name, population: this.population, housesCount: this.houses.length, orchardsCount: this.orchards.length, meshesBuilt: this.meshesBuilt, carriersCount: this.maxCarriers });
+            const activeHouses = this.houses.filter((h) => !h.abandoned).length;
+            const abandonedHouses = this.houses.length - activeHouses;
+            this.callbacks.onFinish?.({ totalWaterHarvested: Math.round(this.totalWaterHarvested), storageName: this.getStorageTierObj().name, population: this.population, housesCount: activeHouses, abandonedHouses, orchardsCount: this.orchards.filter((o) => !o.dried).length, meshesBuilt: this.meshesBuilt, carriersCount: this.maxCarriers });
             return;
           }
         }
-        if (this.orchards.length > 0) this.funds += this.orchards.length * this.cfg.passiveFundsPerOrchard * dt;
+        const activeOrchards = this.orchards.filter((o) => !o.dried).length;
+        if (activeOrchards > 0) this.funds += activeOrchards * this.cfg.passiveFundsPerOrchard * dt;
+
+        // Consumo continuo de agua de la caleta (los estanques se van vaciando)
+        this.waterDrainRate = this.population > 0 ? this.population * this.cfg.waterDrainPerPop : 0;
+        if (this.waterDrainRate > 0) this.water = Math.max(0, this.water - this.waterDrainRate * dt);
+
+        if (this.water <= 0.05 && this.population > 0) {
+          this.water = 0;
+          if (!this.droughtActive) {
+            this.droughtActive = true;
+            this.droughtTimer = 0;
+            this.sound.playDrought();
+            this.callbacks.onToast?.('¡Sin agua! Recolecta rápido o abandonarán la caleta', 'warn');
+          }
+          this.droughtTimer += dt;
+          if (this.droughtTimer >= this.cfg.droughtTickSeconds) {
+            this.droughtTimer -= this.cfg.droughtTickSeconds;
+            this._applyDroughtTick();
+          }
+        } else {
+          if (this.droughtActive && this.water > 0.5) {
+            this.droughtActive = false;
+            this.droughtTimer = 0;
+            for (const o of this.orchards) o.dried = false;
+          }
+          if (this.water >= this.cfg.recoveryWaterMin && this.houses.some((h) => h.abandoned)) {
+            this.recoveryTimer += dt;
+            if (this.recoveryTimer >= 2.8) {
+              this.recoveryTimer = 0;
+              this._recoverAbandonedHouse();
+            }
+          } else {
+            this.recoveryTimer = 0;
+          }
+        }
+
         for (const h of this.houses) if (h.anim < 1) h.anim = Math.min(1, h.anim + dt * 2.5);
         for (const o of this.orchards) if (o.anim < 1) o.anim = Math.min(1, o.anim + dt * 2.5);
         for (const t of this.trees) if (t.anim < 1) t.anim = Math.min(1, t.anim + dt * 2.5);
@@ -969,10 +1039,73 @@
         this._emitHUD(false);
       }
 
+      _applyDroughtTick() {
+        const greenOrchard = this.orchards.find((o) => !o.dried);
+        if (greenOrchard) greenOrchard.dried = true;
+
+        const popLoss = Math.min(this.population, 3);
+        this.population = Math.max(0, this.population - popLoss);
+
+        let abandonedHouse = null;
+        for (let i = this.houses.length - 1; i >= 0; i--) {
+          if (!this.houses[i].abandoned) {
+            this.houses[i].abandoned = true;
+            abandonedHouse = this.houses[i];
+            break;
+          }
+        }
+        if (this.population === 0) {
+          for (const h of this.houses) h.abandoned = true;
+        }
+
+        const inhabitedCount = this.houses.filter((h) => !h.abandoned).length;
+        if (this.carriers.length > Math.max(1, inhabitedCount)) {
+          const idleIdx = this.carriers.findIndex((c) => c.state === 'idle');
+          if (idleIdx !== -1) {
+            this.carriers.splice(idleIdx, 1);
+            this.maxCarriers = this.carriers.length;
+          }
+        }
+
+        this.sound.playDrought();
+        const target = abandonedHouse || { gx: 42.5, gy: 43.2 };
+        const wp = isoToWorld(target.gx, target.gy, 2, this.map.originX, this.map.originY);
+        this._spawnDust(wp.x, wp.y - 6, '#a39789', 10);
+        this._addFloatingText(wp.x, wp.y - 24, abandonedHouse ? `-${popLoss} hab. · Casa abandonada` : `-${popLoss} hab. · ¡Sequía!`, '#ff7b5c');
+        this.callbacks.onToast?.(this.population === 0 ? '¡La caleta quedó deshabitada! Lleva agua para revivirla' : '¡Falta agua! Familias abandonan sus casas', 'warn');
+        this._emitHUD(true);
+      }
+
+      _recoverAbandonedHouse() {
+        const house = this.houses.find((h) => h.abandoned);
+        if (!house) return;
+        house.abandoned = false;
+        house.anim = 0.65;
+        const popGain = 3;
+        this.population += popGain;
+        const targetCarriers = this.cfg.startCarriers + this.milestoneIndex;
+        if (this.carriers.length < targetCarriers) {
+          this._createCarrier(this.carriers.length);
+          this.maxCarriers = this.carriers.length;
+        }
+        this.sound.playGrowth();
+        const wp = isoToWorld(house.gx, house.gy, 2, this.map.originX, this.map.originY);
+        this._spawnDust(wp.x, wp.y - 6, '#90f2a8', 10);
+        this._addFloatingText(wp.x, wp.y - 24, `+${popGain} hab. · ¡Casa habitada!`, '#a8ff9e');
+        this.callbacks.onToast?.('¡El agua vuelve y las familias regresan!');
+        this._emitHUD(true);
+      }
+
       _onWaterDelivered() {
-        const tier = this.getStorageTierObj(), liters = Math.round(this.cfg.waterPerDrum * tier.waterBonusMult), earned = Math.round(this.cfg.fundsPerDelivery + this.orchards.length * 2.5);
+        const activeOrchards = this.orchards.filter((o) => !o.dried).length;
+        const tier = this.getStorageTierObj(), liters = Math.round(this.cfg.waterPerDrum * tier.waterBonusMult), earned = Math.round(this.cfg.fundsPerDelivery + activeOrchards * 2.5);
         const wasFull = this.water >= tier.capacity;
         this.water = Math.min(tier.capacity, this.water + liters); this.totalWaterHarvested += liters; this.funds += earned;
+        if (this.droughtActive && this.water > 0.5) {
+          this.droughtActive = false;
+          this.droughtTimer = 0;
+          for (const o of this.orchards) o.dried = false;
+        }
         this.sound.playDeliver();
         const sp = this.storageTier >= 1 ? this.map.storagePos.tank : this.map.storagePos.drums;
         const wp = isoToWorld(sp.gx, sp.gy, sp.h, this.map.originX, this.map.originY);
@@ -983,8 +1116,8 @@
           const m = GROWTH_MILESTONES[this.milestoneIndex];
           if (this.water < Math.round(m.water * this.cfg.milestoneScale)) break;
           this.milestoneIndex += 1; this.population += m.popAdd;
-          for (let i = 0; i < m.houses; i++) if (this.houses.length < this.map.houseSlots.length) this.houses.push({ ...this.map.houseSlots[this.houses.length], anim: 0 });
-          for (let i = 0; i < m.orchards; i++) if (this.orchards.length < this.map.orchardSlots.length) this.orchards.push({ ...this.map.orchardSlots[this.orchards.length], anim: 0 });
+          for (let i = 0; i < m.houses; i++) if (this.houses.length < this.map.houseSlots.length) this.houses.push({ ...this.map.houseSlots[this.houses.length], anim: 0, abandoned: false });
+          for (let i = 0; i < m.orchards; i++) if (this.orchards.length < this.map.orchardSlots.length) this.orchards.push({ ...this.map.orchardSlots[this.orchards.length], anim: 0, dried: false });
           for (let i = 0; i < m.trees; i++) if (this.trees.length < this.map.treeSlots.length) this.trees.push({ ...this.map.treeSlots[this.trees.length], anim: 0 });
           for (let i = 0; i < m.carriersAdd; i++) { this._createCarrier(this.carriers.length); this.maxCarriers = this.carriers.length; }
           this.sound.playGrowth();
@@ -1007,6 +1140,9 @@
         this.callbacks.onHUD?.({
           running: this.running, finished: this.finished, mode: this.mode, remaining: this.remaining,
           water: Math.floor(this.water), capacity: tier.capacity, funds: Math.floor(this.funds),
+          waterDrainRate: this.waterDrainRate, droughtActive: this.droughtActive,
+          waterLow: this.water <= Math.max(10, tier.capacity * 0.16),
+          abandonedHouses: this.houses.filter((h) => h.abandoned).length,
           population: this.population, meshesBuilt: this.meshesBuilt, nextMeshCost: this.getNextMeshCost(),
           carriersIdle: this.carriers.filter((c) => c.state === 'idle').length, carriersTotal: this.maxCarriers,
           pendingAlerts: this.getPendingAlerts().length, storageName: tier.name,
@@ -1044,13 +1180,13 @@
 
         const drawList = [];
         for (const pr of this.map.props) { if (this.map.tiles[pr.gy][pr.gx].isPath) continue; const wp = isoToWorld(pr.gx, pr.gy, pr.h, originX, originY); drawList.push({ depth: pr.gx + pr.gy, draw: () => pr.type === 'cactus' ? drawCactus(ctx, wp.x, wp.y, pr.variant) : drawRock(ctx, wp.x, wp.y, pr.variant) }); }
-        for (const nh of this.map.northVillage) { const wp = isoToWorld(nh.gx, nh.gy, 2, originX, originY); drawList.push({ depth: nh.gx + nh.gy, draw: () => drawHouse(ctx, wp.x, wp.y, nh, 0.86) }); }
-        for (const o of this.orchards) { const wp = isoToWorld(o.gx, o.gy, 2, originX, originY); drawList.push({ depth: o.gx + o.gy - 0.35, draw: () => drawOrchard(ctx, wp.x, wp.y, o.anim) }); }
+        for (const nh of this.map.northVillage) { const wp = isoToWorld(nh.gx, nh.gy, 2, originX, originY); drawList.push({ depth: nh.gx + nh.gy, draw: () => drawHouse(ctx, wp.x, wp.y, nh, 0.86, this.time) }); }
+        for (const o of this.orchards) { const wp = isoToWorld(o.gx, o.gy, 2, originX, originY); drawList.push({ depth: o.gx + o.gy - 0.35, draw: () => drawOrchard(ctx, wp.x, wp.y, o.anim, o.dried) }); }
         const ratio = this.water / this.getStorageTierObj().capacity;
         { const p = this.map.storagePos.drums, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy, draw: () => drawStorageTambores(ctx, wp.x, wp.y, ratio) }); }
         if (this.storageTier >= 1) { const p = this.map.storagePos.tank, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy - 0.1, draw: () => drawStorageEstanque(ctx, wp.x, wp.y, ratio, this.time) }); }
         if (this.storageTier >= 2) { const p = this.map.storagePos.tower, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy + 0.1, draw: () => drawStorageCopa(ctx, wp.x, wp.y, this.time) }); }
-        for (const h of this.houses) { const wp = isoToWorld(h.gx, h.gy, 2, originX, originY); drawList.push({ depth: h.gx + h.gy, draw: () => drawHouse(ctx, wp.x, wp.y, h, h.anim) }); }
+        for (const h of this.houses) { const wp = isoToWorld(h.gx, h.gy, 2, originX, originY); drawList.push({ depth: h.gx + h.gy, draw: () => drawHouse(ctx, wp.x, wp.y, h, h.anim, this.time) }); }
         for (const tr of this.trees) { const wp = isoToWorld(tr.gx, tr.gy, 2, originX, originY); drawList.push({ depth: tr.gx + tr.gy + 0.05, draw: () => drawTree(ctx, wp.x, wp.y, tr.anim) }); }
         const canAfford = this.funds >= this.getNextMeshCost();
         for (const pad of this.map.pads) {
@@ -1200,16 +1336,26 @@
       dockPanelBtns.forEach((b) => b.classList.toggle('active', b.dataset.panel === activeDrawer));
     };
 
-    const showToast = (msg) => {
-      $('toast-banner').textContent = msg; $('toast-banner').classList.add('visible');
-      clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast-banner').classList.remove('visible'), 2200);
+    const showToast = (msg, kind = 'ok') => {
+      const el = $('toast-banner');
+      el.textContent = msg;
+      el.classList.toggle('warn', kind === 'warn');
+      el.classList.add('visible');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('visible'), kind === 'warn' ? 2800 : 2200);
     };
 
     const game = new AtrapanieblasGame($('game-canvas'), sound, {
       onMapInteract() { if (activeDrawer) setDrawer(null); },
       onHUD(s) {
         $('water-val').textContent = `${s.water}/${s.capacity}L`;
-        $('water-bar').style.width = `${Math.min(100, Math.round((s.water / Math.max(1, s.capacity)) * 100))}%`;
+        $('water-drain-tag').textContent = s.waterDrainRate > 0 ? `-${s.waterDrainRate.toFixed(1)}/s` : '0/s';
+        const bar = $('water-bar');
+        bar.style.width = `${Math.min(100, Math.round((s.water / Math.max(1, s.capacity)) * 100))}%`;
+        bar.classList.toggle('danger', s.droughtActive);
+        bar.classList.toggle('warn', !s.droughtActive && s.waterLow);
+        $('water-chip').classList.toggle('danger', s.droughtActive);
+        $('water-chip').classList.toggle('warn', !s.droughtActive && s.waterLow);
+        $('pop-chip').classList.toggle('danger', s.droughtActive || s.abandonedHouses > 0);
         $('funds-val').textContent = `$${s.funds}`;
         $('pop-val').textContent = `${s.population}`;
         $('carriers-val').textContent = `${s.carriersIdle}/${s.carriersTotal}`;
@@ -1256,7 +1402,10 @@
         $('sum-pop').textContent = `${st.population} hab.`;
         $('sum-meshes').textContent = `${st.meshesBuilt}`;
         $('sum-storage').textContent = st.storageName;
-        $('sum-detail').textContent = `Tu caleta creció a ${st.housesCount} casas, ${st.orchardsCount} huertos verdes y ${st.carriersCount} transportistas activos en 1 minuto.`;
+        const houseSummary = st.abandonedHouses > 0
+          ? `${st.housesCount} casas habitadas (${st.abandonedHouses} abandonadas por sequía)`
+          : `${st.housesCount} casas habitadas`;
+        $('sum-detail').textContent = `Tu caleta cerró el minuto con ${houseSummary}, ${st.orchardsCount} huertos verdes y ${st.carriersCount} transportistas activos.`;
         $('sum-fact').textContent = EDUCATIONAL_FACTS[Math.floor(Math.random() * EDUCATIONAL_FACTS.length)];
         $('finish-modal').classList.remove('hidden');
       },
