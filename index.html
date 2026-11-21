@@ -241,10 +241,14 @@
       <div id="dock-shell" class="dock-shell">
         <div id="dock-drawer" class="dock-drawer hidden">
           <div id="panel-storage" class="drawer-panel hidden">
-            <div class="drawer-head"><span class="drawer-title">Almacenamiento</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
-            <div class="drawer-meta">Actual: <strong id="storage-cur-name">Tambores Básicos</strong></div>
+            <div class="drawer-head"><span class="drawer-title">Infraestructura</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
+            <div class="drawer-meta">Almacenamiento: <strong id="storage-cur-name">Tambores Básicos</strong></div>
             <div id="storage-next-info" class="drawer-sub">Siguiente: Estanque Comunitario (320 L)</div>
             <button id="btn-upgrade" class="drawer-cta" type="button"><span id="upgrade-title">Mejorar ($49)</span></button>
+            <hr style="border:none;border-top:1px solid rgba(21,43,63,0.14);margin:10px 0 8px;">
+            <div class="drawer-meta">Cañerías: <strong id="pipes-cur-name">Sin cañerías</strong></div>
+            <div id="pipes-next-info" class="drawer-sub">Conecta casas y huertos (-25% consumo de agua)</div>
+            <button id="btn-buy-pipes" class="drawer-cta" type="button"><span id="pipes-btn-title">Instalar Cañerías ($55)</span></button>
           </div>
 
           <div id="panel-camera" class="drawer-panel hidden">
@@ -350,6 +354,12 @@
       { id: 3, name: 'Oasis Sustentable', shortName: 'Red Hídrica', capacity: 1400, cost: 260, carrierSpeedMult: 1.55, waterBonusMult: 1.6 },
     ];
 
+    const PIPE_TIERS = [
+      { id: 0, name: 'Sin cañerías', shortName: 'Ninguna', cost: 0, drainMult: 1.0, autoDripPerMesh: 0, desc: 'Transporte manual en bidones.' },
+      { id: 1, name: 'Cañerías de la Caleta', shortName: 'Red Caleta', cost: 72, drainMult: 0.75, autoDripPerMesh: 0, desc: 'Conecta casas y huertos (-25% consumo de agua).' },
+      { id: 2, name: 'Cañerías a los Cerros', shortName: 'Red Gravitacional', cost: 155, drainMult: 0.62, autoDripPerMesh: 0.55, desc: 'Bajada por gravedad desde las mallas (+agua continua).' },
+    ];
+
     const GROWTH_MILESTONES = [
       { water: 30,  popAdd: 4, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Primer huerto comunitario!' },
       { water: 70,  popAdd: 5, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Nuevas familias llegan!' },
@@ -439,19 +449,19 @@
     ];
     const FOG_RGB = [223, 232, 236];
     const TERRAIN_RAMPS = {
-      // [deep shadow, shadow, mid, lit, bright highlight] — paleta desaturada y atmosférica de Atacama costero
-      wetSand:    [[122, 104, 84],  [148, 128, 102], [174, 152, 122], [194, 172, 140], [210, 188, 156]],
-      sand:       [[146, 124, 98],  [180, 156, 124], [210, 188, 152], [228, 208, 172], [242, 226, 194]],
-      foothill:   [[112, 84, 68],   [148, 112, 88],  [182, 142, 110], [206, 166, 130], [224, 188, 152]],
-      terracotta: [[88, 60, 56],    [122, 82, 70],   [154, 104, 86],  [180, 128, 104], [202, 152, 126]],
-      ridge:      [[84, 68, 72],    [114, 94, 92],   [144, 120, 114], [172, 148, 138], [196, 174, 162]],
-      peak:       [[108, 98, 102],  [138, 128, 128], [168, 158, 156], [194, 186, 184], [216, 210, 208]],
-      cliff:      [[72, 56, 54],    [100, 78, 68],   [130, 102, 86],  [160, 128, 106], [186, 154, 130]],
-      path:       [[148, 130, 104], [182, 162, 130], [212, 194, 158], [230, 214, 180], [244, 232, 204]],
+      // [deep shadow, shadow, mid, lit, bright highlight] — arena dorada y arenisca del Desierto de Atacama
+      wetSand:    [[132, 102, 66],  [162, 128, 84],  [190, 154, 104], [212, 176, 124], [228, 194, 142]],
+      sand:       [[166, 130, 84],  [202, 166, 110], [230, 196, 138], [246, 218, 162], [254, 236, 190]],
+      foothill:   [[144, 102, 66],  [182, 134, 86],  [214, 168, 112], [234, 192, 136], [248, 214, 162]],
+      terracotta: [[116, 70, 50],   [154, 98, 66],   [190, 128, 86],  [214, 156, 108], [234, 182, 134]],
+      ridge:      [[102, 80, 68],   [138, 110, 90],  [172, 142, 114], [198, 170, 140], [222, 196, 166]],
+      peak:       [[122, 106, 98],  [154, 138, 128], [184, 170, 158], [208, 196, 186], [228, 220, 212]],
+      cliff:      [[96, 66, 48],    [132, 94, 66],   [168, 124, 88],  [196, 152, 112], [218, 178, 136]],
+      path:       [[162, 136, 94],  [198, 172, 122], [228, 204, 154], [244, 224, 178], [254, 240, 204]],
     };
     const OCEAN_RAMP = [
-      [34, 70, 112], [42, 86, 132], [50, 102, 150], [60, 120, 168],
-      [72, 142, 182], [88, 164, 194], [112, 188, 206], [148, 212, 220],
+      [18, 64, 124], [24, 82, 148], [32, 102, 170], [42, 124, 188],
+      [54, 150, 204], [70, 178, 216], [96, 204, 224], [134, 226, 234],
     ];
 
     function generateCoastalMap(seed = 2027) {
@@ -898,15 +908,141 @@
     }
 
     function drawCarrier(ctx, wx, wy, carrier, time) {
-      const x = Math.round(wx), bob = Math.abs(Math.sin(time * 12 + carrier.id * 1.7)) > 0.5 ? -1 : 0, y = Math.round(wy) + bob;
-      ctx.fillStyle = 'rgba(40, 30, 20, 0.32)'; ctx.fillRect(x - 3, Math.round(wy) + 2, 6, 2);
-      const s = Math.sin(time * 13 + carrier.id) > 0 ? 1 : 0;
-      ctx.fillStyle = '#3b332f'; ctx.fillRect(x - 2, y - 1 + s, 2, 3); ctx.fillRect(x + 1, y - 1 + (1 - s), 2, 3);
-      ctx.fillStyle = carrier.shirt; ctx.fillRect(x - 2, y - 6, 5, 5);
-      ctx.fillStyle = '#e5b893'; ctx.fillRect(x - 1, y - 9, 3, 3);
-      ctx.fillStyle = '#c9a675'; ctx.fillRect(x - 4, y - 10, 9, 1); ctx.fillStyle = '#e3c79b'; ctx.fillRect(x - 2, y - 12, 5, 2);
-      if (carrier.carryingWater) { ctx.fillStyle = '#14519e'; ctx.fillRect(x + 2, y - 7, 4, 6); ctx.fillStyle = '#3596f5'; ctx.fillRect(x + 3, y - 6, 2, 4); ctx.fillStyle = '#8ad3ff'; ctx.fillRect(x + 3, y - 6, 1, 2); }
-      else { ctx.fillStyle = '#3e77b8'; ctx.fillRect(x + 2, y - 5, 3, 4); }
+      const moving = carrier.state !== 'idle';
+      const walkPhase = moving ? time * 12 + carrier.id * 1.7 : 0;
+      const stride = moving ? Math.sin(walkPhase) : 0;
+      const bob = moving && Math.abs(stride) > 0.55 ? -1 : 0;
+      const x = Math.round(wx), y = Math.round(wy) + bob;
+      const dir = carrier.dirX < 0 ? -1 : 1;
+
+      ctx.save();
+      ctx.translate(x, y);
+      // Sombra de contacto en la arena
+      ctx.fillStyle = 'rgba(38, 28, 20, 0.34)';
+      ctx.fillRect(-4, 2 - bob, 8, 2);
+      ctx.fillRect(-3, 4 - bob, 6, 1);
+
+      if (dir < 0) ctx.scale(-1, 1);
+
+      // Piernas con pantalón de trabajo y botas (paso alternado)
+      const stepL = moving ? (stride > 0.2 ? -1 : stride < -0.2 ? 1 : 0) : 0;
+      const stepR = -stepL;
+      // Pierna trasera
+      ctx.fillStyle = '#263850'; ctx.fillRect(-2 + stepR, -4, 2, 4);
+      ctx.fillStyle = '#3b291e'; ctx.fillRect(-2 + stepR, 0, 3, 2);
+      // Pierna delantera
+      ctx.fillStyle = '#385273'; ctx.fillRect(0 + stepL, -4, 2, 4);
+      ctx.fillStyle = '#4f3728'; ctx.fillRect(0 + stepL, 0, 3, 2);
+
+      // Bidón grande de agua en la espalda/hombro al bajar
+      if (carrier.carryingWater) {
+        ctx.fillStyle = '#124687'; ctx.fillRect(-6, -11, 5, 7);
+        ctx.fillStyle = '#257ee0'; ctx.fillRect(-5, -10, 3, 5);
+        ctx.fillStyle = '#8ad6ff'; ctx.fillRect(-5, -10, 1, 3);
+        ctx.fillStyle = '#0d315e'; ctx.fillRect(-5, -12, 3, 1);
+      }
+
+      // Torso: camisa/chaleco costero con luz y sombra + tirante
+      ctx.fillStyle = shadeColor(carrier.shirt, -26); ctx.fillRect(-2, -10, 5, 6);
+      ctx.fillStyle = carrier.shirt; ctx.fillRect(-1, -10, 4, 6);
+      ctx.fillStyle = shadeColor(carrier.shirt, 18); ctx.fillRect(1, -10, 2, 4);
+      // Cinturón
+      ctx.fillStyle = '#402e22'; ctx.fillRect(-2, -5, 5, 1);
+      // Correa del bidón si carga agua
+      if (carrier.carryingWater) { ctx.fillStyle = '#5c4430'; ctx.fillRect(-1, -10, 1, 5); ctx.fillRect(0, -9, 1, 3); }
+
+      // Brazo delantero (balanceo al caminar o sosteniendo bidón vacío)
+      const armSwing = moving ? (stride > 0 ? 1 : -1) : 0;
+      ctx.fillStyle = shadeColor(carrier.shirt, 10); ctx.fillRect(2, -9, 2, 3);
+      ctx.fillStyle = '#e3b38c'; ctx.fillRect(2 + (carrier.carryingWater ? 0 : armSwing), -6, 2, 2);
+      if (!carrier.carryingWater) {
+        // Bidón liviano vacío en la mano al subir
+        ctx.fillStyle = '#2c5c8f'; ctx.fillRect(3 + armSwing, -5, 3, 4);
+        ctx.fillStyle = '#5592cf'; ctx.fillRect(4 + armSwing, -4, 1, 2);
+      }
+
+      // Cabeza, cabello y rostro mirando hacia donde camina
+      ctx.fillStyle = '#473326'; ctx.fillRect(-2, -14, 4, 4); // cabello nuca
+      ctx.fillStyle = '#eab991'; ctx.fillRect(-1, -14, 4, 4); // rostro
+      ctx.fillStyle = '#c9946d'; ctx.fillRect(-1, -11, 4, 1); // sombra barbilla
+      ctx.fillStyle = '#1f1b18'; ctx.fillRect(2, -13, 1, 1); // ojo
+
+      // Sombrero nortino de paja (chupalla) con cinta oscura y ala iluminada
+      ctx.fillStyle = '#8f6b42'; ctx.fillRect(-5, -15, 10, 1); // sombra bajo ala
+      ctx.fillStyle = '#e0c28c'; ctx.fillRect(-5, -16, 10, 1); // ala de paja
+      ctx.fillStyle = '#f2daab'; ctx.fillRect(-3, -16, 7, 1);  // brillo ala
+      ctx.fillStyle = '#3b4f66'; ctx.fillRect(-2, -17, 5, 1);  // cinta del sombrero
+      ctx.fillStyle = '#d4b379'; ctx.fillRect(-2, -19, 5, 2);  // copa
+      ctx.fillStyle = '#edd29f'; ctx.fillRect(-1, -19, 3, 1);  // luz copa
+      ctx.restore();
+    }
+
+    function drawPixelPipeLine(ctx, x0, y0, x1, y1, time, phase = 0, thick = false) {
+      const dx = x1 - x0, dy = y1 - y0, steps = Math.max(1, Math.ceil(Math.hypot(dx, dy)));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const px = Math.round(x0 + dx * t), py = Math.round(y0 + dy * t);
+        // Sombra bajo la cañería
+        ctx.fillStyle = 'rgba(28, 34, 42, 0.34)';
+        ctx.fillRect(px, py + (thick ? 2 : 1), 1, 1);
+        // Cuerpo metálico azul-acero de la cañería
+        ctx.fillStyle = '#295780';
+        ctx.fillRect(px, py, 1, thick ? 2 : 1);
+        ctx.fillStyle = '#68a9d9';
+        ctx.fillRect(px, py - (thick ? 1 : 0), 1, 1);
+        // Bridas / uniones cada 9 px
+        if (i > 2 && i < steps - 2 && i % 9 === 0) {
+          ctx.fillStyle = '#1a3854';
+          ctx.fillRect(px - 1, py - 1, 2, thick ? 3 : 2);
+          ctx.fillStyle = '#9fd3f5';
+          ctx.fillRect(px, py - 1, 1, 1);
+        }
+      }
+      // Pulso animado de agua circulando por la cañería
+      const flowPos = ((time * 24 + phase * 17) % (steps + 12));
+      if (flowPos < steps) {
+        const ft = flowPos / steps;
+        const fx = Math.round(x0 + dx * ft), fy = Math.round(y0 + dy * ft);
+        ctx.fillStyle = '#b8ebff';
+        ctx.fillRect(fx, fy - (thick ? 1 : 0), 2, 1);
+      }
+    }
+
+    function drawWaterPipes(ctx, map, houses, orchards, pipeTier, storageTier, time) {
+      if (pipeTier <= 0) return;
+      const { originX, originY } = map;
+      const src = storageTier >= 2 ? map.storagePos.tower : storageTier >= 1 ? map.storagePos.tank : map.storagePos.drums;
+      const srcW = isoToWorld(src.gx, src.gy, src.h, originX, originY);
+
+      // Nivel 1: Cañerías de distribución en la caleta (almacenamiento -> casas y huertos)
+      if (storageTier >= 1) {
+        const dW = isoToWorld(map.storagePos.drums.gx, map.storagePos.drums.gy, 2, originX, originY);
+        drawPixelPipeLine(ctx, srcW.x, srcW.y + 3, dW.x, dW.y + 3, time, 0, true);
+      }
+      houses.forEach((h, i) => {
+        if (h.abandoned) return;
+        const hw = isoToWorld(h.gx, h.gy, 2, originX, originY);
+        drawPixelPipeLine(ctx, srcW.x, srcW.y + 3, hw.x, hw.y + 4, time, i * 0.7, false);
+      });
+      orchards.forEach((o, i) => {
+        const ow = isoToWorld(o.gx, o.gy, 2, originX, originY);
+        drawPixelPipeLine(ctx, srcW.x, srcW.y + 3, ow.x, ow.y + 2, time, i * 1.1 + 3, false);
+      });
+
+      // Nivel 2: Cañerías gravitacionales bajando desde cada atrapanieblas construido
+      if (pipeTier >= 2) {
+        map.pads.forEach((pad, idx) => {
+          if (!pad.built || !pad.trail || pad.trail.length < 2) return;
+          for (let i = 0; i < pad.trail.length - 1; i++) {
+            const a = pad.trail[i], b = pad.trail[i + 1];
+            const ha = map.sampleTerrain ? map.sampleTerrain(a.gx, a.gy).h : (map.tiles[a.gy]?.[a.gx]?.h ?? 2);
+            const hb = map.sampleTerrain ? map.sampleTerrain(b.gx, b.gy).h : (map.tiles[b.gy]?.[b.gx]?.h ?? 2);
+            const pa = isoToWorld(a.gx, a.gy, ha, originX, originY);
+            const pb = isoToWorld(b.gx, b.gy, hb, originX, originY);
+            drawPixelPipeLine(ctx, pa.x + 3, pa.y + 3, pb.x + 3, pb.y + 3, time, idx + i * 0.25, false);
+          }
+        });
+      }
     }
 
     function drawHouse(ctx, wx, wy, house, anim = 1, time = 0) {
@@ -1202,7 +1338,7 @@
         this.elapsed = 0; this.remaining = this.cfg.durationSeconds ?? 0;
         this.map = generateCoastalMap(2027);
         this.water = this.cfg.startWater; this.totalWaterHarvested = this.cfg.startWater;
-        this.funds = this.cfg.startFunds; this.population = 12; this.storageTier = 0;
+        this.funds = this.cfg.startFunds; this.population = 12; this.storageTier = 0; this.pipeTier = 0;
         this.maxCarriers = this.cfg.startCarriers; this.meshesBuilt = 0;
         this.milestoneIndex = 0; this.tutorialStep = 0;
         this.droughtActive = false; this.droughtTimer = 0; this.recoveryTimer = 0;
@@ -1221,12 +1357,15 @@
       continueEndless() { this.mode = 'endless'; this.cfg = MODE_CONFIG.endless; this.finished = false; this.running = true; this._emitHUD(true); }
 
       _createCarrier(idx) {
-        this.carriers.push({ id: idx, gx: this.map.hub.gx + (idx % 3) * 0.35 - 0.35, gy: this.map.hub.gy + Math.floor(idx / 3) * 0.35, shirt: SHIRTS[idx % SHIRTS.length], state: 'idle', padId: null, path: [], pathIdx: 0, segProgress: 0, carryingWater: false });
+        this.carriers.push({ id: idx, gx: this.map.hub.gx + (idx % 3) * 0.35 - 0.35, gy: this.map.hub.gy + Math.floor(idx / 3) * 0.35, dirX: 1, shirt: SHIRTS[idx % SHIRTS.length], state: 'idle', padId: null, path: [], pathIdx: 0, segProgress: 0, carryingWater: false });
       }
 
       getStorageTierObj() { return STORAGE_TIERS[this.storageTier]; }
       getNextStorageTier() { return STORAGE_TIERS[this.storageTier + 1] || null; }
       getStorageUpgradeCost() { const n = this.getNextStorageTier(); return n ? Math.round(n.cost * this.cfg.storageCostScale) : null; }
+      getPipeTierObj() { return PIPE_TIERS[this.pipeTier]; }
+      getNextPipeTier() { return PIPE_TIERS[this.pipeTier + 1] || null; }
+      getPipeUpgradeCost() { const n = this.getNextPipeTier(); return n ? Math.round(n.cost * this.cfg.storageCostScale) : null; }
       getNextMeshCost() { return this.cfg.meshBaseCost + Math.max(0, this.meshesBuilt - 1) * this.cfg.meshCostStep; }
       getPendingAlerts() { return this.map.pads.filter((p) => p.built && p.alertActive && !p.dispatched && !p.queued); }
 
@@ -1281,6 +1420,25 @@
         this._spawnDust(wp.x, wp.y, '#8ad4ff', 16);
         this._addFloatingText(wp.x, wp.y - 28, `¡${next.shortName}!`, '#90e0ff');
         this.panToWorld(wp.x, wp.y - 10, Math.max(this.cam.zoom, 1.95));
+        this._emitHUD(true); return true;
+      }
+
+      buyPipes() {
+        if (!this.running || this.finished) return false;
+        const next = this.getNextPipeTier(), cost = this.getPipeUpgradeCost();
+        if (!next || cost === null) return false;
+        if (this.funds < cost) {
+          this.sound.playError();
+          const hp = isoToWorld(this.map.hub.gx, this.map.hub.gy, 2, this.map.originX, this.map.originY);
+          this._addFloatingText(hp.x, hp.y - 24, `Faltan $${cost - Math.floor(this.funds)}`, '#f26d52');
+          return false;
+        }
+        this.funds -= cost; this.pipeTier += 1; this.sound.playUpgrade();
+        const wp = isoToWorld(42.5, 43.2, 2, this.map.originX, this.map.originY);
+        this._spawnDust(wp.x, wp.y, '#7fd6ff', 14);
+        this._addFloatingText(wp.x, wp.y - 26, `¡${next.shortName}!`, '#9be5ff');
+        this.callbacks.onToast?.(`¡${next.name} instaladas!`);
+        this.panToWorld(wp.x, wp.y - 8, Math.max(this.cam.zoom, 1.85));
         this._emitHUD(true); return true;
       }
 
@@ -1340,9 +1498,16 @@
         const activeOrchards = this.orchards.filter((o) => !o.dried).length;
         if (activeOrchards > 0) this.funds += activeOrchards * this.cfg.passiveFundsPerOrchard * dt;
 
-        // Consumo continuo de agua de la caleta (los estanques se van vaciando)
-        this.waterDrainRate = this.population > 0 ? this.population * this.cfg.waterDrainPerPop : 0;
+        // Consumo continuo de agua de la caleta (reducido por cañerías) + goteo gravitacional en nivel 2
+        const pipeObj = this.getPipeTierObj();
+        this.waterDrainRate = this.population > 0 ? this.population * this.cfg.waterDrainPerPop * pipeObj.drainMult : 0;
         if (this.waterDrainRate > 0) this.water = Math.max(0, this.water - this.waterDrainRate * dt);
+        if (pipeObj.autoDripPerMesh > 0 && this.meshesBuilt > 0) {
+          const cap = this.getStorageTierObj().capacity;
+          const drip = this.meshesBuilt * pipeObj.autoDripPerMesh * dt;
+          this.water = Math.min(cap, this.water + drip);
+          this.totalWaterHarvested += drip;
+        }
 
         if (this.water <= 0.05 && this.population > 0) {
           this.water = 0;
@@ -1401,12 +1566,22 @@
               const pad = this.map.pads.find((p) => p.id === c.padId);
               if (pad) { pad.fill = 0; pad.alertActive = false; pad.dispatched = false; pad.queued = false; const wp = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY); this._spawnDust(wp.x, wp.y - 8, '#5ebeff', 7); }
               c.carryingWater = true; c.state = 'descending'; c.pathIdx = path.length - 1; c.segProgress = 0;
-            } else { const a = path[c.pathIdx], b = path[c.pathIdx + 1]; c.gx = a.gx + (b.gx - a.gx) * c.segProgress; c.gy = a.gy + (b.gy - a.gy) * c.segProgress; }
+            } else {
+              const a = path[c.pathIdx], b = path[c.pathIdx + 1];
+              const screenDx = (b.gx - a.gx) - (b.gy - a.gy);
+              if (Math.abs(screenDx) > 0.01) c.dirX = screenDx >= 0 ? 1 : -1;
+              c.gx = a.gx + (b.gx - a.gx) * c.segProgress; c.gy = a.gy + (b.gy - a.gy) * c.segProgress;
+            }
           } else {
             c.segProgress += speed * 1.08 * dt;
             while (c.segProgress >= 1 && c.pathIdx > 0) { c.segProgress -= 1; c.pathIdx -= 1; }
             if (c.pathIdx <= 0) { c.gx = path[0].gx; c.gy = path[0].gy; c.carryingWater = false; c.state = 'idle'; c.padId = null; this._onWaterDelivered(); }
-            else { const a = path[c.pathIdx], b = path[c.pathIdx - 1]; c.gx = a.gx + (b.gx - a.gx) * c.segProgress; c.gy = a.gy + (b.gy - a.gy) * c.segProgress; }
+            else {
+              const a = path[c.pathIdx], b = path[c.pathIdx - 1];
+              const screenDx = (b.gx - a.gx) - (b.gy - a.gy);
+              if (Math.abs(screenDx) > 0.01) c.dirX = screenDx >= 0 ? 1 : -1;
+              c.gx = a.gx + (b.gx - a.gx) * c.segProgress; c.gy = a.gy + (b.gy - a.gy) * c.segProgress;
+            }
           }
         }
         this._emitHUD(false);
@@ -1510,6 +1685,7 @@
         if (!force && Math.floor(this.time * 10) === this._lastHudTick) return;
         this._lastHudTick = Math.floor(this.time * 10);
         const tier = this.getStorageTierObj(), next = this.getNextStorageTier(), cost = this.getStorageUpgradeCost();
+        const pipe = this.getPipeTierObj(), nextPipe = this.getNextPipeTier(), pipeCost = this.getPipeUpgradeCost();
         this.callbacks.onHUD?.({
           running: this.running, finished: this.finished, mode: this.mode, remaining: this.remaining,
           water: Math.floor(this.water), capacity: tier.capacity, funds: Math.floor(this.funds),
@@ -1520,7 +1696,10 @@
           carriersIdle: this.carriers.filter((c) => c.state === 'idle').length, carriersTotal: this.maxCarriers,
           pendingAlerts: this.getPendingAlerts().length, storageName: tier.name,
           nextStorageName: next?.name || null, nextStorageCap: next?.capacity || null,
-          nextStorageCost: cost, canUpgradeStorage: cost !== null && this.funds >= cost, tutorialStep: this.tutorialStep,
+          nextStorageCost: cost, canUpgradeStorage: cost !== null && this.funds >= cost,
+          pipeName: pipe.name, nextPipeName: nextPipe?.name || null, nextPipeDesc: nextPipe?.desc || null,
+          nextPipeCost: pipeCost, canUpgradePipes: pipeCost !== null && this.funds >= pipeCost,
+          tutorialStep: this.tutorialStep,
         });
       }
 
@@ -1548,6 +1727,7 @@
           if (ph > 0.15) ctx.fillRect(Math.round(wp.x - 3 + ph * 3), Math.round(wp.y + 4), 5, 1);
         }
         for (const boat of this.map.boats) { const wp = isoToWorld(boat.gx, boat.gy, 0, originX, originY); drawBoat(ctx, wp.x, wp.y, boat, this.time); }
+        if (this.pipeTier > 0) drawWaterPipes(ctx, this.map, this.houses, this.orchards, this.pipeTier, this.storageTier, this.time);
 
         const drawList = [];
         for (const pr of this.map.props) { if (this.map.tiles[pr.gy][pr.gx].isPath) continue; const wp = isoToWorld(pr.gx, pr.gy, pr.h, originX, originY); drawList.push({ depth: pr.gx + pr.gy, draw: () => pr.type === 'cactus' ? drawCactus(ctx, wp.x, wp.y, pr.variant) : drawRock(ctx, wp.x, wp.y, pr.variant) }); }
@@ -1746,15 +1926,26 @@
         else { $('dock-alert').classList.add('hidden'); }
 
         $('storage-cur-name').textContent = `${s.storageName} (${s.capacity} L)`;
-        $('storage-dot').classList.toggle('hidden', !s.canUpgradeStorage);
+        $('storage-dot').classList.toggle('hidden', !(s.canUpgradeStorage || s.canUpgradePipes));
         if (s.nextStorageName) {
           $('btn-upgrade').disabled = !s.canUpgradeStorage;
           $('storage-next-info').textContent = `Siguiente: ${s.nextStorageName} (${s.nextStorageCap} L)`;
           $('upgrade-title').textContent = s.canUpgradeStorage ? `Mejorar ahora ($${s.nextStorageCost})` : `Requiere $${s.nextStorageCost}`;
         } else {
           $('btn-upgrade').disabled = true;
-          $('storage-next-info').textContent = 'Infraestructura hídrica al máximo.';
+          $('storage-next-info').textContent = 'Almacenamiento al máximo.';
           $('upgrade-title').textContent = 'Nivel máximo';
+        }
+
+        $('pipes-cur-name').textContent = s.pipeName;
+        if (s.nextPipeName) {
+          $('btn-buy-pipes').disabled = !s.canUpgradePipes;
+          $('pipes-next-info').textContent = `${s.nextPipeName}: ${s.nextPipeDesc}`;
+          $('pipes-btn-title').textContent = s.canUpgradePipes ? `Instalar ahora ($${s.nextPipeCost})` : `Requiere $${s.nextPipeCost}`;
+        } else {
+          $('btn-buy-pipes').disabled = true;
+          $('pipes-next-info').textContent = 'Red de cañerías completa.';
+          $('pipes-btn-title').textContent = 'Nivel máximo';
         }
 
         if (!s.running || s.finished || hintDismissed || s.tutorialStep >= 2) {
@@ -1795,6 +1986,7 @@
     $('btn-menu').addEventListener('click', () => { setDrawer(null); game.paused = true; $('start-modal').classList.remove('hidden'); });
     $('btn-mute').addEventListener('click', () => { const m = sound.toggleMute(); $('mute-ico').textContent = m ? '🔇' : '🔊'; $('mute-lbl').textContent = m ? 'Sonido silenciado' : 'Sonido activado'; });
     $('btn-upgrade').addEventListener('click', () => { if (game.upgradeStorage()) setDrawer(null); });
+    $('btn-buy-pipes').addEventListener('click', () => { if (game.buyPipes()) setDrawer(null); });
     $('btn-zoom-in').addEventListener('click', () => game.zoomBy(1.24));
     $('btn-zoom-out').addEventListener('click', () => game.zoomBy(0.8));
     $('btn-caleta').addEventListener('click', () => { game.centerOnCaleta(false); setDrawer(null); });
