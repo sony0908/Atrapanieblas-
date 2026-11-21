@@ -439,19 +439,19 @@
     ];
     const FOG_RGB = [223, 232, 236];
     const TERRAIN_RAMPS = {
-      // [shadow, mid-dark, mid, lit, highlight] — paleta cálida del desierto costero chileno
-      wetSand:    [[142, 112, 74],  [168, 136, 94],  [192, 158, 110], [210, 176, 126], [224, 192, 142]],
-      sand:       [[178, 142, 92],  [208, 172, 116], [230, 196, 138], [244, 214, 158], [252, 228, 180]],
-      foothill:   [[148, 96, 62],   [182, 122, 78],  [210, 148, 96],  [228, 170, 116], [242, 192, 138]],
-      terracotta: [[118, 64, 48],   [152, 84, 60],   [184, 106, 74],  [206, 128, 92],  [224, 152, 114]],
-      ridge:      [[112, 84, 78],   [142, 108, 98],  [170, 134, 120], [194, 158, 142], [214, 182, 166]],
-      peak:       [[136, 120, 116], [164, 148, 144], [190, 176, 172], [212, 200, 196], [230, 222, 218]],
-      cliff:      [[104, 70, 54],   [134, 92, 70],   [164, 116, 88],  [188, 140, 108], [208, 164, 130]],
-      path:       [[174, 148, 106], [204, 178, 130], [230, 206, 156], [244, 224, 178], [252, 238, 200]],
+      // [deep shadow, shadow, mid, lit, bright highlight] — alto contraste del Desierto de Atacama
+      wetSand:    [[122, 92, 62],   [152, 118, 80],  [182, 146, 100], [204, 168, 120], [220, 186, 138]],
+      sand:       [[148, 110, 74],  [188, 148, 98],  [222, 186, 128], [242, 212, 154], [254, 232, 184]],
+      foothill:   [[112, 66, 48],   [156, 98, 64],   [198, 134, 86],  [224, 164, 108], [244, 192, 138]],
+      terracotta: [[84, 42, 38],    [126, 62, 48],   [168, 90, 64],   [198, 120, 84],  [222, 150, 108]],
+      ridge:      [[78, 56, 62],    [114, 82, 80],   [150, 112, 102], [182, 144, 128], [210, 174, 156]],
+      peak:       [[106, 92, 96],   [140, 124, 124], [174, 158, 154], [202, 188, 184], [226, 218, 214]],
+      cliff:      [[66, 44, 42],    [98, 64, 52],    [136, 92, 70],   [172, 124, 92],  [202, 156, 120]],
+      path:       [[152, 124, 86],  [190, 162, 116], [224, 198, 148], [242, 222, 174], [254, 240, 202]],
     };
     const OCEAN_RAMP = [
-      [18, 68, 132], [24, 84, 154], [30, 102, 174], [38, 124, 192],
-      [48, 150, 206], [62, 178, 216], [88, 204, 224], [126, 224, 232],
+      [15, 58, 118], [20, 76, 144], [26, 96, 168], [34, 120, 188],
+      [44, 146, 204], [60, 176, 216], [88, 204, 224], [128, 226, 234],
     ];
 
     function generateCoastalMap(seed = 2027) {
@@ -466,7 +466,7 @@
         cy -= 5.0 * Math.exp(-Math.pow((gx - 31) / 5.8, 2));
         cy += 7.2 * Math.exp(-Math.pow((gx - 43.5) / 6.8, 2));
         cy += (smoothNoise(gx * 0.17, 1.5, seed + 11) - 0.5) * 3.0;
-        cy += (smoothNoise(gx * 0.52, 4.1, seed + 37) - 0.5) * 1.05;
+        cy += (smoothNoise(gx * 0.52, 4.1, seed + 37) - 0.5) * 1.15;
         return cy;
       };
 
@@ -478,38 +478,53 @@
         if (inland <= 0) {
           return { h: 0, isWater: true, waterDepth: Math.min(1, -inland / 11.5), inland, fogAlpha, biome: 'ocean' };
         }
-        // Transición suave desde la orilla (sin muro vertical de arena)
-        const shoreRamp = Math.min(1, inland / 2.2);
-        let elev = 0.28 + shoreRamp * 1.45;
-        if (inland > 2.6) elev += Math.pow((inland - 2.6) * 0.42, 1.13);
-        elev += 8.6 * Math.exp(-(Math.pow((gx - 18) / 13, 2) + Math.pow((gy - 9) / 8.5, 2)));
-        elev += 5.8 * Math.exp(-(Math.pow((gx - 47) / 8.5, 2) + Math.pow((gy - 27) / 7.5, 2)));
-        elev += 5.1 * Math.exp(-(Math.pow((gx - 35) / 8.0, 2) + Math.pow((gy - 21) / 7.0, 2)));
-        elev += 4.3 * Math.exp(-(Math.pow((gx - 22) / 8.0, 2) + Math.pow((gy - 20) / 6.5, 2)));
-        // Quebradas y crestas erosionadas del norte chileno
-        const baseNoise = fbm(gx * 0.09, gy * 0.09, seed + 17);
-        const ridgeNoise = 1 - Math.abs(fbm(gx * 0.14, gy * 0.14, seed + 89) * 2 - 1);
-        const detail = (smoothNoise(gx * 0.32, gy * 0.32, seed + 73) - 0.5) * 0.85;
-        elev += ((baseNoise - 0.48) * 3.8 + (ridgeNoise - 0.52) * 2.2 + detail) * Math.min(1, inland / 3.5);
 
-        // Explanada suave de la caleta principal
-        const cd = Math.hypot((gx - 42.5) / 6.6, (gy - 43.2) / 5.6);
-        if (cd < 1.25) {
-          const t = Math.max(0, Math.min(1, (cd - 0.74) / 0.51));
+        // Morro/acantilado costero en el cabo central (gx ~ 22..35) cayendo directo al Pacífico
+        const headland = Math.exp(-Math.pow((gx - 28.5) / 6.5, 2));
+        const shoreRamp = Math.min(1, inland / (headland > 0.35 ? 1.15 : 2.1));
+        let elev = 0.28 + shoreRamp * (1.45 + headland * 2.4);
+
+        // Farellón Costero de Atacama: escarpe marcado detrás de la franja costera
+        const cliffWall = 1 / (1 + Math.exp(-(inland - (5.2 - headland * 2.2)) * 0.72));
+        elev += cliffWall * 4.4;
+        if (inland > 3.2) elev += Math.pow((inland - 3.2) * 0.24, 1.06);
+
+        // Cordones montañosos principales
+        elev += 6.2 * Math.exp(-(Math.pow((gx - 18) / 11.5, 2) + Math.pow((gy - 10) / 8.0, 2)));
+        elev += 5.4 * Math.exp(-(Math.pow((gx - 47) / 8.0, 2) + Math.pow((gy - 27) / 7.0, 2)));
+        elev += 5.0 * Math.exp(-(Math.pow((gx - 35) / 7.5, 2) + Math.pow((gy - 21) / 6.5, 2)));
+        elev += 4.5 * Math.exp(-(Math.pow((gx - 22) / 7.5, 2) + Math.pow((gy - 20) / 6.0, 2)));
+
+        // Quebradas profundas y filos agudos (domain-warped ridged noise estilo Atacama)
+        const wx = gx + (fbm(gx * 0.08, gy * 0.08, seed + 31) - 0.5) * 4.2;
+        const wy = gy + (fbm(gx * 0.08, gy * 0.08, seed + 53) - 0.5) * 4.2;
+        const ridge1 = Math.pow(Math.max(0, 1 - Math.abs(fbm(wx * 0.125, wy * 0.125, seed + 89) * 2 - 1)), 1.65);
+        const ridge2 = Math.pow(Math.max(0, 1 - Math.abs(fbm(gx * 0.24, gy * 0.24, seed + 149) * 2 - 1)), 1.5);
+        const canyon = Math.pow(Math.abs(fbm(wx * 0.11, wy * 0.11, seed + 223) * 2 - 1), 0.75);
+        const inlandMask = Math.min(1, Math.max(0, (inland - 1.2) / 3.2));
+        elev += ((ridge1 - 0.42) * 5.2 + (ridge2 - 0.45) * 2.1 - (1 - canyon) * 2.4) * inlandMask;
+
+        // Terrazas geológicas sutiles (estratos costeros sin parecer cubos)
+        if (inland > 3.5) elev += Math.sin(elev * 1.05) * 0.28 * inlandMask;
+
+        // Explanada suave de la caleta principal (acurrucada bajo el farellón)
+        const cd = Math.hypot((gx - 42.5) / 6.5, (gy - 43.2) / 5.4);
+        if (cd < 1.28) {
+          const t = Math.max(0, Math.min(1, (cd - 0.72) / 0.56));
           const b = t * t * (3 - 2 * t);
           const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
           elev = targetH * (1 - b) + elev * b;
         }
         // Caleta norte
         const nd = Math.hypot((gx - 15) / 3.6, (gy - 31) / 2.8);
-        if (nd < 1.2) {
-          const t = Math.max(0, Math.min(1, (nd - 0.65) / 0.55));
+        if (nd < 1.22) {
+          const t = Math.max(0, Math.min(1, (nd - 0.65) / 0.57));
           const b = t * t * (3 - 2 * t);
           const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
           elev = targetH * (1 - b) + elev * b;
         }
-        const h = Math.max(0.25, Math.min(19.5, elev));
-        const biome = h <= 2.3 || (h <= 3.1 && inland < 6.2) ? 'sand' : h <= 6.8 ? 'foothill' : h <= 11.8 ? 'terracotta' : h <= 16.2 ? 'ridge' : 'peak';
+        const h = Math.max(0.25, Math.min(24.0, elev));
+        const biome = h <= 2.3 || (h <= 3.1 && inland < 5.5) ? 'sand' : h <= 7.0 ? 'foothill' : h <= 12.2 ? 'terracotta' : h <= 16.5 ? 'ridge' : 'peak';
         return { h, isWater: false, waterDepth: 0, inland, fogAlpha, biome };
       };
 
@@ -536,12 +551,12 @@
       rawPads.forEach((cfg, idx) => {
         const t = tiles[cfg.gy]?.[cfg.gx];
         if (!t || t.isWater || t.fogAlpha > 0.55) return;
-        const padH = Math.max(4.5, Math.min(19.0, t.h));
+        const padH = Math.max(4.5, Math.min(20.0, t.h));
         t.h = padH; t.isPad = true; t.padId = idx;
-        pads.push({ id: idx, gx: cfg.gx, gy: cfg.gy, h: padH, zone: cfg.zone, fogYield: padH >= 12 ? 1.55 : padH >= 9 ? 1.28 : 1.0, fogLabel: padH >= 12 ? 'Intensa' : padH >= 9 ? 'Alta' : 'Media', starter: Boolean(cfg.starter), built: false, fill: 0, alertActive: false, dispatched: false, queued: false, trail: null, buildAnim: 0, dripPhase: rand() * Math.PI * 2 });
+        pads.push({ id: idx, gx: cfg.gx, gy: cfg.gy, h: padH, zone: cfg.zone, fogYield: padH >= 13 ? 1.55 : padH >= 9.5 ? 1.28 : 1.0, fogLabel: padH >= 13 ? 'Intensa' : padH >= 9.5 ? 'Alta' : 'Media', starter: Boolean(cfg.starter), built: false, fill: 0, alertActive: false, dispatched: false, queued: false, trail: null, buildAnim: 0, dripPhase: rand() * Math.PI * 2 });
       });
 
-      // Muestreo continuo final (pequeña terraza natural bajo cada plataforma, sin cráteres)
+      // Muestreo continuo final (pequeña terraza natural bajo cada plataforma)
       const sampleTerrain = (gx, gy) => {
         const s = sampleRawTerrain(gx, gy);
         if (s.isWater) return s;
@@ -649,7 +664,6 @@
       const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
       const W = canvas.width, H = canvas.height;
       const img = ctx.createImageData(W, H), data = img.data;
-      // Rellenar fondo con color de camanchaca
       for (let i = 0; i < data.length; i += 4) {
         data[i] = FOG_RGB[0]; data[i + 1] = FOG_RGB[1]; data[i + 2] = FOG_RGB[2]; data[i + 3] = 255;
       }
@@ -657,7 +671,6 @@
       const SUB = 4, N = map.size * SUB;
       const { originX, originY, sampleTerrain, seed } = map;
 
-      // 1. Pre-muestrear grilla fina (240x240)
       const hGrid = new Float32Array(N * N);
       const wGrid = new Uint8Array(N * N);
       const dGrid = new Float32Array(N * N);
@@ -677,7 +690,6 @@
         }
       }
 
-      // 2. Máscara fina de senderos naturales (angostos, no bloques de 24px)
       const pathGrid = new Uint8Array(N * N);
       const stampTrail = (trail) => {
         if (!trail || trail.length < 2) return;
@@ -726,7 +738,6 @@
         data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
       };
 
-      // 3. Proyección isométrica fina (6x3 px por micro-celda) back-to-front
       for (let d = 0; d <= (N - 1) * 2; d++) {
         for (let sx = 0; sx < N; sx++) {
           const sy = d - sx;
@@ -744,8 +755,8 @@
             const depth = dGrid[idx];
             const wave = (smoothNoise(gx * 0.85, gy * 0.85, seed + 211) - 0.5) * 0.08;
             const shoreDist = -inGrid[idx];
-            const isFoam = shoreDist < 0.38 || (shoreDist < 0.85 && hash2D(sx, sy, seed + 909) > 0.68);
-            const col = isFoam ? [226, 248, 250] : pickRamp(OCEAN_RAMP, 1 - depth + wave, cx, cy);
+            const isFoam = shoreDist < 0.42 || (shoreDist < 0.92 && hash2D(sx, sy, seed + 909) > 0.65);
+            const col = isFoam ? [230, 250, 252] : pickRamp(OCEAN_RAMP, 1 - depth + wave, cx, cy);
             for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy, col[0], col[1], col[2], fog);
             for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 1, col[0], col[1], col[2], fog);
             for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 2, col[0], col[1], col[2], fog);
@@ -753,7 +764,7 @@
             continue;
           }
 
-          // Iluminación solar costera desde el Pacífico (oeste/izquierda: ilumina laderas hacia la costa y esculpe quebradas)
+          // Relieve esculpido: gradiente + curvatura (filos iluminados y quebradas con oclusión ambiental)
           const hL = sx > 0 ? hGrid[idx - 1] : h;
           const hR = sx < N - 1 ? hGrid[idx + 1] : h;
           const hU = sy > 0 ? hGrid[idx - N] : h;
@@ -761,27 +772,30 @@
           const dhdx = (hR - hL) * (SUB * 0.5);
           const dhdy = (hD - hU) * (SUB * 0.5);
           const slope = Math.hypot(dhdx, dhdy);
-          const invLen = 1 / Math.hypot(dhdx, dhdy, 1.5);
-          const ndotl = (-dhdx * -0.58 - dhdy * 0.48 + 1.5 * 0.72) * invLen;
-          const microTex = (hash2D(sx, sy, seed + 613) - 0.5) * 0.12;
-          const shade = Math.max(0.08, Math.min(0.98, ndotl * 0.86 + 0.14 + microTex));
+          // Curvatura local: positivo en filos/crestas, negativo en fondo de quebradas
+          const curv = (h - (hL + hR + hU + hD) * 0.25) * 2.8;
+          // Sol lateral rasante desde el oeste-noroeste: resalta dramáticamente filos y acantilados
+          const gxN = dhdx * 1.7, gyN = dhdy * 1.7;
+          const invLen = 1 / Math.hypot(gxN, gyN, 1.0);
+          const ndotl = (-gxN * -0.78 - gyN * 0.30 + 1.0 * 0.56) * invLen;
+          const microTex = (hash2D(sx, sy, seed + 613) - 0.5) * 0.10;
+          const shade = Math.max(0.02, Math.min(0.99, ndotl * 0.96 + curv * 0.32 + microTex));
 
-          // Selección orgánica de bioma con transición suave por dithering
           const inland = inGrid[idx];
           const pathVal = pathGrid[idx];
-          const bNoise = (smoothNoise(gx * 0.42, gy * 0.42, seed + 401) - 0.5) * 1.4;
+          const bNoise = (smoothNoise(gx * 0.42, gy * 0.42, seed + 401) - 0.5) * 1.25;
           const hEff = h + bNoise;
           let ramp;
           if (pathVal === 2) ramp = TERRAIN_RAMPS.path;
-          else if (inland < 0.82 && h < 1.35) ramp = TERRAIN_RAMPS.wetSand;
-          else if (slope > 2.35 && h > 3.0) ramp = TERRAIN_RAMPS.cliff;
-          else if (hEff < 2.5 || (hEff < 3.4 && inland < 5.8)) ramp = TERRAIN_RAMPS.sand;
-          else if (hEff < 7.0) ramp = TERRAIN_RAMPS.foothill;
-          else if (hEff < 12.2) ramp = TERRAIN_RAMPS.terracotta;
-          else if (hEff < 16.6) ramp = TERRAIN_RAMPS.ridge;
+          else if (inland < 0.78 && h < 1.35) ramp = TERRAIN_RAMPS.wetSand;
+          else if (slope > 1.55 && h > 1.6) ramp = TERRAIN_RAMPS.cliff;
+          else if (hEff < 2.45 || (hEff < 3.2 && inland < 5.2)) ramp = TERRAIN_RAMPS.sand;
+          else if (hEff < 7.4) ramp = TERRAIN_RAMPS.foothill;
+          else if (hEff < 13.0) ramp = TERRAIN_RAMPS.terracotta;
+          else if (hEff < 17.4) ramp = TERRAIN_RAMPS.ridge;
           else ramp = TERRAIN_RAMPS.peak;
 
-          const topCol = pickRamp(ramp, pathVal === 1 ? Math.max(0.12, shade - 0.14) : shade, cx, cy);
+          const topCol = pickRamp(ramp, pathVal === 1 ? Math.max(0.08, shade - 0.16) : shade, cx, cy);
 
           // Superficie superior del micro-rombo (6x4 px)
           for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy, topCol[0], topCol[1], topCol[2], fog);
@@ -789,15 +803,21 @@
           for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 2, topCol[0], topCol[1], topCol[2], fog);
           for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy + 3, topCol[0], topCol[1], topCol[2], fog);
 
-          // Falda/acantilado vertical con estratos sedimentarios suaves
+          // Acantilados y farellones costeros con estratos rocosos marcados y sombra lateral
           const minFrontH = Math.min(hR, hD);
-          const dropPx = Math.max(2, Math.min(28, Math.ceil((h - minFrontH) * ELEV_H) + 2));
-          const wallRamp = dropPx > 9 ? TERRAIN_RAMPS.cliff : ramp;
+          const dropPx = Math.max(2, Math.min(36, Math.ceil((h - minFrontH) * ELEV_H) + 2));
+          const isCliff = dropPx >= 6 || slope > 1.55;
+          const wallRamp = isCliff ? TERRAIN_RAMPS.cliff : ramp;
           for (let dy = 3; dy < 3 + dropPx; dy++) {
             const py = cy + dy;
-            const strata = ((Math.floor((h * ELEV_H - dy) * 0.45) & 3) === 0) ? -0.09 : 0.03;
-            const leftCol = pickRamp(wallRamp, Math.max(0.1, shade * 0.72 + strata), cx - 2, py);
-            const rightCol = pickRamp(wallRamp, Math.max(0.05, shade * 0.54 + strata), cx + 2, py);
+            const elevAtPx = h * ELEV_H - dy;
+            const band = Math.floor(elevAtPx * 0.42);
+            const strata = (band & 3) === 0 ? -0.18 : (band & 3) === 2 ? 0.08 : -0.02;
+            const crevice = (hash2D(sx, band, seed + 777) > 0.84) ? -0.14 : 0;
+            const leftShade = Math.max(0.04, Math.min(0.95, shade * 0.68 + strata + crevice));
+            const rightShade = Math.max(0.01, Math.min(0.85, shade * 0.36 + strata + crevice));
+            const leftCol = pickRamp(wallRamp, leftShade, cx - 2, py);
+            const rightCol = pickRamp(wallRamp, rightShade, cx + 2, py);
             for (let rx = -3; rx < 0; rx++) setPx(cx + rx, py, leftCol[0], leftCol[1], leftCol[2], fog);
             for (let rx = 0; rx <= 3; rx++) setPx(cx + rx, py, rightCol[0], rightCol[1], rightCol[2], fog);
           }
