@@ -439,19 +439,19 @@
     ];
     const FOG_RGB = [223, 232, 236];
     const TERRAIN_RAMPS = {
-      // [deep shadow, shadow, mid, lit, bright highlight] — alto contraste del Desierto de Atacama
-      wetSand:    [[122, 92, 62],   [152, 118, 80],  [182, 146, 100], [204, 168, 120], [220, 186, 138]],
-      sand:       [[148, 110, 74],  [188, 148, 98],  [222, 186, 128], [242, 212, 154], [254, 232, 184]],
-      foothill:   [[112, 66, 48],   [156, 98, 64],   [198, 134, 86],  [224, 164, 108], [244, 192, 138]],
-      terracotta: [[84, 42, 38],    [126, 62, 48],   [168, 90, 64],   [198, 120, 84],  [222, 150, 108]],
-      ridge:      [[78, 56, 62],    [114, 82, 80],   [150, 112, 102], [182, 144, 128], [210, 174, 156]],
-      peak:       [[106, 92, 96],   [140, 124, 124], [174, 158, 154], [202, 188, 184], [226, 218, 214]],
-      cliff:      [[66, 44, 42],    [98, 64, 52],    [136, 92, 70],   [172, 124, 92],  [202, 156, 120]],
-      path:       [[152, 124, 86],  [190, 162, 116], [224, 198, 148], [242, 222, 174], [254, 240, 202]],
+      // [deep shadow, shadow, mid, lit, bright highlight] — paleta desaturada y atmosférica de Atacama costero
+      wetSand:    [[122, 104, 84],  [148, 128, 102], [174, 152, 122], [194, 172, 140], [210, 188, 156]],
+      sand:       [[146, 124, 98],  [180, 156, 124], [210, 188, 152], [228, 208, 172], [242, 226, 194]],
+      foothill:   [[112, 84, 68],   [148, 112, 88],  [182, 142, 110], [206, 166, 130], [224, 188, 152]],
+      terracotta: [[88, 60, 56],    [122, 82, 70],   [154, 104, 86],  [180, 128, 104], [202, 152, 126]],
+      ridge:      [[84, 68, 72],    [114, 94, 92],   [144, 120, 114], [172, 148, 138], [196, 174, 162]],
+      peak:       [[108, 98, 102],  [138, 128, 128], [168, 158, 156], [194, 186, 184], [216, 210, 208]],
+      cliff:      [[72, 56, 54],    [100, 78, 68],   [130, 102, 86],  [160, 128, 106], [186, 154, 130]],
+      path:       [[148, 130, 104], [182, 162, 130], [212, 194, 158], [230, 214, 180], [244, 232, 204]],
     };
     const OCEAN_RAMP = [
-      [15, 58, 118], [20, 76, 144], [26, 96, 168], [34, 120, 188],
-      [44, 146, 204], [60, 176, 216], [88, 204, 224], [128, 226, 234],
+      [34, 70, 112], [42, 86, 132], [50, 102, 150], [60, 120, 168],
+      [72, 142, 182], [88, 164, 194], [112, 188, 206], [148, 212, 220],
     ];
 
     function generateCoastalMap(seed = 2027) {
@@ -912,42 +912,194 @@
     function drawHouse(ctx, wx, wy, house, anim = 1, time = 0) {
       const cx = Math.round(wx), cy = Math.round(wy) + 4;
       const ab = Boolean(house.abandoned);
-      const wallCol = ab ? '#8c8379' : house.wall;
-      const roofCol = ab ? '#57514c' : house.roof;
-      ctx.save(); ctx.translate(cx, cy); if (anim < 1) { const s = 0.4 + anim * 0.6; ctx.scale(s, s); }
-      ctx.fillStyle = 'rgba(65, 48, 28, 0.24)'; ctx.fillRect(-13, 1, 27, 7);
+      const wallBase = ab ? '#8a8279' : house.wall;
+      const roofBase = ab ? '#544e49' : house.roof;
+      const wallLit = shadeColor(wallBase, 10);
+      const wallMid = shadeColor(wallBase, -4);
+      const wallShd = shadeColor(wallBase, -28);
+      const wallDeep = shadeColor(wallBase, -42);
+      const roofLit = shadeColor(roofBase, 16);
+      const roofMid = roofBase;
+      const roofShd = shadeColor(roofBase, -26);
+      const roofEdge = shadeColor(roofBase, -40);
+      const trimCol = ab ? '#6b635b' : '#ebe4d5';
+      const plinthL = ab ? '#635c55' : '#8a7e6e';
+      const plinthR = ab ? '#4a443f' : '#695f52';
+
+      ctx.save(); ctx.translate(cx, cy);
+      if (anim < 1) { const s = 0.4 + anim * 0.6; ctx.scale(s, s); }
+
+      // Sombra proyectada en perspectiva isométrica hacia el sureste (sol costero desde el oeste)
+      ctx.fillStyle = 'rgba(42, 34, 28, 0.28)';
+      ctx.fillRect(-10, 2, 24, 5);
+      ctx.fillRect(-6, 7, 20, 2);
+      ctx.fillRect(6, -1, 10, 4);
+
       if (house.style === 'flat') {
-        ctx.fillStyle = wallCol; for (let i = 0; i < 11; i++) ctx.fillRect(-11 + i, -9 + Math.floor(i * 0.5), 1, 11);
-        ctx.fillStyle = shadeColor(wallCol, -22); for (let i = 0; i < 11; i++) ctx.fillRect(i, -4 - Math.floor(i * 0.5), 1, 11);
-        ctx.fillStyle = roofCol; for (let r = 0; r < 11; r++) { const h = r < 6 ? (r + 1) * 2 : (11 - r) * 2; ctx.fillRect(-h, -14 + r, h * 2, 1); }
-        ctx.fillStyle = ab ? '#2f2622' : '#4c3424'; ctx.fillRect(-8, -3, 3, 5);
+        // --- CASA COSTERA NORTINA DE TECHO PLANO CON ANTEPECHO Y TINACO ---
+        const W = 12, H = 11;
+        // Pared izquierda (iluminada) + zócalo de cemento + textura de estuco
+        for (let i = 0; i < W; i++) {
+          const x = -W + i, yBot = Math.floor(i * 0.5);
+          ctx.fillStyle = i === 0 ? trimCol : ((i % 3 === 0) ? wallMid : wallLit);
+          ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthL;
+          ctx.fillRect(x, yBot - 2, 1, 2);
+          // Sombra bajo la cornisa
+          ctx.fillStyle = wallMid;
+          ctx.fillRect(x, yBot - H, 1, 1);
+        }
+        // Pared derecha (sombra) + zócalo
+        for (let i = 0; i < W; i++) {
+          const x = i, yBot = Math.floor((W - 1 - i) * 0.5);
+          ctx.fillStyle = i === W - 1 ? wallDeep : ((i % 3 === 0) ? wallDeep : wallShd);
+          ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthR;
+          ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        // Arista central limpia
+        ctx.fillStyle = wallMid;
+        ctx.fillRect(0, -H + 5, 1, H - 2);
+
+        // Techo plano con antepecho (parapeto) isométrico
+        for (let r = 0; r < 12; r++) {
+          const hw = r < 6 ? (r + 1) * 2 : (12 - r) * 2;
+          ctx.fillStyle = roofEdge;
+          ctx.fillRect(-hw, -17 + r, hw * 2, 1);
+        }
+        for (let r = 1; r < 11; r++) {
+          const hw = Math.max(1, (r < 6 ? (r + 1) * 2 : (12 - r) * 2) - 2);
+          ctx.fillStyle = r < 6 ? roofMid : roofShd;
+          ctx.fillRect(-hw, -17 + r, hw * 2, 1);
+        }
+        // Borde iluminado del parapeto
+        ctx.fillStyle = roofLit;
+        ctx.fillRect(-2, -17, 4, 1); ctx.fillRect(-6, -15, 3, 1); ctx.fillRect(-10, -13, 3, 1);
+
+        // Puerta de madera con alero y escalón en fachada izquierda
+        ctx.fillStyle = ab ? '#2a2320' : '#4a3121';
+        ctx.fillRect(-9, -4, 3, 6);
+        ctx.fillStyle = ab ? '#3c3430' : '#6e4b34';
+        ctx.fillRect(-8, -3, 2, 4);
+        ctx.fillStyle = '#9e9282'; ctx.fillRect(-10, 2, 4, 1); // escalón
+        ctx.fillStyle = roofShd; ctx.fillRect(-10, -5, 5, 1); // alero sobre puerta
+
+        // Ventanas con marco, vidrio oscuro y reflejo (o tapiadas si está abandonada)
+        const drawWin = (wx0, wy0, isRight) => {
+          ctx.fillStyle = trimCol; ctx.fillRect(wx0 - 1, wy0 - 1, 4, 4);
+          if (ab) {
+            ctx.fillStyle = '#241e1c'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = '#7c5d3f'; ctx.fillRect(wx0 - 1, wy0, 4, 1);
+          } else {
+            ctx.fillStyle = isRight ? '#2a3d4d' : '#3d5e78'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = isRight ? '#6d93ad' : '#b7d7e8'; ctx.fillRect(wx0, wy0, 1, 1);
+          }
+        };
+        drawWin(-4, -4, false);
+        drawWin(3, -3, true);
+        drawWin(8, -5, true);
+        if (ab) { ctx.fillStyle = '#7c5d3f'; ctx.fillRect(-9, -3, 3, 1); ctx.fillRect(-9, -1, 3, 1); }
+
+        // Tinaco / bidón de agua en la terraza con base y tubería
+        ctx.fillStyle = '#47433e'; ctx.fillRect(-3, -15, 6, 2); // soporte
         if (ab) {
-          ctx.fillStyle = '#2d2623'; ctx.fillRect(-3, -3, 2, 2); ctx.fillRect(4, -3, 2, 2); ctx.fillRect(7, -5, 2, 2);
-          ctx.fillStyle = '#7a5a3a'; ctx.fillRect(-8, -2, 3, 1); ctx.fillRect(-8, 0, 3, 1);
-          ctx.fillStyle = '#5d656e'; ctx.fillRect(-2, -16, 5, 5); ctx.fillStyle = '#737c85'; ctx.fillRect(-1, -15, 3, 3);
+          ctx.fillStyle = '#4d545c'; ctx.fillRect(-2, -20, 5, 5);
+          ctx.fillStyle = '#68717a'; ctx.fillRect(-1, -19, 3, 3);
         } else {
-          ctx.fillStyle = '#e8f4f8'; ctx.fillRect(-3, -3, 2, 2); ctx.fillRect(4, -3, 2, 2); ctx.fillRect(7, -5, 2, 2);
-          ctx.fillStyle = '#195eb0'; ctx.fillRect(-2, -16, 5, 5); ctx.fillStyle = '#3d99f5'; ctx.fillRect(-1, -15, 3, 3);
+          ctx.fillStyle = '#1d568f'; ctx.fillRect(-2, -20, 5, 5);
+          ctx.fillStyle = '#3180c9'; ctx.fillRect(-1, -19, 3, 3);
+          ctx.fillStyle = '#7fc2f0'; ctx.fillRect(-1, -19, 1, 2);
+          ctx.fillStyle = '#123a63'; ctx.fillRect(-1, -21, 3, 1);
         }
       } else {
-        ctx.fillStyle = wallCol; for (let i = 0; i < 12; i++) ctx.fillRect(-12 + i, -9 + Math.floor(i * 0.5), 1, 11);
-        ctx.fillStyle = shadeColor(wallCol, -20); for (let i = 0; i < 12; i++) ctx.fillRect(i, -3 - Math.floor(i * 0.5), 1, 11);
-        const rd = shadeColor(roofCol, -24);
-        for (let st = 0; st < 8; st++) { ctx.fillStyle = roofCol; ctx.fillRect(-13 + st, -10 - st, 14 - st, 2); ctx.fillStyle = rd; ctx.fillRect(0, -17 + st, 13 - Math.floor(st * 0.3), 2); }
-        ctx.fillStyle = shadeColor(roofCol, 14); ctx.fillRect(-5, -17, 11, 2);
-        ctx.fillStyle = ab ? '#4f4a46' : '#6c5a4d'; ctx.fillRect(-3, -22, 3, 6);
-        ctx.fillStyle = ab ? '#2f2622' : '#5c3d28'; ctx.fillRect(-9, -3, 3, 5);
+        // --- CASA DE CALETA NORTINA CON TECHO DE ZINC A DOS AGUAS ---
+        const W = 13, H = 11;
+        // Pared izquierda (tablones verticales de madera/adobe)
+        for (let i = 0; i < W; i++) {
+          const x = -W + i, yBot = Math.floor(i * 0.5);
+          ctx.fillStyle = i === 0 ? trimCol : ((i % 2 === 0) ? wallLit : wallMid);
+          ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthL;
+          ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        // Pared derecha (sombra)
+        for (let i = 0; i < W; i++) {
+          const x = i, yBot = Math.floor((W - 1 - i) * 0.5);
+          ctx.fillStyle = i === W - 1 ? wallDeep : ((i % 2 === 0) ? wallShd : wallDeep);
+          ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthR;
+          ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        // Sombra proyectada por el alero del techo sobre las paredes
+        ctx.fillStyle = 'rgba(32, 22, 18, 0.25)';
+        for (let i = 0; i < W; i++) {
+          ctx.fillRect(-W + i, Math.floor(i * 0.5) - H, 1, 2);
+          ctx.fillRect(i, Math.floor((W - 1 - i) * 0.5) - H, 1, 2);
+        }
+        // Hastial triangular (gable) bajo el techo izquierdo
+        for (let st = 0; st < 5; st++) {
+          ctx.fillStyle = wallMid;
+          ctx.fillRect(-10 + st, -11 - st, 10 - st * 2, 1);
+        }
+
+        // Techo de calamina/zinc acanalado en perspectiva isométrica real (2:1, sin huecos)
+        for (let x = -14; x <= 14; x++) {
+          const ax = Math.abs(x);
+          const yEave = -4 - Math.floor(ax * 0.5);
+          const yTop = -19 + Math.floor(Math.max(0, ax - 5) * 0.88);
+          const hCol = yEave - yTop + 1;
+          if (hCol <= 0) continue;
+          const isLeft = x < 0;
+          const isRib = (x & 3) === 0;
+          ctx.fillStyle = isLeft ? (isRib ? roofLit : roofMid) : (isRib ? roofEdge : roofShd);
+          ctx.fillRect(x, yTop, 1, hCol);
+          // Borde inferior del alero (cenefa oscura)
+          ctx.fillStyle = roofEdge;
+          ctx.fillRect(x, yEave, 1, 1);
+        }
+        // Cumbrera (caballete metálico superior)
+        ctx.fillStyle = roofLit;
+        ctx.fillRect(-5, -20, 11, 2);
+        ctx.fillStyle = roofEdge;
+        ctx.fillRect(-5, -18, 11, 1);
+
+        // Pequeña chimenea / ducto metálico
+        ctx.fillStyle = ab ? '#4a4541' : '#6e5c50'; ctx.fillRect(-4, -24, 3, 6);
+        ctx.fillStyle = ab ? '#635d58' : '#8f7a6c'; ctx.fillRect(-4, -24, 1, 5);
+        ctx.fillStyle = '#3b332e'; ctx.fillRect(-5, -25, 5, 1);
+
+        // Puerta con marco y peldaño
+        ctx.fillStyle = trimCol; ctx.fillRect(-10, -4, 4, 6);
+        ctx.fillStyle = ab ? '#26201d' : '#573926'; ctx.fillRect(-9, -3, 3, 5);
+        ctx.fillStyle = '#9e9282'; ctx.fillRect(-10, 2, 4, 1);
+
+        // Ventanas con marco, vidrio y alféizar
+        const drawWinG = (wx0, wy0, isRight) => {
+          ctx.fillStyle = trimCol; ctx.fillRect(wx0 - 1, wy0 - 1, 4, 4);
+          if (ab) {
+            ctx.fillStyle = '#241e1c'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = '#7c5d3f'; ctx.fillRect(wx0 - 1, wy0, 4, 1);
+          } else {
+            ctx.fillStyle = isRight ? '#2a3d4d' : '#3d5e78'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = isRight ? '#7196b0' : '#bedce8'; ctx.fillRect(wx0, wy0, 1, 1);
+          }
+        };
+        drawWinG(-4, -3, false);
+        drawWinG(3, -3, true);
+        drawWinG(8, -5, true);
         if (ab) {
-          ctx.fillStyle = '#2d2623'; ctx.fillRect(-4, -2, 2, 2); ctx.fillRect(4, -2, 3, 2);
-          ctx.fillStyle = '#7a5a3a'; ctx.fillRect(-9, -2, 3, 1); ctx.fillRect(4, -1, 3, 1);
-        } else {
-          ctx.fillStyle = '#eef7fa'; ctx.fillRect(-4, -2, 2, 2); ctx.fillRect(4, -2, 3, 2);
+          ctx.fillStyle = '#7c5d3f';
+          ctx.fillRect(-9, -2, 3, 1); ctx.fillRect(-9, 0, 3, 1);
+          // Parche oxidado/roto en el techo abandonado
+          ctx.fillStyle = '#3b2e28'; ctx.fillRect(-6, -15, 3, 2); ctx.fillRect(3, -14, 3, 2);
         }
       }
+
+      // Indicador pulsante de casa abandonada por falta de agua
       if (ab && Math.sin(time * 4.5 + cx) > -0.2) {
-        ctx.fillStyle = '#3d1b16'; ctx.fillRect(-3, -25, 6, 5);
-        ctx.fillStyle = '#e8684a'; ctx.fillRect(-2, -24, 4, 3);
-        ctx.fillStyle = '#fff0d6'; ctx.fillRect(-1, -24, 1, 2); ctx.fillRect(1, -23, 1, 1);
+        ctx.fillStyle = '#3d1b16'; ctx.fillRect(-3, -29, 6, 5);
+        ctx.fillStyle = '#e8684a'; ctx.fillRect(-2, -28, 4, 3);
+        ctx.fillStyle = '#fff0d6'; ctx.fillRect(-1, -28, 1, 2); ctx.fillRect(1, -27, 1, 1);
       }
       ctx.restore();
     }
