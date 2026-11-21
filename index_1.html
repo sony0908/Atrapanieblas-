@@ -1,0 +1,2113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Atrapanieblas · Chile Re-Descubre – Congreso Futuro 2027</title>
+  <style>
+    :root {
+      --ink: #152b3f;
+      --ink-soft: #435e73;
+      --sand-card: rgba(250, 245, 235, 0.96);
+      --sand-border: rgba(168, 138, 98, 0.44);
+      --panel-dark: rgba(18, 40, 62, 0.86);
+      --panel-border: rgba(255, 255, 255, 0.16);
+      --water: #2584d8;
+      --shadow: 0 8px 22px rgba(15, 35, 54, 0.22);
+      --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #dfe8ec; color: var(--ink); font-family: var(--font-ui); }
+    #app { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    #game-canvas { display: block; width: 100%; height: 100%; touch-action: none; image-rendering: pixelated; cursor: grab; }
+
+    .hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; transition: opacity 0.22s ease; }
+    .hud.hidden { opacity: 0; visibility: hidden; }
+
+    .hud-top {
+      position: absolute; top: 8px; left: 8px; right: 8px;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+    }
+
+    .hud-top-left {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+      max-width: calc(100% - 82px);
+    }
+
+    .stats-mini {
+      pointer-events: auto;
+      display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px;
+      background: var(--panel-dark); border: 1px solid var(--panel-border);
+      backdrop-filter: blur(8px); border-radius: 10px; padding: 4px 8px;
+      box-shadow: var(--shadow); color: #f4f9fc;
+    }
+
+    .chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .chip-ico { font-size: 12px; line-height: 1; }
+    .chip-val { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; }
+    .chip-sub { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: #a8cde3; }
+    .chip-sep { width: 1px; height: 12px; background: rgba(255, 255, 255, 0.16); margin: 0 2px; }
+
+    .mini-bar { display: inline-block; width: 34px; height: 4px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); overflow: hidden; margin-left: 2px; }
+    .mini-bar-fill { display: block; height: 100%; width: 15%; background: linear-gradient(90deg, #2d8ee8, #70d6ff); transition: width 0.25s ease, background 0.25s ease; }
+    .mini-bar-fill.warn { background: linear-gradient(90deg, #e88b2d, #ffcf5c); }
+    .mini-bar-fill.danger { background: linear-gradient(90deg, #d93829, #ff6b52); }
+
+    .chip.warn .chip-val { color: #ffd470; }
+    .chip.danger .chip-val { color: #ff8066; animation: pulseUrgent 0.65s infinite alternate; }
+    .chip.danger .chip-sub { color: #ffb3a3; }
+
+    .timer-mini {
+      pointer-events: auto; display: inline-flex; align-items: center; gap: 5px;
+      background: var(--panel-dark); border: 1px solid var(--panel-border); backdrop-filter: blur(8px);
+      border-radius: 10px; padding: 5px 9px; color: #ffffff;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 700; box-shadow: var(--shadow); flex-shrink: 0;
+    }
+
+    .timer-mini.urgent { background: rgba(186, 54, 34, 0.94); border-color: rgba(255, 200, 140, 0.55); animation: pulseUrgent 0.8s infinite alternate; }
+    @keyframes pulseUrgent { from { transform: scale(1); } to { transform: scale(1.04); } }
+
+    .micro-toast {
+      background: rgba(31, 114, 63, 0.92); color: #ffffff; padding: 3px 9px; border-radius: 8px;
+      font-size: 11px; font-weight: 600; box-shadow: 0 4px 12px rgba(15, 35, 54, 0.18);
+      opacity: 0; transform: translateY(-4px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none;
+    }
+    .micro-toast.warn { background: rgba(186, 54, 34, 0.94); }
+    .micro-toast.visible { opacity: 1; transform: translateY(0); }
+
+    .micro-hint {
+      pointer-events: auto; display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(250, 245, 235, 0.9); border: 1px solid var(--sand-border); color: var(--ink);
+      padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 600;
+      box-shadow: 0 4px 12px rgba(15, 35, 54, 0.14);
+    }
+    .micro-hint.hidden { display: none; }
+    .micro-close { border: none; background: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 700; cursor: pointer; line-height: 1; padding: 0 2px; }
+
+    /* Dock desplegable: lateral derecho en PC / horizontal */
+    .dock-shell {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: row; align-items: center; gap: 8px; pointer-events: none;
+    }
+
+    .dock-rail {
+      pointer-events: auto; display: flex; flex-direction: column; gap: 6px; padding: 5px;
+      background: var(--panel-dark); border: 1px solid var(--panel-border); backdrop-filter: blur(8px);
+      border-radius: 13px; box-shadow: var(--shadow);
+    }
+
+    .dock-btn {
+      position: relative; width: 36px; height: 36px; border-radius: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.08);
+      color: #f0f7fc; display: grid; place-items: center; cursor: pointer;
+      transition: background 0.14s ease, transform 0.14s ease;
+    }
+    .dock-btn:hover { background: rgba(255, 255, 255, 0.18); transform: scale(1.04); }
+    .dock-btn.active { background: #2584d8; border-color: #82d3ff; }
+    .dock-ico { font-size: 16px; line-height: 1; }
+
+    .dock-alert { background: #eb7e17; border-color: #ffd399; color: #ffffff; font-weight: 800; animation: alertPulse 1.1s ease-in-out infinite alternate; }
+    .dock-alert.hidden { display: none; }
+    @keyframes alertPulse { from { transform: scale(1); } to { transform: scale(1.07); } }
+
+    .dock-badge {
+      position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: 99px; background: #152b3f; border: 1.5px solid #ffd399; color: #ffffff;
+      font-family: var(--font-mono); font-size: 9px; font-weight: 800; display: grid; place-items: center;
+    }
+
+    .dock-dot {
+      position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 99px;
+      background: #5ce1a0; box-shadow: 0 0 0 2px rgba(18, 40, 62, 0.9);
+    }
+    .dock-dot.hidden { display: none; }
+
+    .dock-drawer {
+      pointer-events: auto; width: 218px; background: var(--sand-card); border: 1.5px solid var(--sand-border);
+      border-radius: 13px; padding: 10px 11px; box-shadow: 0 14px 32px rgba(14, 34, 52, 0.28);
+      color: var(--ink); animation: popIn 0.16s ease-out;
+    }
+    .dock-drawer.hidden, .drawer-panel.hidden { display: none; }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+    .drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+    .drawer-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+    .drawer-x { border: none; background: rgba(21, 43, 63, 0.08); color: var(--ink); width: 20px; height: 20px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; line-height: 1; }
+    .drawer-meta { font-size: 11.5px; color: var(--ink-soft); margin-bottom: 3px; }
+    .drawer-sub { font-size: 11px; color: var(--ink-soft); margin-bottom: 9px; line-height: 1.35; }
+
+    .drawer-cta {
+      width: 100%; padding: 8px 10px; border-radius: 9px; border: none;
+      background: linear-gradient(135deg, #1b6dc4, #2894db); color: #ffffff;
+      font-family: var(--font-ui); font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .drawer-cta:hover:not(:disabled) { filter: brightness(1.07); }
+    .drawer-cta:disabled { background: #b7c3cc; color: #516575; cursor: default; }
+
+    .cam-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .drawer-mini-btn {
+      padding: 7px 6px; border-radius: 8px; border: 1px solid rgba(21, 43, 63, 0.15);
+      background: rgba(255, 255, 255, 0.8); color: var(--ink); font-family: var(--font-ui);
+      font-size: 11.5px; font-weight: 700; cursor: pointer;
+    }
+    .drawer-mini-btn:hover { background: #ffffff; border-color: var(--water); }
+
+    .opt-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .drawer-row-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 9px; border-radius: 8px;
+      border: 1px solid rgba(21, 43, 63, 0.14); background: rgba(255, 255, 255, 0.8); color: var(--ink);
+      font-family: var(--font-ui); font-size: 11.5px; font-weight: 600; cursor: pointer; text-align: left;
+    }
+    .drawer-row-btn:hover { background: #ffffff; border-color: var(--water); }
+    .drawer-tip { font-size: 10.5px; line-height: 1.38; color: var(--ink-soft); }
+
+    /* Vertical / Portrait: dock inferior centrado y popover hacia arriba */
+    @media (orientation: portrait) and (max-width: 820px) {
+      .dock-shell {
+        right: auto; top: auto; left: 50%; bottom: 10px; transform: translateX(-50%);
+        flex-direction: column; align-items: center; gap: 8px;
+      }
+      .dock-rail { flex-direction: row; padding: 5px 6px; }
+      .dock-drawer { width: min(250px, calc(100vw - 24px)); }
+      .hud-top-left { max-width: calc(100% - 72px); }
+      .mini-bar { display: none; }
+    }
+
+    .modal-backdrop {
+      position: absolute; inset: 0; z-index: 25; display: flex; align-items: center; justify-content: center;
+      padding: 14px; background: rgba(21, 43, 63, 0.34); backdrop-filter: blur(4px); transition: opacity 0.22s ease;
+    }
+    .modal-backdrop.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+    .modal-card {
+      width: 100%; max-width: 490px; max-height: 92vh; overflow-y: auto;
+      background: var(--sand-card); border: 1.5px solid var(--sand-border);
+      border-radius: 18px; padding: 22px 24px; box-shadow: 0 22px 54px rgba(14, 34, 52, 0.3); color: var(--ink);
+    }
+    .modal-kicker { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--water); margin-bottom: 5px; }
+    .modal-title { font-size: clamp(24px, 4vw, 32px); line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .modal-desc { font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); margin-bottom: 14px; }
+    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+    .step-box { background: rgba(255, 255, 255, 0.74); border: 1px solid rgba(168, 138, 98, 0.28); border-radius: 11px; padding: 10px 9px; }
+    .step-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px; background: var(--ink); color: #ffffff; font-size: 10.5px; font-weight: 700; margin-bottom: 5px; }
+    .step-box h3 { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+    .step-box p { font-size: 11px; line-height: 1.35; color: var(--ink-soft); }
+    .modal-actions { display: flex; gap: 9px; flex-wrap: wrap; }
+    .btn-primary, .btn-secondary { flex: 1; min-width: 155px; padding: 11px 14px; border-radius: 11px; font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; cursor: pointer; border: none; }
+    .btn-primary { background: linear-gradient(135deg, #1b6dc4, #2894db); color: #ffffff; box-shadow: 0 7px 18px rgba(27, 109, 196, 0.32); }
+    .btn-secondary { background: rgba(21, 43, 63, 0.08); color: var(--ink); border: 1.5px solid rgba(21, 43, 63, 0.18); }
+    .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+    .summary-metric { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(168, 138, 98, 0.28); border-radius: 10px; padding: 10px 12px; }
+    .summary-metric .m-val { font-family: var(--font-mono); font-size: 18px; font-weight: 800; }
+    .summary-metric .m-lbl { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+    .fact-box { background: rgba(37, 132, 216, 0.1); border-left: 3px solid var(--water); border-radius: 8px; padding: 9px 11px; font-size: 12px; line-height: 1.45; margin-bottom: 14px; }
+    @media (max-width: 560px) { .steps-grid { grid-template-columns: 1fr; } }
+    .mesh-bar { height: 6px; border-radius: 4px; background: rgba(21,43,63,0.18); margin: 8px 0 6px; overflow: hidden; }
+    .mesh-bar > div { height: 100%; width: 0%; border-radius: 4px; background: #3aa0ff; transition: width .25s linear; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas" aria-label="Mapa isométrico del juego Atrapanieblas"></canvas>
+
+    <div id="hud" class="hud hidden">
+      <div class="hud-top">
+        <div class="hud-top-left">
+          <div class="stats-mini" role="status">
+            <div id="water-chip" class="chip" title="Agua almacenada y consumo">
+              <span class="chip-ico">💧</span>
+              <span id="water-val" class="chip-val">18/120L</span>
+              <span id="water-drain-tag" class="chip-sub">-1.3/s</span>
+              <span class="mini-bar"><span id="water-bar" class="mini-bar-fill"></span></span>
+            </div>
+            <span class="chip-sep"></span>
+            <div class="chip" title="Recursos"><span class="chip-ico">🪙</span><span id="funds-val" class="chip-val">$60</span></div>
+            <span class="chip-sep"></span>
+            <div id="pop-chip" class="chip" title="Población"><span class="chip-ico">🏘️</span><span id="pop-val" class="chip-val">12</span></div>
+            <span class="chip-sep"></span>
+            <div class="chip" title="Transportistas"><span class="chip-ico">🚶</span><span id="carriers-val" class="chip-val">2/2</span></div>
+            <span class="chip-sep"></span>
+            <div class="chip" title="Mallas y costo siguiente"><span class="chip-ico">🕸️</span><span id="meshes-val" class="chip-val">1</span><span id="mesh-cost-tag" class="chip-sub">$30</span></div>
+            <span class="chip-sep"></span>
+            <div id="cycle-chip" class="chip" title="Ciclo día/noche y densidad de camanchaca"><span id="cycle-ico" class="chip-ico">🌅</span><span id="cycle-val" class="chip-val">Amanecer</span><span id="cycle-mult" class="chip-sub">×1.4</span></div>
+          </div>
+          <div id="toast-banner" class="micro-toast"></div>
+          <div id="hint-banner" class="micro-hint hidden">
+            <span id="hint-text"></span>
+            <button id="btn-hint-close" class="micro-close" type="button">×</button>
+          </div>
+        </div>
+
+        <div id="timer-pill" class="timer-mini"><span>⏱</span><span id="timer-val">1:00</span></div>
+      </div>
+
+      <div id="dock-shell" class="dock-shell">
+        <div id="dock-drawer" class="dock-drawer hidden">
+          <div id="panel-storage" class="drawer-panel hidden">
+            <div class="drawer-head"><span class="drawer-title">Infraestructura</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
+            <div class="drawer-meta">Almacenamiento: <strong id="storage-cur-name">Tambores Básicos</strong></div>
+            <div id="storage-next-info" class="drawer-sub">Siguiente: Estanque Comunitario (320 L)</div>
+            <button id="btn-upgrade" class="drawer-cta" type="button"><span id="upgrade-title">Mejorar ($49)</span></button>
+            <p class="drawer-tip">Toca una <strong>malla</strong> para comprarle su cañería.</p>
+          </div>
+
+          <div id="panel-mesh" class="drawer-panel hidden">
+            <div class="drawer-head"><span class="drawer-title" id="mesh-title">Atrapanieblas</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
+            <div class="drawer-meta">Niebla: <strong id="mesh-fog">Media</strong> · Caudal: <strong id="mesh-flow">—</strong></div>
+            <div class="drawer-meta">Cañería: <strong id="mesh-pipe-state">Sin cañería</strong></div>
+            <div class="mesh-bar"><div id="mesh-bar-fill"></div></div>
+            <div id="mesh-info" class="drawer-sub"></div>
+            <button id="btn-mesh-pipe" class="drawer-cta" type="button"><span id="mesh-pipe-title">Comprar cañería</span></button>
+          </div>
+
+          <div id="panel-camera" class="drawer-panel hidden">
+            <div class="drawer-head"><span class="drawer-title">Cámara</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
+            <div class="cam-grid">
+              <button id="btn-zoom-in" class="drawer-mini-btn" type="button">＋ Acercar</button>
+              <button id="btn-zoom-out" class="drawer-mini-btn" type="button">− Alejar</button>
+              <button id="btn-caleta" class="drawer-mini-btn" type="button">🏘️ Caleta</button>
+              <button id="btn-full-map" class="drawer-mini-btn" type="button">🗺️ Mapa</button>
+            </div>
+          </div>
+
+          <div id="panel-options" class="drawer-panel hidden">
+            <div class="drawer-head"><span class="drawer-title">Opciones</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
+            <div class="opt-list">
+              <button id="btn-mute" class="drawer-row-btn" type="button"><span id="mute-ico">🔊</span><span id="mute-lbl">Sonido activado</span></button>
+              <button id="btn-menu" class="drawer-row-btn" type="button"><span>🔄</span><span>Cambiar modo / Reiniciar</span></button>
+            </div>
+            <p class="drawer-tip">Toca <strong>(+)</strong> para instalar mallas · Toca <strong>(!)</strong> para recolectar · Toca una <strong>malla</strong> para comprarle su cañería · <strong>Espacio</strong> va a alertas.</p>
+          </div>
+        </div>
+
+        <div class="dock-rail">
+          <button id="dock-alert" class="dock-btn dock-alert hidden" type="button" title="Ir al siguiente bidón lleno">
+            <span class="dock-ico">!</span>
+            <span id="alert-badge" class="dock-badge">1</span>
+          </button>
+          <button id="dock-storage" class="dock-btn" data-panel="storage" type="button" title="Almacenamiento">
+            <span class="dock-ico">🏗️</span>
+            <span id="storage-dot" class="dock-dot hidden"></span>
+          </button>
+          <button id="dock-camera" class="dock-btn" data-panel="camera" type="button" title="Cámara">
+            <span class="dock-ico">🔍</span>
+          </button>
+          <button id="dock-options" class="dock-btn" data-panel="options" type="button" title="Opciones">
+            <span class="dock-ico">⚙️</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="start-modal" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-kicker">Chile Re-Descubre · Congreso Futuro 2027</div>
+        <h1 class="modal-title">Atrapanieblas</h1>
+        <p class="modal-desc">
+          Cosecha la <strong>camanchaca</strong> en la costa desértica del norte de Chile.
+          Instala mallas en las cimas, coordina transportistas y haz florecer la caleta.
+        </p>
+        <div class="steps-grid">
+          <div class="step-box"><span class="step-num">1</span><h3>Construye</h3><p>Toca las plataformas <strong>(+)</strong> en los cerros para instalar mallas.</p></div>
+          <div class="step-box"><span class="step-num">2</span><h3>Recolecta</h3><p>Toca la alerta <strong>(!)</strong> cuando se llene un bidón para enviar un transportista.</p></div>
+          <div class="step-box"><span class="step-num">3</span><h3>Mejora</h3><p>El agua hace crecer casas y huertos; mejora a estanques y copas de agua.</p></div>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-play-60" class="btn-primary" type="button">▶ Reto 1 Minuto</button>
+          <button id="btn-play-endless" class="btn-secondary" type="button">Modo Libre</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="finish-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-kicker">Innovación Chilena en 1 Minuto · Congreso Futuro 2027</div>
+        <h2 class="modal-title">¡Agua cosechada de la niebla!</h2>
+        <p id="sum-detail" class="modal-desc"></p>
+        <div class="summary-grid">
+          <div class="summary-metric"><div id="sum-water" class="m-val">0 L</div><div class="m-lbl">Agua cosechada</div></div>
+          <div class="summary-metric"><div id="sum-pop" class="m-val">12 hab.</div><div class="m-lbl">Población</div></div>
+          <div class="summary-metric"><div id="sum-meshes" class="m-val">1</div><div class="m-lbl">Atrapanieblas</div></div>
+          <div class="summary-metric"><div id="sum-storage" class="m-val">Tambores</div><div class="m-lbl">Almacenamiento</div></div>
+        </div>
+        <div id="sum-fact" class="fact-box"></div>
+        <div class="modal-actions">
+          <button id="btn-continue-endless" class="btn-primary" type="button">Seguir en Modo Libre</button>
+          <button id="btn-replay-60" class="btn-secondary" type="button">Jugar de Nuevo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    const TILE_W = 24, TILE_H = 12, ELEV_H = 5, MAP_SIZE = 60;
+    const PALETTE = {
+      fogBg: '#dfe8ec',
+      oceanDeep: ['#16529a', '#1b5eab', '#216cb8'],
+      oceanMid: ['#267ec4', '#2d8fd0', '#34a0d6'],
+      oceanShallow: ['#42b8d1', '#58cbd9', '#77dce2'],
+      foam: '#dcf6f7',
+      sand: { top: '#e7c689', alt: '#dfc080', speck: '#d3ae6b', left: '#bf9758', right: '#9f7942', rim: '#f2d9a3' },
+      foothill: { top: '#cf8955', alt: '#c37d4b', speck: '#b46f40', left: '#985733', right: '#7a4224', rim: '#de9d69' },
+      terracotta: { top: '#a95d46', alt: '#9c533d', speck: '#8c4734', left: '#783a2a', right: '#5e2c20', rim: '#bd7058' },
+      ridge: { top: '#a38081', alt: '#967476', speck: '#88676a', left: '#725558', right: '#5a4145', rim: '#b69596' },
+      peak: { top: '#c2b6b9', alt: '#d1c8cb', speck: '#b2a6aa', left: '#908488', right: '#766b70', rim: '#e0dbdd' },
+      path: { top: '#efe2b6', alt: '#e4d5a3', speck: '#d7c58f', left: '#bfa974', right: '#9e8959', rim: '#f7efd0' },
+    };
+
+    const STORAGE_TIERS = [
+      { id: 0, name: 'Tambores Básicos', shortName: 'Tambores', capacity: 120, cost: 0, carrierSpeedMult: 1.0, waterBonusMult: 1.0 },
+      { id: 1, name: 'Estanque Comunitario', shortName: 'Estanque', capacity: 320, cost: 65, carrierSpeedMult: 1.18, waterBonusMult: 1.15 },
+      { id: 2, name: 'Copa de Agua Elevada', shortName: 'Copa de Agua', capacity: 700, cost: 140, carrierSpeedMult: 1.35, waterBonusMult: 1.35 },
+      { id: 3, name: 'Oasis Sustentable', shortName: 'Red Hídrica', capacity: 1400, cost: 260, carrierSpeedMult: 1.55, waterBonusMult: 1.6 },
+    ];
+
+    // Cañerías por malla: cuestan según el largo del sendero (mallas más lejanas = cañería más cara).
+    const PIPE_CFG = { baseCost: 24, perTile: 1.15 };
+
+    const GROWTH_MILESTONES = [
+      { water: 30,  popAdd: 4, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Primer huerto comunitario!' },
+      { water: 70,  popAdd: 5, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Nuevas familias llegan!' },
+      { water: 120, popAdd: 6, houses: 2, orchards: 1, trees: 3, carriersAdd: 1, label: '¡La caleta florece!' },
+      { water: 190, popAdd: 7, houses: 2, orchards: 2, trees: 3, carriersAdd: 1, label: '¡Cosecha verde en el desierto!' },
+      { water: 280, popAdd: 8, houses: 2, orchards: 2, trees: 3, carriersAdd: 1, label: '¡Caleta modelo nortina!' },
+      { water: 400, popAdd: 10, houses: 2, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Comunidad autosustentable!' },
+      { water: 560, popAdd: 12, houses: 2, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Oasis costero consolidado!' },
+    ];
+
+    const MODE_CONFIG = {
+      exhibition: { id: 'exhibition', durationSeconds: 60, cycleDuration: 30, startFunds: 60, startWater: 24, startCarriers: 2, meshBaseCost: 30, meshCostStep: 8, fillSpeedMult: 2.35, carrierSpeedBase: 7.4, waterPerDrum: 32, fundsPerDelivery: 24, passiveFundsPerOrchard: 1.6, milestoneScale: 0.72, storageCostScale: 0.75, waterDrainPerPop: 0.11, droughtTickSeconds: 3.2, recoveryWaterMin: 16 },
+      endless: { id: 'endless', durationSeconds: null, cycleDuration: 68, startFunds: 55, startWater: 22, startCarriers: 2, meshBaseCost: 35, meshCostStep: 10, fillSpeedMult: 1.15, carrierSpeedBase: 5.0, waterPerDrum: 28, fundsPerDelivery: 22, passiveFundsPerOrchard: 1.1, milestoneScale: 1.0, storageCostScale: 1.0, waterDrainPerPop: 0.06, droughtTickSeconds: 4.8, recoveryWaterMin: 20 },
+    };
+
+    const EDUCATIONAL_FACTS = [
+      'En Chungungo (Región de Coquimbo), los atrapanieblas chilenos demostraron que la camanchaca puede abastecer de agua potable a toda una caleta costera.',
+      'Una sola malla Raschel de polipropileno en los cerros costeros de Atacama puede capturar entre 200 y 400 litros de agua diarios sin usar electricidad.',
+      'La innovación chilena de los atrapanieblas nació de la ciencia aplicada en el norte del país y hoy se replica en zonas áridas de África, Medio Oriente y América.',
+      'La camanchaca es una neblina costera que se forma sobre el Pacífico frío y choca contra la Cordillera de la Costa: las mallas imitan a las hojas de los árboles para cosecharla.',
+    ];
+
+    class SoundEngine {
+      constructor() { this.ctx = null; this.muted = false; this.ambientGain = null; this.ambientStarted = false; }
+      unlock() {
+        if (!this.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; this.ctx = new AC(); }
+        if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+        if (!this.ambientStarted && !this.muted) this._startAmbience();
+      }
+      toggleMute() {
+        this.muted = !this.muted;
+        if (this.ambientGain && this.ctx) this.ambientGain.gain.setTargetAtTime(this.muted ? 0 : 0.028, this.ctx.currentTime, 0.15);
+        if (!this.muted) this.unlock();
+        return this.muted;
+      }
+      _startAmbience() {
+        if (!this.ctx || this.ambientStarted) return;
+        try {
+          const len = this.ctx.sampleRate * 3, buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate), out = buf.getChannelData(0);
+          let b0 = 0, b1 = 0, b2 = 0;
+          for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = 0.997 * b0 + w * 0.029; b1 = 0.985 * b1 + w * 0.032; b2 = 0.95 * b2 + w * 0.048; out[i] = (b0 + b1 + b2) * 0.35; }
+          const src = this.ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+          const flt = this.ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 340;
+          const lfo = this.ctx.createOscillator(), lg = this.ctx.createGain();
+          lfo.frequency.value = 0.14; lg.gain.value = 130; lfo.connect(lg); lg.connect(flt.frequency); lfo.start();
+          const gain = this.ctx.createGain(); gain.gain.value = this.muted ? 0 : 0.028; this.ambientGain = gain;
+          src.connect(flt); flt.connect(gain); gain.connect(this.ctx.destination); src.start(); this.ambientStarted = true;
+        } catch {}
+      }
+      _tone(freq, dur, type = 'triangle', vol = 0.1, delay = 0, slideTo = null) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime + delay, osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, now);
+        if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, now + dur);
+        gain.gain.setValueAtTime(0.0001, now); gain.gain.linearRampToValueAtTime(vol, now + 0.012); gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(now); osc.stop(now + dur + 0.02);
+      }
+      playBuild() { this._tone(190, 0.08, 'square', 0.07, 0, 120); this._tone(330, 0.11, 'triangle', 0.09, 0.06, 440); this._tone(523.25, 0.14, 'triangle', 0.08, 0.12); }
+      playAlert() { this._tone(620, 0.09, 'sine', 0.07, 0, 960); this._tone(880, 0.12, 'sine', 0.06, 0.07, 1180); }
+      playDispatch() { this._tone(440, 0.07, 'triangle', 0.075, 0); this._tone(587.33, 0.09, 'triangle', 0.075, 0.055); }
+      playDeliver() { this._tone(523.25, 0.09, 'sine', 0.08, 0, 680); this._tone(659.25, 0.1, 'triangle', 0.08, 0.06); this._tone(783.99, 0.15, 'triangle', 0.09, 0.12); }
+      playGrowth() { [392, 493.88, 587.33, 783.99].forEach((n, i) => this._tone(n, 0.16, 'triangle', 0.08, i * 0.07)); }
+      playUpgrade() { [329.63, 440, 554.37, 659.25, 880].forEach((n, i) => this._tone(n, 0.18, 'triangle', 0.09, i * 0.065)); }
+      playDrought() { this._tone(280, 0.16, 'triangle', 0.08, 0, 210); this._tone(210, 0.22, 'sawtooth', 0.05, 0.12, 140); }
+      playError() { this._tone(180, 0.12, 'sawtooth', 0.06, 0, 130); }
+      playFinish() { [523.25, 659.25, 783.99, 1046.5].forEach((n, i) => this._tone(n, 0.28, 'triangle', 0.095, i * 0.09)); }
+    }
+
+    function mulberry32(seed) {
+      let a = seed >>> 0;
+      return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    }
+    function hash2D(x, y, seed = 1337) { let h = (x * 374761393 + y * 668265263 + seed * 1442695041) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+    function smoothNoise(x, y, seed) {
+      const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+      const a = hash2D(xi, yi, seed), b = hash2D(xi + 1, yi, seed), c = hash2D(xi, yi + 1, seed), d = hash2D(xi + 1, yi + 1, seed);
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    }
+    function fbm(x, y, seed = 42) { let val = 0, amp = 0.55, freq = 1; for (let i = 0; i < 4; i++) { val += smoothNoise(x * freq, y * freq, seed + i * 97) * amp; freq *= 2.02; amp *= 0.48; } return val; }
+    function isoToWorld(gx, gy, h = 0, originX = 0, originY = 0) { return { x: originX + (gx - gy) * (TILE_W / 2), y: originY + (gx + gy) * (TILE_H / 2) - h * ELEV_H }; }
+
+    const BAYER4 = [
+      [0, 8, 2, 10],
+      [12, 4, 14, 6],
+      [3, 11, 1, 9],
+      [15, 7, 13, 5],
+    ];
+    const FOG_RGB = [223, 232, 236];
+    const TERRAIN_RAMPS = {
+      // [deep shadow, shadow, mid, lit, bright highlight] — arena dorada y arenisca del Desierto de Atacama
+      wetSand:    [[132, 102, 66],  [162, 128, 84],  [190, 154, 104], [212, 176, 124], [228, 194, 142]],
+      sand:       [[166, 130, 84],  [202, 166, 110], [230, 196, 138], [246, 218, 162], [254, 236, 190]],
+      foothill:   [[144, 102, 66],  [182, 134, 86],  [214, 168, 112], [234, 192, 136], [248, 214, 162]],
+      terracotta: [[116, 70, 50],   [154, 98, 66],   [190, 128, 86],  [214, 156, 108], [234, 182, 134]],
+      ridge:      [[102, 80, 68],   [138, 110, 90],  [172, 142, 114], [198, 170, 140], [222, 196, 166]],
+      peak:       [[122, 106, 98],  [154, 138, 128], [184, 170, 158], [208, 196, 186], [228, 220, 212]],
+      cliff:      [[96, 66, 48],    [132, 94, 66],   [168, 124, 88],  [196, 152, 112], [218, 178, 136]],
+      path:       [[162, 136, 94],  [198, 172, 122], [228, 204, 154], [244, 224, 178], [254, 240, 204]],
+    };
+    const OCEAN_RAMP = [
+      [18, 64, 124], [24, 82, 148], [32, 102, 170], [42, 124, 188],
+      [54, 150, 204], [70, 178, 216], [96, 204, 224], [134, 226, 234],
+    ];
+
+    function generateCoastalMap(seed = 2027) {
+      const rand = mulberry32(seed), size = MAP_SIZE;
+      const canvasW = size * TILE_W + 180, canvasH = size * TILE_H + 22 * ELEV_H + 180;
+      const originX = Math.floor(canvasW / 2), originY = 140;
+      const tiles = Array.from({ length: size }, () => new Array(size));
+
+      const getCoastY = (gx) => {
+        let cy = 35.5 + (gx - 12) * 0.24;
+        cy -= 4.2 * Math.exp(-Math.pow((gx - 14) / 5.5, 2));
+        cy -= 5.0 * Math.exp(-Math.pow((gx - 31) / 5.8, 2));
+        cy += 7.2 * Math.exp(-Math.pow((gx - 43.5) / 6.8, 2));
+        cy += (smoothNoise(gx * 0.17, 1.5, seed + 11) - 0.5) * 3.0;
+        cy += (smoothNoise(gx * 0.52, 4.1, seed + 37) - 0.5) * 1.15;
+        return cy;
+      };
+
+      const sampleRawTerrain = (gx, gy) => {
+        const nx = (gx - size * 0.5) / (size * 0.48), ny = (gy - size * 0.5) / (size * 0.48);
+        const distEdge = Math.hypot(nx * 0.96, ny * 0.98) + (fbm(gx * 0.11, gy * 0.11, seed + 501) - 0.5) * 0.34;
+        const fogAlpha = Math.max(0, Math.min(1, (distEdge - 0.72) / 0.28));
+        const inland = getCoastY(gx) - gy;
+        if (inland <= 0) {
+          return { h: 0, isWater: true, waterDepth: Math.min(1, -inland / 11.5), inland, fogAlpha, biome: 'ocean' };
+        }
+
+        // Morro/acantilado costero en el cabo central (gx ~ 22..35) cayendo directo al Pacífico
+        const headland = Math.exp(-Math.pow((gx - 28.5) / 6.5, 2));
+        const shoreRamp = Math.min(1, inland / (headland > 0.35 ? 1.15 : 2.1));
+        let elev = 0.28 + shoreRamp * (1.45 + headland * 2.4);
+
+        // Farellón Costero de Atacama: escarpe marcado detrás de la franja costera
+        const cliffWall = 1 / (1 + Math.exp(-(inland - (5.2 - headland * 2.2)) * 0.72));
+        elev += cliffWall * 4.4;
+        if (inland > 3.2) elev += Math.pow((inland - 3.2) * 0.24, 1.06);
+
+        // Cordones montañosos principales
+        elev += 6.2 * Math.exp(-(Math.pow((gx - 18) / 11.5, 2) + Math.pow((gy - 10) / 8.0, 2)));
+        elev += 5.4 * Math.exp(-(Math.pow((gx - 47) / 8.0, 2) + Math.pow((gy - 27) / 7.0, 2)));
+        elev += 5.0 * Math.exp(-(Math.pow((gx - 35) / 7.5, 2) + Math.pow((gy - 21) / 6.5, 2)));
+        elev += 4.5 * Math.exp(-(Math.pow((gx - 22) / 7.5, 2) + Math.pow((gy - 20) / 6.0, 2)));
+
+        // Quebradas profundas y filos agudos (domain-warped ridged noise estilo Atacama)
+        const wx = gx + (fbm(gx * 0.08, gy * 0.08, seed + 31) - 0.5) * 4.2;
+        const wy = gy + (fbm(gx * 0.08, gy * 0.08, seed + 53) - 0.5) * 4.2;
+        const ridge1 = Math.pow(Math.max(0, 1 - Math.abs(fbm(wx * 0.125, wy * 0.125, seed + 89) * 2 - 1)), 1.65);
+        const ridge2 = Math.pow(Math.max(0, 1 - Math.abs(fbm(gx * 0.24, gy * 0.24, seed + 149) * 2 - 1)), 1.5);
+        const canyon = Math.pow(Math.abs(fbm(wx * 0.11, wy * 0.11, seed + 223) * 2 - 1), 0.75);
+        const inlandMask = Math.min(1, Math.max(0, (inland - 1.2) / 3.2));
+        elev += ((ridge1 - 0.42) * 5.2 + (ridge2 - 0.45) * 2.1 - (1 - canyon) * 2.4) * inlandMask;
+
+        // Terrazas geológicas sutiles (estratos costeros sin parecer cubos)
+        if (inland > 3.5) elev += Math.sin(elev * 1.05) * 0.28 * inlandMask;
+
+        // Explanada suave de la caleta principal (acurrucada bajo el farellón)
+        const cd = Math.hypot((gx - 42.5) / 6.5, (gy - 43.2) / 5.4);
+        if (cd < 1.28) {
+          const t = Math.max(0, Math.min(1, (cd - 0.72) / 0.56));
+          const b = t * t * (3 - 2 * t);
+          const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
+          elev = targetH * (1 - b) + elev * b;
+        }
+        // Caleta norte
+        const nd = Math.hypot((gx - 15) / 3.6, (gy - 31) / 2.8);
+        if (nd < 1.22) {
+          const t = Math.max(0, Math.min(1, (nd - 0.65) / 0.57));
+          const b = t * t * (3 - 2 * t);
+          const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
+          elev = targetH * (1 - b) + elev * b;
+        }
+        const h = Math.max(0.25, Math.min(24.0, elev));
+        const biome = h <= 2.3 || (h <= 3.1 && inland < 5.5) ? 'sand' : h <= 7.0 ? 'foothill' : h <= 12.2 ? 'terracotta' : h <= 16.5 ? 'ridge' : 'peak';
+        return { h, isWater: false, waterDepth: 0, inland, fogAlpha, biome };
+      };
+
+      for (let gy = 0; gy < size; gy++) {
+        for (let gx = 0; gx < size; gx++) {
+          const s = sampleRawTerrain(gx, gy);
+          tiles[gy][gx] = { gx, gy, h: s.h, isWater: s.isWater, waterDepth: s.waterDepth, biome: s.biome, fogAlpha: s.fogAlpha, isPath: false, isPad: false, padId: null, speck: hash2D(gx, gy, seed + 303) };
+        }
+      }
+
+      const rawPads = [
+        { gx: 46, gy: 32, starter: true, zone: 'Lomo Camanchaca' }, { gx: 49, gy: 36, zone: 'Cima Sur' },
+        { gx: 42, gy: 32, zone: 'Mirador Caleta' }, { gx: 51, gy: 30, zone: 'Alto del Viento' },
+        { gx: 45, gy: 26, zone: 'Cresta Niebla' }, { gx: 51, gy: 24, zone: 'Farallón Este' },
+        { gx: 38, gy: 34, zone: 'Loma Ocre' }, { gx: 36, gy: 28, zone: 'Cerro Rojo' },
+        { gx: 40, gy: 23, zone: 'Cumbre Alta' }, { gx: 32, gy: 24, zone: 'Portezuelo' },
+        { gx: 31, gy: 31, zone: 'Loma del Sol' }, { gx: 34, gy: 18, zone: 'Cordón Alto' },
+        { gx: 45, gy: 19, zone: 'Mirador Este' }, { gx: 26, gy: 28, zone: 'Cerro Cabo' },
+        { gx: 26, gy: 21, zone: 'Cresta Norte' }, { gx: 21, gy: 26, zone: 'Loma Cardón' },
+        { gx: 20, gy: 19, zone: 'Alto Patache' }, { gx: 15, gy: 23, zone: 'Cerro Norte' },
+        { gx: 28, gy: 15, zone: 'Cumbre Camanchaca' }, { gx: 39, gy: 15, zone: 'Cumbre Niebla' },
+      ];
+      const pads = [];
+      rawPads.forEach((cfg, idx) => {
+        const t = tiles[cfg.gy]?.[cfg.gx];
+        if (!t || t.isWater || t.fogAlpha > 0.55) return;
+        const padH = Math.max(4.5, Math.min(20.0, t.h));
+        t.h = padH; t.isPad = true; t.padId = idx;
+        pads.push({ id: idx, gx: cfg.gx, gy: cfg.gy, h: padH, zone: cfg.zone, fogYield: padH >= 13 ? 1.55 : padH >= 9.5 ? 1.28 : 1.0, fogLabel: padH >= 13 ? 'Intensa' : padH >= 9.5 ? 'Alta' : 'Media', starter: Boolean(cfg.starter), built: false, fill: 0, alertActive: false, dispatched: false, queued: false, trail: null, pipeState: 'none', pipeProgress: 0, pipeAcc: 0, buildAnim: 0, dripPhase: rand() * Math.PI * 2 });
+      });
+
+      // Muestreo continuo final (pequeña terraza natural bajo cada plataforma)
+      const sampleTerrain = (gx, gy) => {
+        const s = sampleRawTerrain(gx, gy);
+        if (s.isWater) return s;
+        let h = s.h;
+        for (let i = 0; i < pads.length; i++) {
+          const p = pads[i];
+          const d = Math.hypot(gx - p.gx, gy - p.gy);
+          if (d < 1.05) {
+            const t = Math.max(0, Math.min(1, (d - 0.45) / 0.6));
+            const b = t * t * (3 - 2 * t);
+            h = p.h * (1 - b) + h * b;
+          }
+        }
+        s.h = h;
+        return s;
+      };
+
+      const props = [];
+      for (let gy = 5; gy < size - 5; gy++) for (let gx = 5; gx < size - 5; gx++) {
+        const t = tiles[gy][gx];
+        if (t.isWater || t.isPad || t.fogAlpha > 0.65 || Math.hypot(gx - 42.5, gy - 43.2) < 6.8 || Math.hypot(gx - 15, gy - 31) < 3.5) continue;
+        const r = rand();
+        if ((t.biome === 'foothill' || (t.biome === 'sand' && t.h >= 2)) && r < 0.048) props.push({ type: 'cactus', gx, gy, h: t.h, variant: Math.floor(rand() * 3) });
+        else if ((t.biome === 'terracotta' || t.biome === 'ridge') && r < 0.045) props.push({ type: 'rock', gx, gy, h: t.h, variant: Math.floor(rand() * 2) });
+      }
+
+      const hub = { gx: 43, gy: 42, h: tiles[42][43].h };
+      const storagePos = { drums: { gx: 42.0, gy: 42.6, h: 2 }, tank: { gx: 42.6, gy: 44.3, h: 2 }, tower: { gx: 44.3, gy: 41.9, h: 2 } };
+      const houseSlots = [
+        { gx: 39.2, gy: 43.5, style: 'gable', roof: '#2d4f82', wall: '#d6bf97', starter: true },
+        { gx: 40.3, gy: 42.1, style: 'flat',  roof: '#b3b0aa', wall: '#c7c3bc', starter: true },
+        { gx: 41.3, gy: 43.2, style: 'gable', roof: '#2d6654', wall: '#89a7b2', starter: true },
+        { gx: 39.0, gy: 41.8, style: 'gable', roof: '#9a6530', wall: '#d5bd94' },
+        { gx: 40.8, gy: 40.9, style: 'gable', roof: '#8c3b2c', wall: '#c58d70' },
+        { gx: 42.0, gy: 41.4, style: 'gable', roof: '#2d6352', wall: '#8aaab5' },
+        { gx: 40.2, gy: 44.6, style: 'gable', roof: '#2b5d4e', wall: '#8daab2' },
+        { gx: 41.4, gy: 42.0, style: 'flat',  roof: '#a6654d', wall: '#ba7a61' },
+        { gx: 43.1, gy: 40.7, style: 'gable', roof: '#4b5560', wall: '#d4d0c7' },
+        { gx: 42.0, gy: 43.7, style: 'flat',  roof: '#c09c6d', wall: '#c9a677' },
+        { gx: 38.4, gy: 42.9, style: 'gable', roof: '#8e3d2d', wall: '#d8c29b' },
+        { gx: 44.5, gy: 40.3, style: 'gable', roof: '#2d4f82', wall: '#cfd3d6' },
+        { gx: 45.4, gy: 41.2, style: 'flat',  roof: '#b88c63', wall: '#cca47a' },
+        { gx: 39.6, gy: 45.6, style: 'gable', roof: '#996432', wall: '#d9c39b' },
+      ];
+      const orchardSlots = [{ gx: 41.6, gy: 46.2 }, { gx: 43.2, gy: 46.6 }, { gx: 44.2, gy: 45.2 }, { gx: 45.2, gy: 43.9 }, { gx: 46.1, gy: 42.6 }, { gx: 40.5, gy: 46.8 }, { gx: 44.8, gy: 46.5 }, { gx: 46.0, gy: 44.9 }, { gx: 46.8, gy: 43.5 }];
+      const treeSlots = [{ gx: 40.4, gy: 45.3 }, { gx: 41.0, gy: 45.6 }, { gx: 43.9, gy: 40.7 }, { gx: 44.3, gy: 41.1 }, { gx: 40.6, gy: 46.3 }, { gx: 41.3, gy: 46.6 }, { gx: 42.6, gy: 46.9 }, { gx: 43.9, gy: 47.0 }, { gx: 44.8, gy: 45.8 }, { gx: 45.9, gy: 44.3 }, { gx: 46.7, gy: 43.1 }, { gx: 42.3, gy: 42.9 }, { gx: 39.6, gy: 44.1 }, { gx: 45.5, gy: 42.0 }, { gx: 43.6, gy: 43.1 }, { gx: 42.2, gy: 45.5 }, { gx: 46.9, gy: 44.2 }, { gx: 45.2, gy: 47.1 }, { gx: 38.8, gy: 44.8 }, { gx: 41.6, gy: 47.3 }];
+      const northVillage = [{ gx: 14.3, gy: 30.6, style: 'gable', roof: '#8c3b2c', wall: '#d4be98' }, { gx: 15.6, gy: 30.3, style: 'flat', roof: '#b3b0aa', wall: '#c7c3bc' }, { gx: 16.8, gy: 31.2, style: 'gable', roof: '#2d4f82', wall: '#d6bf97' }];
+      let pierAnchor = { gx: 38, gy: 45 };
+      for (let gx = 40; gx >= 34; gx--) if (tiles[45]?.[gx]?.isWater) { pierAnchor = { gx: gx + 1, gy: 45 }; break; }
+      const boats = [{ gx: pierAnchor.gx - 2.6, gy: pierAnchor.gy + 2.2, phase: 0.2 }, { gx: pierAnchor.gx - 4.4, gy: pierAnchor.gy + 0.5, phase: 2.1 }, { gx: pierAnchor.gx - 1.2, gy: pierAnchor.gy + 4.3, phase: 4.0 }, { gx: 13.5, gy: 34.8, phase: 1.4 }, { gx: 15.6, gy: 35.6, phase: 3.3 }];
+      const fogClouds = Array.from({ length: 24 }, () => ({ x: originX + (rand() - 0.5) * 1150, y: originY + 80 + rand() * 560, rx: 42 + rand() * 75, ry: 16 + rand() * 26, speed: 5 + rand() * 9, alpha: 0.14 + rand() * 0.18, phase: rand() * Math.PI * 2 }));
+      return { seed, size, tiles, pads, props, hub, storagePos, houseSlots, orchardSlots, treeSlots, northVillage, pierAnchor, boats, fogClouds, canvasW, canvasH, originX, originY, sampleTerrain };
+    }
+
+    function findTrailPath(map, sx, sy, gx, gy) {
+      const { size, tiles } = map, key = (x, y) => y * size + x, sK = key(sx, sy), gK = key(gx, gy);
+      const open = [sK], openSet = new Set([sK]), came = new Map(), gS = new Map([[sK, 0]]), fS = new Map([[sK, Math.abs(gx - sx) + Math.abs(gy - sy)]]);
+      let bestNode = sK, bestD = Infinity;
+      while (open.length) {
+        let bi = 0, lf = fS.get(open[0]) ?? Infinity;
+        for (let i = 1; i < open.length; i++) { const f = fS.get(open[i]) ?? Infinity; if (f < lf) { lf = f; bi = i; } }
+        const cur = open.splice(bi, 1)[0]; openSet.delete(cur);
+        if (cur === gK) return recPath(came, cur, size);
+        const cx = cur % size, cy = Math.floor(cur / size), d = Math.abs(gx - cx) + Math.abs(gy - cy);
+        if (d < bestD) { bestD = d; bestNode = cur; }
+        const ct = tiles[cy][cx], cg = gS.get(cur) ?? Infinity;
+        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const nx = cx + dx, ny = cy + dy;
+          if (nx < 1 || ny < 1 || nx >= size - 1 || ny >= size - 1) continue;
+          const nt = tiles[ny][nx]; if (nt.isWater) continue;
+          let sc = 1 + Math.pow(Math.abs(nt.h - ct.h), 2) * 0.95;
+          if (nt.isPath) sc *= 0.42;
+          if (nt.isPad && key(nx, ny) !== gK) sc += 6;
+          const nk = key(nx, ny), tg = cg + sc;
+          if (tg < (gS.get(nk) ?? Infinity)) { came.set(nk, cur); gS.set(nk, tg); fS.set(nk, tg + (Math.abs(gx - nx) + Math.abs(gy - ny)) * 0.95); if (!openSet.has(nk)) { open.push(nk); openSet.add(nk); } }
+        }
+      }
+      return recPath(came, bestNode, size);
+    }
+    function recPath(came, cur, size) { const p = []; while (cur !== undefined) { p.push({ gx: cur % size, gy: Math.floor(cur / size) }); cur = came.get(cur); } return p.reverse(); }
+
+    function fillIsoDiamond(ctx, cx, cy, color) {
+      ctx.fillStyle = color; const x0 = Math.round(cx), y0 = Math.round(cy);
+      ctx.fillRect(x0 - 2, y0, 4, 1); ctx.fillRect(x0 - 4, y0 + 1, 8, 1); ctx.fillRect(x0 - 6, y0 + 2, 12, 1);
+      ctx.fillRect(x0 - 8, y0 + 3, 16, 1); ctx.fillRect(x0 - 10, y0 + 4, 20, 1); ctx.fillRect(x0 - 12, y0 + 5, 24, 1);
+      ctx.fillRect(x0 - 10, y0 + 6, 20, 1); ctx.fillRect(x0 - 8, y0 + 7, 16, 1); ctx.fillRect(x0 - 6, y0 + 8, 12, 1);
+      ctx.fillRect(x0 - 4, y0 + 9, 8, 1); ctx.fillRect(x0 - 2, y0 + 10, 4, 1);
+    }
+    function fillIsoSides(ctx, cx, cy, dropPx, lc, rc) {
+      if (dropPx <= 0) return; const x0 = Math.round(cx), y0 = Math.round(cy);
+      ctx.fillStyle = lc; for (let i = 0; i < 6; i++) ctx.fillRect(x0 - 12 + i * 2, y0 + 6 + i, 2, dropPx);
+      ctx.fillStyle = rc; for (let i = 0; i < 6; i++) ctx.fillRect(x0 + i * 2, y0 + 11 - i, 2, dropPx);
+    }
+    function drawIsoRim(ctx, cx, cy, rc) {
+      const x0 = Math.round(cx), y0 = Math.round(cy); ctx.fillStyle = rc;
+      ctx.fillRect(x0 - 2, y0, 4, 1); ctx.fillRect(x0 - 4, y0 + 1, 2, 1); ctx.fillRect(x0 + 2, y0 + 1, 2, 1); ctx.fillRect(x0 - 6, y0 + 2, 2, 1); ctx.fillRect(x0 + 4, y0 + 2, 2, 1);
+    }
+    function shadeColor(hex, p) {
+      const n = parseInt(hex.slice(1), 16);
+      return `rgb(${Math.max(0,Math.min(255,((n>>16)&255)+p))},${Math.max(0,Math.min(255,((n>>8)&255)+p))},${Math.max(0,Math.min(255,(n&255)+p))})`;
+    }
+
+    function bakeTerrainCanvas(map) {
+      const canvas = document.createElement('canvas'); canvas.width = map.canvasW; canvas.height = map.canvasH;
+      const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
+      const W = canvas.width, H = canvas.height;
+      const img = ctx.createImageData(W, H), data = img.data;
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = FOG_RGB[0]; data[i + 1] = FOG_RGB[1]; data[i + 2] = FOG_RGB[2]; data[i + 3] = 255;
+      }
+
+      const SUB = 4, N = map.size * SUB;
+      const { originX, originY, sampleTerrain, seed } = map;
+
+      const hGrid = new Float32Array(N * N);
+      const wGrid = new Uint8Array(N * N);
+      const dGrid = new Float32Array(N * N);
+      const inGrid = new Float32Array(N * N);
+      const fGrid = new Float32Array(N * N);
+
+      for (let sy = 0; sy < N; sy++) {
+        const gy = sy / SUB;
+        for (let sx = 0; sx < N; sx++) {
+          const idx = sy * N + sx, gx = sx / SUB;
+          const s = sampleTerrain(gx, gy);
+          hGrid[idx] = s.h;
+          wGrid[idx] = s.isWater ? 1 : 0;
+          dGrid[idx] = s.waterDepth;
+          inGrid[idx] = s.inland;
+          fGrid[idx] = s.fogAlpha;
+        }
+      }
+
+      const pathGrid = new Uint8Array(N * N);
+      const stampTrail = (trail) => {
+        if (!trail || trail.length < 2) return;
+        for (let i = 0; i < trail.length - 1; i++) {
+          const a = trail[i], b = trail[i + 1];
+          for (let k = 0; k <= 6; k++) {
+            const t = k / 6;
+            const px = a.gx + (b.gx - a.gx) * t, py = a.gy + (b.gy - a.gy) * t;
+            const csx = Math.round(px * SUB), csy = Math.round(py * SUB);
+            for (let oy = -1; oy <= 1; oy++) {
+              for (let ox = -1; ox <= 1; ox++) {
+                const nsx = csx + ox, nsy = csy + oy;
+                if (nsx < 0 || nsy < 0 || nsx >= N || nsy >= N) continue;
+                const dist = Math.hypot(ox, oy);
+                if (dist <= 1.15) pathGrid[nsy * N + nsx] = dist < 0.6 ? 2 : Math.max(pathGrid[nsy * N + nsx], 1);
+              }
+            }
+          }
+        }
+      };
+      for (const pad of map.pads) if (pad.built && pad.trail) stampTrail(pad.trail);
+
+      const pickRamp = (ramp, v, px, py) => {
+        const clamped = Math.max(0, Math.min(0.999, v));
+        const scaled = clamped * (ramp.length - 1);
+        const lo = Math.floor(scaled), frac = scaled - lo;
+        const bayer = (BAYER4[py & 3][px & 3] + 0.5) / 16;
+        const idx = frac > bayer ? Math.min(ramp.length - 1, lo + 1) : lo;
+        return ramp[idx];
+      };
+
+      const setPx = (px, py, r, g, b, fog) => {
+        if (px < 0 || py < 0 || px >= W || py >= H) return;
+        if (fog > 0.03) {
+          const bayer = (BAYER4[py & 3][px & 3] + 0.5) / 16;
+          if (fog > 0.92 || (fog > 0.55 && (fog - 0.55) / 0.37 > bayer)) {
+            r = FOG_RGB[0]; g = FOG_RGB[1]; b = FOG_RGB[2];
+          } else {
+            const f = fog * 0.72;
+            r = Math.round(r * (1 - f) + FOG_RGB[0] * f);
+            g = Math.round(g * (1 - f) + FOG_RGB[1] * f);
+            b = Math.round(b * (1 - f) + FOG_RGB[2] * f);
+          }
+        }
+        const o = (py * W + px) * 4;
+        data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
+      };
+
+      for (let d = 0; d <= (N - 1) * 2; d++) {
+        for (let sx = 0; sx < N; sx++) {
+          const sy = d - sx;
+          if (sy < 0 || sy >= N) continue;
+          const idx = sy * N + sx;
+          const fog = fGrid[idx];
+          if (fog >= 0.99) continue;
+
+          const gx = sx / SUB, gy = sy / SUB;
+          const h = hGrid[idx];
+          const cx = Math.round(originX + (gx - gy) * (TILE_W / 2));
+          const cy = Math.round(originY + (gx + gy) * (TILE_H / 2) - h * ELEV_H);
+
+          if (wGrid[idx]) {
+            const depth = dGrid[idx];
+            const wave = (smoothNoise(gx * 0.85, gy * 0.85, seed + 211) - 0.5) * 0.08;
+            const shoreDist = -inGrid[idx];
+            const isFoam = shoreDist < 0.42 || (shoreDist < 0.92 && hash2D(sx, sy, seed + 909) > 0.65);
+            const col = isFoam ? [230, 250, 252] : pickRamp(OCEAN_RAMP, 1 - depth + wave, cx, cy);
+            for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy, col[0], col[1], col[2], fog);
+            for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 1, col[0], col[1], col[2], fog);
+            for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 2, col[0], col[1], col[2], fog);
+            for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy + 3, col[0], col[1], col[2], fog);
+            continue;
+          }
+
+          // Relieve esculpido: gradiente + curvatura (filos iluminados y quebradas con oclusión ambiental)
+          const hL = sx > 0 ? hGrid[idx - 1] : h;
+          const hR = sx < N - 1 ? hGrid[idx + 1] : h;
+          const hU = sy > 0 ? hGrid[idx - N] : h;
+          const hD = sy < N - 1 ? hGrid[idx + N] : h;
+          const dhdx = (hR - hL) * (SUB * 0.5);
+          const dhdy = (hD - hU) * (SUB * 0.5);
+          const slope = Math.hypot(dhdx, dhdy);
+          // Curvatura local: positivo en filos/crestas, negativo en fondo de quebradas
+          const curv = (h - (hL + hR + hU + hD) * 0.25) * 2.8;
+          // Sol lateral rasante desde el oeste-noroeste: resalta dramáticamente filos y acantilados
+          const gxN = dhdx * 1.7, gyN = dhdy * 1.7;
+          const invLen = 1 / Math.hypot(gxN, gyN, 1.0);
+          const ndotl = (-gxN * -0.78 - gyN * 0.30 + 1.0 * 0.56) * invLen;
+          const microTex = (hash2D(sx, sy, seed + 613) - 0.5) * 0.10;
+          const shade = Math.max(0.02, Math.min(0.99, ndotl * 0.96 + curv * 0.32 + microTex));
+
+          const inland = inGrid[idx];
+          const pathVal = pathGrid[idx];
+          const bNoise = (smoothNoise(gx * 0.42, gy * 0.42, seed + 401) - 0.5) * 1.25;
+          const hEff = h + bNoise;
+          let ramp;
+          if (pathVal === 2) ramp = TERRAIN_RAMPS.path;
+          else if (inland < 0.78 && h < 1.35) ramp = TERRAIN_RAMPS.wetSand;
+          else if (slope > 1.55 && h > 1.6) ramp = TERRAIN_RAMPS.cliff;
+          else if (hEff < 2.45 || (hEff < 3.2 && inland < 5.2)) ramp = TERRAIN_RAMPS.sand;
+          else if (hEff < 7.4) ramp = TERRAIN_RAMPS.foothill;
+          else if (hEff < 13.0) ramp = TERRAIN_RAMPS.terracotta;
+          else if (hEff < 17.4) ramp = TERRAIN_RAMPS.ridge;
+          else ramp = TERRAIN_RAMPS.peak;
+
+          const topCol = pickRamp(ramp, pathVal === 1 ? Math.max(0.08, shade - 0.16) : shade, cx, cy);
+
+          // Superficie superior del micro-rombo (6x4 px)
+          for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy, topCol[0], topCol[1], topCol[2], fog);
+          for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 1, topCol[0], topCol[1], topCol[2], fog);
+          for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 2, topCol[0], topCol[1], topCol[2], fog);
+          for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy + 3, topCol[0], topCol[1], topCol[2], fog);
+
+          // Acantilados y farellones costeros con estratos rocosos marcados y sombra lateral
+          const minFrontH = Math.min(hR, hD);
+          const dropPx = Math.max(2, Math.min(36, Math.ceil((h - minFrontH) * ELEV_H) + 2));
+          const isCliff = dropPx >= 6 || slope > 1.55;
+          const wallRamp = isCliff ? TERRAIN_RAMPS.cliff : ramp;
+          for (let dy = 3; dy < 3 + dropPx; dy++) {
+            const py = cy + dy;
+            const elevAtPx = h * ELEV_H - dy;
+            const band = Math.floor(elevAtPx * 0.42);
+            const strata = (band & 3) === 0 ? -0.18 : (band & 3) === 2 ? 0.08 : -0.02;
+            const crevice = (hash2D(sx, band, seed + 777) > 0.84) ? -0.14 : 0;
+            const leftShade = Math.max(0.04, Math.min(0.95, shade * 0.68 + strata + crevice));
+            const rightShade = Math.max(0.01, Math.min(0.85, shade * 0.36 + strata + crevice));
+            const leftCol = pickRamp(wallRamp, leftShade, cx - 2, py);
+            const rightCol = pickRamp(wallRamp, rightShade, cx + 2, py);
+            for (let rx = -3; rx < 0; rx++) setPx(cx + rx, py, leftCol[0], leftCol[1], leftCol[2], fog);
+            for (let rx = 0; rx <= 3; rx++) setPx(cx + rx, py, rightCol[0], rightCol[1], rightCol[2], fog);
+          }
+        }
+      }
+
+      ctx.putImageData(img, 0, 0);
+
+      // Muelle artesanal de madera de la caleta
+      for (let step = 0; step < 5; step++) {
+        const p = isoToWorld(map.pierAnchor.gx - step * 0.45, map.pierAnchor.gy + step * 0.45, 0.75, originX, originY), x = Math.round(p.x), y = Math.round(p.y);
+        ctx.fillStyle = '#3d281b'; ctx.fillRect(x - 4, y + 3, 2, 6); ctx.fillRect(x + 3, y + 5, 2, 6);
+        ctx.fillStyle = '#754e32'; ctx.fillRect(x - 6, y, 12, 4); ctx.fillStyle = '#966844'; ctx.fillRect(x - 5, y, 10, 2); ctx.fillStyle = '#4e3320'; ctx.fillRect(x - 6, y + 3, 12, 1);
+      }
+      return canvas;
+    }
+
+    function drawBuildPad(ctx, wx, wy, pad, time, hovered, canAfford) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 1;
+      fillIsoSides(ctx, cx, cy, 4, '#8d7451', '#6f593c');
+      fillIsoDiamond(ctx, cx, cy, hovered ? (canAfford ? '#ebd49d' : '#e3b09e') : '#d4ba8b');
+      ctx.fillStyle = hovered ? '#ffffff' : 'rgba(255, 250, 232, 0.85)';
+      for (const [dx, dy] of [[-10,4],[-7,2],[-4,1],[3,1],[6,2],[9,4],[-9,6],[-6,8],[-3,9],[3,9],[6,8],[9,6]]) ctx.fillRect(cx + dx, cy + dy, 2, 1);
+      ctx.fillStyle = '#ffe04d'; ctx.fillRect(cx - 12, cy + 4, 2, 2); ctx.fillRect(cx + 10, cy + 4, 2, 2); ctx.fillRect(cx - 1, cy - 1, 2, 2); ctx.fillRect(cx - 1, cy + 9, 2, 2);
+      const py = Math.round(cy + 5 + (hovered ? -1 : 0));
+      ctx.fillStyle = canAfford ? '#b57b16' : '#806954'; ctx.fillRect(cx - 4, py - 2, 8, 6); ctx.fillRect(cx - 3, py - 3, 6, 8);
+      ctx.fillStyle = canAfford ? (hovered ? '#ffe86b' : '#f2c341') : '#a8937d'; ctx.fillRect(cx - 3, py - 2, 6, 5);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 1, py - 2, 2, 5); ctx.fillRect(cx - 2, py, 4, 1);
+    }
+
+    function drawAtrapanieblas(ctx, wx, wy, pad, time, hovered) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 4, pop = pad.buildAnim > 0 ? 1 + Math.sin(pad.buildAnim * Math.PI) * 0.16 : 1;
+      ctx.save(); ctx.translate(cx, cy); if (pop !== 1) ctx.scale(pop, pop);
+      ctx.fillStyle = 'rgba(48, 36, 36, 0.28)'; ctx.fillRect(-10, 1, 22, 5); ctx.fillRect(-7, 6, 16, 2);
+      const xL = -11, yL = 5, xM = 0, yM = -1, xR = 11, yR = -6, meshH = 22;
+      const drawPanel = (x0, y0, x1, y1) => {
+        const steps = x1 - x0;
+        for (let dx = 0; dx <= steps; dx++) {
+          const bx = x0 + dx, by = Math.round(y0 + (y1 - y0) * (dx / steps));
+          ctx.fillStyle = hovered ? 'rgba(218, 238, 248, 0.85)' : 'rgba(186, 212, 226, 0.72)'; ctx.fillRect(bx, by - meshH, 1, meshH);
+          if (dx % 2 === 0) { ctx.fillStyle = '#6f899c'; ctx.fillRect(bx, by - meshH, 1, meshH); }
+        }
+        ctx.fillStyle = '#7f98aa';
+        for (let row = 2; row < meshH - 1; row += 3) for (let dx = 0; dx <= steps; dx++) ctx.fillRect(x0 + dx, Math.round(y0 + (y1 - y0) * (dx / steps)) - row, 1, 1);
+      };
+      drawPanel(xL + 1, yL - 2, xM - 1, yM - 2); drawPanel(xM + 1, yM - 2, xR - 1, yR - 2);
+      const pole = (px, py) => { ctx.fillStyle = '#4e3526'; ctx.fillRect(px - 1, py - meshH - 3, 2, meshH + 4); ctx.fillStyle = '#75533d'; ctx.fillRect(px - 1, py - meshH - 3, 1, meshH + 3); };
+      pole(xL, yL); pole(xM, yM); pole(xR, yR);
+      for (let dx = 0; dx <= xR - xL; dx++) { const gx = xL + dx, gy = Math.round(yL + (yR - yL) * (dx / (xR - xL))) - 2; ctx.fillStyle = '#1f70c7'; ctx.fillRect(gx, gy, 1, 2); ctx.fillStyle = '#6ec2ff'; ctx.fillRect(gx, gy, 1, 1); }
+      if (!pad.alertActive) for (let i = 0; i < 3; i++) { const p = (time * 1.15 + pad.dripPhase + i * 0.37) % 1, dropX = xL + 4 + i * 7, baseY = Math.round(yL + (yR - yL) * ((dropX - xL) / (xR - xL))) - 2; ctx.fillStyle = '#53b8ff'; ctx.fillRect(dropX, Math.round(baseY - meshH * (1 - p)), 1, 2); }
+      if (pad.pipeState === 'none') {
+      const bx = xL + 2, by = yL - 6;
+      ctx.fillStyle = '#144c8f'; ctx.fillRect(bx, by, 7, 9); ctx.fillStyle = '#247ad9'; ctx.fillRect(bx + 1, by + 1, 5, 7);
+      ctx.fillStyle = '#0e3669'; ctx.fillRect(bx + 2, by - 1, 3, 1); ctx.fillStyle = '#73c6ff'; ctx.fillRect(bx + 2, by + 2, 1, 5);
+      if (!pad.alertActive && pad.fill > 2) { ctx.fillStyle = 'rgba(18, 38, 62, 0.72)'; ctx.fillRect(-7, 7, 16, 4); ctx.fillStyle = '#47b8ff'; ctx.fillRect(-6, 8, Math.round((pad.fill / 100) * 14), 2); }
+      } else {
+        // Colector + válvula: el agua sale directo por la cañería (no se acumula en bidón)
+        ctx.fillStyle = '#1a3854'; ctx.fillRect(xL + 1, yL - 2, 16, 4);
+        ctx.fillStyle = '#295780'; ctx.fillRect(xL + 1, yL - 2, 16, 3);
+        ctx.fillStyle = '#68a9d9'; ctx.fillRect(xL + 1, yL - 2, 16, 1);
+        ctx.fillStyle = '#c9402a'; ctx.fillRect(xL + 4, yL - 6, 3, 4);
+        ctx.fillStyle = '#ff9b83'; ctx.fillRect(xL + 4, yL - 6, 1, 1);
+        if (pad.pipeState === 'active') { const ft = Math.floor((time * 14 + pad.dripPhase * 5) % 15); ctx.fillStyle = '#b8ebff'; ctx.fillRect(xL + 1 + ft, yL - 2, 2, 1); }
+      }
+      ctx.restore();
+    }
+
+    function drawAlertBubble(ctx, wx, wy, pad, time) {
+      const cx = Math.round(wx), cy = Math.round(wy) - 31 + Math.round(Math.sin(time * 5.2 + pad.id) * 2);
+      if (pad.dispatched || pad.queued) {
+        ctx.fillStyle = '#1b5d7a'; ctx.fillRect(cx - 7, cy - 6, 14, 9);
+        ctx.fillStyle = '#e7fbff'; ctx.fillRect(cx - 6, cy - 5, 12, 7);
+        ctx.fillStyle = '#1b5d7a'; ctx.fillRect(cx - 2, cy + 3, 4, 1); ctx.fillRect(cx - 1, cy + 4, 2, 1);
+        const step = Math.floor(time * 4) % 3;
+        for (let i = 0; i < 3; i++) { ctx.fillStyle = i === step ? '#1f8a70' : '#7cb8c9'; ctx.fillRect(cx - 4 + i * 3, cy - 2, 2, 2); }
+        return;
+      }
+      ctx.fillStyle = 'rgba(20, 42, 70, 0.22)'; ctx.fillRect(cx - 7, cy - 7, 14, 14);
+      ctx.fillStyle = '#25446b'; ctx.fillRect(cx - 7, cy - 9, 14, 14); ctx.fillRect(cx - 8, cy - 8, 16, 12); ctx.fillRect(cx - 2, cy + 5, 4, 2); ctx.fillRect(cx - 1, cy + 7, 2, 1);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 6, cy - 8, 12, 12); ctx.fillRect(cx - 7, cy - 7, 14, 10); ctx.fillRect(cx - 1, cy + 4, 2, 2);
+      ctx.fillStyle = '#1b5fb5'; ctx.fillRect(cx - 3, cy - 6, 6, 9); ctx.fillRect(cx - 2, cy - 7, 4, 1);
+      ctx.fillStyle = '#3391f0'; ctx.fillRect(cx - 2, cy - 5, 4, 7);
+      ctx.fillStyle = '#8ad0ff'; ctx.fillRect(cx - 2, cy - 4, 1, 5);
+      const bx = cx + 6, by = cy - 8;
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(bx - 3, by - 3, 7, 7);
+      ctx.fillStyle = '#f28b16'; ctx.fillRect(bx - 2, by - 3, 5, 7); ctx.fillRect(bx - 3, by - 2, 7, 5);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(bx, by - 2, 1, 3); ctx.fillRect(bx, by + 2, 1, 1);
+    }
+
+    function drawCarrier(ctx, wx, wy, carrier, time) {
+      const moving = carrier.state !== 'idle';
+      const walkPhase = moving ? time * 12 + carrier.id * 1.7 : 0;
+      const stride = moving ? Math.sin(walkPhase) : 0;
+      const bob = moving && Math.abs(stride) > 0.55 ? -1 : 0;
+      const x = Math.round(wx), y = Math.round(wy) + bob;
+      const dir = carrier.dirX < 0 ? -1 : 1;
+
+      ctx.save();
+      ctx.translate(x, y);
+      // Sombra de contacto proporcionada
+      ctx.fillStyle = 'rgba(38, 28, 20, 0.34)';
+      ctx.fillRect(-3, 1 - bob, 6, 2);
+
+      if (dir < 0) ctx.scale(-1, 1);
+
+      // Piernas con pantalón y botas (paso alternado)
+      const step = moving ? (stride > 0.25 ? 1 : stride < -0.25 ? -1 : 0) : 0;
+      ctx.fillStyle = '#263850'; ctx.fillRect(-2 - step, -3, 2, 3);
+      ctx.fillStyle = '#3b291e'; ctx.fillRect(-2 - step, 0, 2, 1);
+      ctx.fillStyle = '#385273'; ctx.fillRect(0 + step, -3, 2, 3);
+      ctx.fillStyle = '#4f3728'; ctx.fillRect(0 + step, 0, 2, 1);
+
+      // Bidón grande de agua en la espalda al bajar
+      if (carrier.carryingWater) {
+        ctx.fillStyle = '#124687'; ctx.fillRect(-5, -8, 4, 5);
+        ctx.fillStyle = '#257ee0'; ctx.fillRect(-4, -7, 2, 3);
+        ctx.fillStyle = '#8ad6ff'; ctx.fillRect(-4, -7, 1, 2);
+      }
+
+      // Torso: camisa con luz y sombra
+      ctx.fillStyle = shadeColor(carrier.shirt, -26); ctx.fillRect(-2, -7, 4, 4);
+      ctx.fillStyle = carrier.shirt; ctx.fillRect(-1, -7, 3, 4);
+      ctx.fillStyle = shadeColor(carrier.shirt, 18); ctx.fillRect(1, -7, 1, 3);
+      if (carrier.carryingWater) { ctx.fillStyle = '#5c4430'; ctx.fillRect(-1, -7, 1, 3); }
+
+      // Brazo delantero + bidón vacío al subir
+      const arm = moving ? (stride > 0 ? 1 : 0) : 0;
+      ctx.fillStyle = '#e3b38c'; ctx.fillRect(2, -5 + arm, 1, 2);
+      if (!carrier.carryingWater) {
+        ctx.fillStyle = '#2c5c8f'; ctx.fillRect(2 + arm, -4, 2, 3);
+        ctx.fillStyle = '#6eb4f0'; ctx.fillRect(2 + arm, -4, 1, 1);
+      }
+
+      // Cabeza y rostro mirando hacia donde camina
+      ctx.fillStyle = '#473326'; ctx.fillRect(-2, -10, 3, 3);
+      ctx.fillStyle = '#eab991'; ctx.fillRect(-1, -10, 3, 3);
+      ctx.fillStyle = '#1f1b18'; ctx.fillRect(1, -9, 1, 1);
+
+      // Sombrero nortino de paja (chupalla) con cinta y ala
+      ctx.fillStyle = '#8f6b42'; ctx.fillRect(-4, -10, 8, 1);
+      ctx.fillStyle = '#e6ca95'; ctx.fillRect(-4, -11, 8, 1);
+      ctx.fillStyle = '#3b4f66'; ctx.fillRect(-2, -12, 4, 1);
+      ctx.fillStyle = '#d9b980'; ctx.fillRect(-1, -13, 3, 1);
+      ctx.restore();
+    }
+
+    function drawFogBank(ctx, cloud, time, density, sunWarmth, nightFactor) {
+      const a = Math.min(0.62, cloud.alpha * density);
+      if (a < 0.03) return;
+      const step = 2; // grilla pixel art nítida sin costuras internas
+      const cx = Math.round(cloud.x / step) * step;
+      const cy = Math.round((cloud.y + Math.sin(time * 0.65 + cloud.phase) * 3) / step) * step;
+      const rx = Math.round(cloud.rx * (0.88 + density * 0.34));
+      const ry = Math.max(8, Math.round(cloud.ry * (0.72 + density * 0.28)));
+
+      // Tinte atmosférico según hora del día
+      const rTop = Math.round(244 * (1 - nightFactor * 0.22) + sunWarmth * 12);
+      const gTop = Math.round(250 * (1 - nightFactor * 0.14) - sunWarmth * 12);
+      const bTop = Math.round(252 * (1 - nightFactor * 0.04) - sunWarmth * 34);
+      const rBot = Math.round(188 * (1 - nightFactor * 0.32) + sunWarmth * 14);
+      const gBot = Math.round(212 * (1 - nightFactor * 0.22) - sunWarmth * 16);
+      const bBot = Math.round(228 * (1 - nightFactor * 0.10) - sunWarmth * 32);
+
+      // Silueta orgánica unificada (3 lóbulos fusionados por scanline: cero rectángulos superpuestos)
+      const lobes = [
+        { ox: -rx * 0.44, oy: ry * 0.12, lw: rx * 0.56, lh: ry * 0.62 },
+        { ox: 0,          oy: -ry * 0.10, lw: rx * 0.68, lh: ry * 0.88 },
+        { ox: rx * 0.42,  oy: ry * 0.16, lw: rx * 0.52, lh: ry * 0.58 },
+      ];
+
+      ctx.save();
+      const yMin = -ry, yMax = Math.round(ry * 0.55);
+      for (let dy = yMin; dy <= yMax; dy += step) {
+        let minX = Infinity, maxX = -Infinity;
+        for (const l of lobes) {
+          const ny = (dy - l.oy) / l.lh;
+          if (Math.abs(ny) >= 1) continue;
+          const span = Math.sqrt(1 - ny * ny) * l.lw;
+          if (l.ox - span < minX) minX = l.ox - span;
+          if (l.ox + span > maxX) maxX = l.ox + span;
+        }
+        if (minX >= maxX) continue;
+        const xL = Math.round(minX / step) * step;
+        const xR = Math.round(maxX / step) * step;
+        const tVert = (dy - yMin) / Math.max(1, yMax - yMin); // 0 arriba -> 1 abajo
+        // Gradiente vertical suave + bordes externos deshilachados (jirones de camanchaca)
+        const r = Math.round(rTop * (1 - tVert * 0.7) + rBot * (tVert * 0.7));
+        const g = Math.round(gTop * (1 - tVert * 0.7) + gBot * (tVert * 0.7));
+        const b = Math.round(bTop * (1 - tVert * 0.7) + bBot * (tVert * 0.7));
+        const rowA = a * (tVert < 0.18 ? 0.65 + tVert * 1.8 : tVert > 0.78 ? (1 - tVert) * 3.8 : 0.96);
+        const wSpan = xR - xL;
+        if (wSpan <= 0 || rowA < 0.02) continue;
+
+        // Núcleo continuo de la fila
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.min(0.64, rowA).toFixed(3)})`;
+        ctx.fillRect(cx + xL, cy + dy, wSpan, step);
+
+        // Jirones pixelados suaves a izquierda y derecha (efecto neblina costera)
+        const wispA = (rowA * 0.48).toFixed(3);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${wispA})`;
+        const wispOff = ((Math.abs(dy + Math.round(cloud.phase * 10)) >> 1) & 1) ? 4 : 2;
+        ctx.fillRect(cx + xL - wispOff - 4, cy + dy, 4, step);
+        ctx.fillRect(cx + xR + wispOff, cy + dy, 4, step);
+      }
+      ctx.restore();
+    }
+
+    // Puntos de la cañería de una malla: va DESDE la malla, siguiendo el sendero cuesta abajo, HASTA el almacenamiento de la caleta.
+    function padPipePoints(map, pad, storageTier) {
+      if (pad._pipePts && pad._pipeTier === storageTier) return pad._pipePts;
+      const { originX, originY } = map, tr = pad.trail && pad.trail.length ? pad.trail : [map.hub, pad], pts = [];
+      for (let i = tr.length - 1; i >= 0; i--) {
+        const t = tr[i], h = map.sampleTerrain ? map.sampleTerrain(t.gx, t.gy).h : (map.tiles[t.gy]?.[t.gx]?.h ?? 2);
+        const w = isoToWorld(t.gx, t.gy, h, originX, originY); pts.push({ x: w.x + 3, y: w.y + 3 });
+      }
+      const src = storageTier >= 2 ? map.storagePos.tower : storageTier >= 1 ? map.storagePos.tank : map.storagePos.drums;
+      const sw = isoToWorld(src.gx, src.gy, src.h, originX, originY); pts.push({ x: sw.x, y: sw.y + 3 });
+      let acc = 0; pts[0].d = 0;
+      for (let i = 1; i < pts.length; i++) { acc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); pts[i].d = acc; }
+      pad._pipePts = pts; pad._pipeTier = storageTier; pad._pipeLen = acc;
+      return pts;
+    }
+
+    function drawPipeSegment(ctx, a, b, limit, time, flowing) {
+      const dx = b.x - a.x, dy = b.y - a.y, steps = Math.max(1, Math.ceil(Math.hypot(dx, dy)));
+      for (let i = 0; i <= steps; i++) {
+        const dist = a.d + (b.d - a.d) * (i / steps);
+        if (dist > limit) return;
+        const t = i / steps, px = Math.round(a.x + dx * t), py = Math.round(a.y + dy * t);
+        ctx.fillStyle = 'rgba(28, 34, 42, 0.34)'; ctx.fillRect(px, py + 2, 1, 1);
+        ctx.fillStyle = '#295780'; ctx.fillRect(px, py, 1, 2);
+        ctx.fillStyle = '#68a9d9'; ctx.fillRect(px, py - 1, 1, 1);
+        if (i > 2 && i < steps - 2 && i % 9 === 0) { ctx.fillStyle = '#1a3854'; ctx.fillRect(px - 1, py - 1, 2, 3); ctx.fillStyle = '#9fd3f5'; ctx.fillRect(px, py - 1, 1, 1); }
+        // Pulsos de agua que viajan de la malla hacia la caleta (distancia creciente)
+        if (flowing) { const ph = (((dist - time * 22) % 30) + 30) % 30; if (ph < 3) { ctx.fillStyle = '#b8ebff'; ctx.fillRect(px, py - 1, 2, 1); } }
+      }
+    }
+
+    function drawMeshPipes(ctx, map, storageTier, time) {
+      for (const pad of map.pads) {
+        if (!pad.built || pad.pipeState === 'none') continue;
+        const pts = padPipePoints(map, pad, storageTier), total = pad._pipeLen;
+        const limit = pad.pipeState === 'active' ? total + 1 : total * pad.pipeProgress, flowing = pad.pipeState === 'active';
+        for (let i = 0; i < pts.length - 1; i++) { if (pts[i].d > limit) break; drawPipeSegment(ctx, pts[i], pts[i + 1], limit, time, flowing); }
+        if (pad.pipeState === 'laying') {
+          // Frente de obra: punto brillante que avanza desde la malla hacia la caleta
+          for (let i = 0; i < pts.length - 1; i++) {
+            if (limit >= pts[i].d && limit <= pts[i + 1].d) { const t = (limit - pts[i].d) / Math.max(0.001, pts[i + 1].d - pts[i].d); ctx.fillStyle = '#ffe9a0'; ctx.fillRect(Math.round(pts[i].x + (pts[i + 1].x - pts[i].x) * t) - 1, Math.round(pts[i].y + (pts[i + 1].y - pts[i].y) * t) - 2, 3, 3); break; }
+          }
+        }
+      }
+    }
+
+    function drawHouse(ctx, wx, wy, house, anim = 1, time = 0, nightFactor = 0) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 4;
+      const ab = Boolean(house.abandoned);
+      const litNight = !ab && nightFactor > 0.32;
+      const wallBase = ab ? '#8a8279' : house.wall;
+      const roofBase = ab ? '#544e49' : house.roof;
+      const wallLit = shadeColor(wallBase, 10);
+      const wallMid = shadeColor(wallBase, -4);
+      const wallShd = shadeColor(wallBase, -28);
+      const wallDeep = shadeColor(wallBase, -42);
+      const roofLit = shadeColor(roofBase, 16);
+      const roofMid = roofBase;
+      const roofShd = shadeColor(roofBase, -26);
+      const roofEdge = shadeColor(roofBase, -40);
+      const trimCol = ab ? '#6b635b' : '#ebe4d5';
+      const plinthL = ab ? '#635c55' : '#8a7e6e';
+      const plinthR = ab ? '#4a443f' : '#695f52';
+
+      ctx.save(); ctx.translate(cx, cy);
+      if (anim < 1) { const s = 0.4 + anim * 0.6; ctx.scale(s, s); }
+
+      // Sombra proyectada en perspectiva isométrica hacia el sureste (sol costero desde el oeste)
+      ctx.fillStyle = 'rgba(42, 34, 28, 0.28)';
+      ctx.fillRect(-10, 2, 24, 5);
+      ctx.fillRect(-6, 7, 20, 2);
+      ctx.fillRect(6, -1, 10, 4);
+
+      if (house.style === 'flat') {
+        // --- CASA COSTERA NORTINA DE TECHO PLANO CON ANTEPECHO Y TINACO ---
+        const W = 12, H = 11;
+        // Pared izquierda (iluminada) + zócalo de cemento + textura de estuco
+        for (let i = 0; i < W; i++) {
+          const x = -W + i, yBot = Math.floor(i * 0.5);
+          ctx.fillStyle = i === 0 ? trimCol : ((i % 3 === 0) ? wallMid : wallLit);
+          ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthL;
+          ctx.fillRect(x, yBot - 2, 1, 2);
+          ctx.fillStyle = wallMid;
+          ctx.fillRect(x, yBot - H, 1, 1);
+        }
+        // Pared derecha (sombra) + zócalo
+        for (let i = 0; i < W; i++) {
+          const x = i, yBot = Math.floor((W - 1 - i) * 0.5);
+          ctx.fillStyle = i === W - 1 ? wallDeep : ((i % 3 === 0) ? wallDeep : wallShd);
+          ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthR;
+          ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        ctx.fillStyle = wallMid;
+        ctx.fillRect(0, -H + 5, 1, H - 2);
+
+        // Techo plano con antepecho (parapeto) isométrico
+        for (let r = 0; r < 12; r++) {
+          const hw = r < 6 ? (r + 1) * 2 : (12 - r) * 2;
+          ctx.fillStyle = roofEdge;
+          ctx.fillRect(-hw, -17 + r, hw * 2, 1);
+        }
+        for (let r = 1; r < 11; r++) {
+          const hw = Math.max(1, (r < 6 ? (r + 1) * 2 : (12 - r) * 2) - 2);
+          ctx.fillStyle = r < 6 ? roofMid : roofShd;
+          ctx.fillRect(-hw, -17 + r, hw * 2, 1);
+        }
+        ctx.fillStyle = roofLit;
+        ctx.fillRect(-2, -17, 4, 1); ctx.fillRect(-6, -15, 3, 1); ctx.fillRect(-10, -13, 3, 1);
+
+        // Puerta de madera con alero y escalón en fachada izquierda
+        ctx.fillStyle = ab ? '#2a2320' : '#4a3121';
+        ctx.fillRect(-9, -4, 3, 6);
+        ctx.fillStyle = ab ? '#3c3430' : '#6e4b34';
+        ctx.fillRect(-8, -3, 2, 4);
+        ctx.fillStyle = '#9e9282'; ctx.fillRect(-10, 2, 4, 1);
+        ctx.fillStyle = roofShd; ctx.fillRect(-10, -5, 5, 1);
+
+        // Ventanas con marco, vidrio oscuro o luz cálida nocturna (tapiadas si está abandonada)
+        const drawWin = (wx0, wy0, isRight) => {
+          ctx.fillStyle = trimCol; ctx.fillRect(wx0 - 1, wy0 - 1, 4, 4);
+          if (ab) {
+            ctx.fillStyle = '#241e1c'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = '#7c5d3f'; ctx.fillRect(wx0 - 1, wy0, 4, 1);
+          } else if (litNight) {
+            ctx.fillStyle = '#ffcb6b'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = '#fff3b8'; ctx.fillRect(wx0, wy0, 1, 1);
+          } else {
+            ctx.fillStyle = isRight ? '#2a3d4d' : '#3d5e78'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = isRight ? '#6d93ad' : '#b7d7e8'; ctx.fillRect(wx0, wy0, 1, 1);
+          }
+        };
+        drawWin(-4, -4, false);
+        drawWin(3, -3, true);
+        drawWin(8, -5, true);
+        if (ab) { ctx.fillStyle = '#7c5d3f'; ctx.fillRect(-9, -3, 3, 1); ctx.fillRect(-9, -1, 3, 1); }
+
+        // Tinaco / bidón de agua en la terraza
+        ctx.fillStyle = '#47433e'; ctx.fillRect(-3, -15, 6, 2);
+        if (ab) {
+          ctx.fillStyle = '#4d545c'; ctx.fillRect(-2, -20, 5, 5);
+          ctx.fillStyle = '#68717a'; ctx.fillRect(-1, -19, 3, 3);
+        } else {
+          ctx.fillStyle = '#1d568f'; ctx.fillRect(-2, -20, 5, 5);
+          ctx.fillStyle = '#3180c9'; ctx.fillRect(-1, -19, 3, 3);
+          ctx.fillStyle = '#7fc2f0'; ctx.fillRect(-1, -19, 1, 2);
+          ctx.fillStyle = '#123a63'; ctx.fillRect(-1, -21, 3, 1);
+        }
+      } else {
+        // --- CASA DE CALETA NORTINA CON TECHO DE ZINC A DOS AGUAS ---
+        const W = 13, H = 11;
+        for (let i = 0; i < W; i++) {
+          const x = -W + i, yBot = Math.floor(i * 0.5);
+          ctx.fillStyle = i === 0 ? trimCol : ((i % 2 === 0) ? wallLit : wallMid);
+          ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthL;
+          ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        for (let i = 0; i < W; i++) {
+          const x = i, yBot = Math.floor((W - 1 - i) * 0.5);
+          ctx.fillStyle = i === W - 1 ? wallDeep : ((i % 2 === 0) ? wallShd : wallDeep);
+          ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthR;
+          ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        ctx.fillStyle = 'rgba(32, 22, 18, 0.25)';
+        for (let i = 0; i < W; i++) {
+          ctx.fillRect(-W + i, Math.floor(i * 0.5) - H, 1, 2);
+          ctx.fillRect(i, Math.floor((W - 1 - i) * 0.5) - H, 1, 2);
+        }
+        for (let st = 0; st < 5; st++) {
+          ctx.fillStyle = wallMid;
+          ctx.fillRect(-10 + st, -11 - st, 10 - st * 2, 1);
+        }
+
+        // Techo de calamina/zinc acanalado en perspectiva isométrica real (2:1, sin huecos)
+        for (let x = -14; x <= 14; x++) {
+          const ax = Math.abs(x);
+          const yEave = -4 - Math.floor(ax * 0.5);
+          const yTop = -19 + Math.floor(Math.max(0, ax - 5) * 0.88);
+          const hCol = yEave - yTop + 1;
+          if (hCol <= 0) continue;
+          const isLeft = x < 0;
+          const isRib = (x & 3) === 0;
+          ctx.fillStyle = isLeft ? (isRib ? roofLit : roofMid) : (isRib ? roofEdge : roofShd);
+          ctx.fillRect(x, yTop, 1, hCol);
+          ctx.fillStyle = roofEdge;
+          ctx.fillRect(x, yEave, 1, 1);
+        }
+        ctx.fillStyle = roofLit;
+        ctx.fillRect(-5, -20, 11, 2);
+        ctx.fillStyle = roofEdge;
+        ctx.fillRect(-5, -18, 11, 1);
+
+        ctx.fillStyle = ab ? '#4a4541' : '#6e5c50'; ctx.fillRect(-4, -24, 3, 6);
+        ctx.fillStyle = ab ? '#635d58' : '#8f7a6c'; ctx.fillRect(-4, -24, 1, 5);
+        ctx.fillStyle = '#3b332e'; ctx.fillRect(-5, -25, 5, 1);
+
+        ctx.fillStyle = trimCol; ctx.fillRect(-10, -4, 4, 6);
+        ctx.fillStyle = ab ? '#26201d' : '#573926'; ctx.fillRect(-9, -3, 3, 5);
+        ctx.fillStyle = '#9e9282'; ctx.fillRect(-10, 2, 4, 1);
+
+        const drawWinG = (wx0, wy0, isRight) => {
+          ctx.fillStyle = trimCol; ctx.fillRect(wx0 - 1, wy0 - 1, 4, 4);
+          if (ab) {
+            ctx.fillStyle = '#241e1c'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = '#7c5d3f'; ctx.fillRect(wx0 - 1, wy0, 4, 1);
+          } else if (litNight) {
+            ctx.fillStyle = '#ffcb6b'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = '#fff3b8'; ctx.fillRect(wx0, wy0, 1, 1);
+          } else {
+            ctx.fillStyle = isRight ? '#2a3d4d' : '#3d5e78'; ctx.fillRect(wx0, wy0, 2, 2);
+            ctx.fillStyle = isRight ? '#7196b0' : '#bedce8'; ctx.fillRect(wx0, wy0, 1, 1);
+          }
+        };
+        drawWinG(-4, -3, false);
+        drawWinG(3, -3, true);
+        drawWinG(8, -5, true);
+        if (ab) {
+          ctx.fillStyle = '#7c5d3f';
+          ctx.fillRect(-9, -2, 3, 1); ctx.fillRect(-9, 0, 3, 1);
+          ctx.fillStyle = '#3b2e28'; ctx.fillRect(-6, -15, 3, 2); ctx.fillRect(3, -14, 3, 2);
+        }
+      }
+
+      if (ab && Math.sin(time * 4.5 + cx) > -0.2) {
+        ctx.fillStyle = '#3d1b16'; ctx.fillRect(-3, -29, 6, 5);
+        ctx.fillStyle = '#e8684a'; ctx.fillRect(-2, -28, 4, 3);
+        ctx.fillStyle = '#fff0d6'; ctx.fillRect(-1, -28, 1, 2); ctx.fillRect(1, -27, 1, 1);
+      }
+      ctx.restore();
+    }
+
+    function drawStorageTambores(ctx, wx, wy, ratio) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 4;
+      ctx.fillStyle = 'rgba(70, 50, 28, 0.22)'; ctx.fillRect(cx - 12, cy - 1, 26, 8);
+      [[-9,-3],[0,-6],[8,-2],[-4,2],[4,3]].forEach(([ox, oy], idx) => {
+        const x = cx + ox, y = cy + oy, a = ratio > 0.01 && ratio >= idx * 0.16;
+        ctx.fillStyle = a ? '#155099' : '#3d5673'; ctx.fillRect(x - 3, y - 8, 7, 9);
+        ctx.fillStyle = a ? '#257ee0' : '#577394'; ctx.fillRect(x - 2, y - 7, 5, 7);
+        ctx.fillStyle = a ? '#73c6ff' : '#85a2c2'; ctx.fillRect(x - 1, y - 6, 1, 5);
+        ctx.fillStyle = '#0e3666'; ctx.fillRect(x - 2, y - 9, 5, 1);
+      });
+    }
+    function drawStorageEstanque(ctx, wx, wy, ratio, time) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 3;
+      ctx.fillStyle = 'rgba(65, 50, 30, 0.25)'; ctx.beginPath(); ctx.ellipse(cx + 2, cy + 5, 22, 11, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#73726e'; ctx.beginPath(); ctx.ellipse(cx, cy + 3, 21, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#a8a7a1'; ctx.beginPath(); ctx.ellipse(cx, cy, 21, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = ratio > 0.08 ? '#2b86e3' : '#59748f'; ctx.beginPath(); ctx.ellipse(cx, cy, 17, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = ratio > 0.08 ? '#49a6f7' : '#6c8aa8'; ctx.beginPath(); ctx.ellipse(cx, cy + 1, 14, 5.8, 0, 0, Math.PI * 2); ctx.fill();
+      if (ratio > 0.08) { const s = Math.round(Math.sin(time * 3.5) * 2); ctx.fillStyle = '#a6dcff'; ctx.fillRect(cx - 7 + s, cy - 2, 5, 1); ctx.fillRect(cx + 2 - s, cy + 1, 6, 1); }
+    }
+    function drawStorageCopa(ctx, wx, wy, time) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 4;
+      ctx.fillStyle = 'rgba(55, 45, 32, 0.26)'; ctx.fillRect(cx - 4, cy + 1, 18, 4);
+      ctx.strokeStyle = '#4e5b66'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(cx - 6, cy + 2); ctx.lineTo(cx - 4, cy - 16); ctx.moveTo(cx + 6, cy + 2); ctx.lineTo(cx + 4, cy - 16); ctx.moveTo(cx, cy + 4); ctx.lineTo(cx, cy - 16); ctx.moveTo(cx - 5, cy - 2); ctx.lineTo(cx + 5, cy - 10); ctx.moveTo(cx + 5, cy - 2); ctx.lineTo(cx - 5, cy - 10); ctx.stroke();
+      ctx.fillStyle = '#336a9c'; ctx.fillRect(cx - 1, cy - 15, 2, 16);
+      ctx.fillStyle = '#73808c'; ctx.fillRect(cx - 8, cy - 30, 16, 15); ctx.fillStyle = '#9aa8b5'; ctx.fillRect(cx - 7, cy - 30, 12, 14); ctx.fillStyle = '#c5d1db'; ctx.fillRect(cx - 6, cy - 29, 4, 12);
+      ctx.fillStyle = '#5c6873'; ctx.fillRect(cx - 8, cy - 32, 16, 2); ctx.fillRect(cx - 6, cy - 34, 12, 2); ctx.fillRect(cx - 3, cy - 36, 6, 2);
+      if (Math.sin(time * 4) > -0.3) { ctx.fillStyle = '#57c4ff'; ctx.fillRect(cx - 1, cy - 24, 2, 2); }
+    }
+    function drawOrchard(ctx, wx, wy, anim = 1, dried = false) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 3;
+      ctx.save(); ctx.translate(cx, cy); if (anim < 1) { const s = 0.35 + anim * 0.65; ctx.scale(s, s); }
+      fillIsoDiamond(ctx, 0, -4, dried ? '#8a7254' : '#7d5f3c');
+      ctx.fillStyle = dried ? '#9e8846' : '#479939'; ctx.fillRect(-10, 0, 20, 2); ctx.fillRect(-8, -2, 16, 6); ctx.fillRect(-5, -3, 10, 8);
+      ctx.fillStyle = dried ? '#baa45d' : '#68bf4e'; ctx.fillRect(-7, -1, 14, 1); ctx.fillRect(-6, 1, 12, 1); ctx.fillRect(-4, 3, 8, 1);
+      ctx.fillStyle = dried ? '#756230' : '#306e26'; ctx.fillRect(-7, 0, 14, 1); ctx.fillRect(-5, 2, 10, 1);
+      if (!dried) { ctx.fillStyle = '#3d9fe8'; ctx.fillRect(-9, 2, 4, 1); ctx.fillRect(-6, 4, 4, 1); }
+      ctx.restore();
+    }
+    function drawTree(ctx, wx, wy, anim = 1) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 3;
+      ctx.save(); ctx.translate(cx, cy); if (anim < 1) { const s = 0.3 + anim * 0.7; ctx.scale(s, s); }
+      ctx.fillStyle = 'rgba(48, 38, 22, 0.25)'; ctx.fillRect(-4, 1, 8, 3);
+      ctx.fillStyle = '#694a32'; ctx.fillRect(-1, -4, 3, 6);
+      ctx.fillStyle = '#2d6929'; ctx.fillRect(-5, -10, 10, 7);
+      ctx.fillStyle = '#438f3c'; ctx.fillRect(-5, -12, 10, 6); ctx.fillRect(-4, -14, 8, 3);
+      ctx.fillStyle = '#62b84e'; ctx.fillRect(-3, -13, 5, 3);
+      ctx.restore();
+    }
+    function drawCactus(ctx, wx, wy, v = 0) {
+      const x = Math.round(wx), y = Math.round(wy) + 4;
+      ctx.fillStyle = 'rgba(60, 38, 22, 0.22)'; ctx.fillRect(x - 2, y, 5, 2);
+      ctx.fillStyle = '#3e7538'; ctx.fillRect(x - 1, y - 9, 2, 9); ctx.fillStyle = '#5ea150'; ctx.fillRect(x - 1, y - 9, 1, 8);
+      if (v !== 2) { ctx.fillStyle = '#498740'; ctx.fillRect(x - 4, y - 6, 3, 1); ctx.fillRect(x - 4, y - 8, 1, 3); }
+      if (v !== 1) { ctx.fillStyle = '#3e7538'; ctx.fillRect(x + 1, y - 5, 3, 1); ctx.fillRect(x + 3, y - 7, 1, 3); }
+    }
+    function drawRock(ctx, wx, wy, v = 0) {
+      const x = Math.round(wx), y = Math.round(wy) + 4;
+      ctx.fillStyle = 'rgba(42, 30, 30, 0.22)'; ctx.fillRect(x - 4, y, 9, 2);
+      ctx.fillStyle = '#8b7f7c'; ctx.fillRect(x - 4, y - 3, 4, 4); ctx.fillRect(x - 2, y - 5, 3, 3);
+      ctx.fillStyle = '#635957'; ctx.fillRect(x, y - 3, v === 0 ? 4 : 3, 4); ctx.fillRect(x, y - 5, 2, 3);
+    }
+    function drawBoat(ctx, wx, wy, boat, time) {
+      const x = Math.round(wx + Math.sin(time * 0.6 + boat.phase) * 3), y = Math.round(wy + Math.sin(time * 2.2 + boat.phase) * 1.4);
+      ctx.fillStyle = 'rgba(225, 250, 255, 0.65)'; ctx.fillRect(x - 7, y + 2, 14, 1);
+      ctx.fillStyle = '#a83c2b'; ctx.fillRect(x - 5, y, 10, 2); ctx.fillRect(x - 4, y + 1, 8, 1);
+      ctx.fillStyle = '#f2ede4'; ctx.fillRect(x - 4, y - 2, 8, 2); ctx.fillStyle = '#d9d3c7'; ctx.fillRect(x - 2, y - 5, 4, 3);
+      ctx.fillStyle = '#3a6f9e'; ctx.fillRect(x - 1, y - 4, 2, 1); ctx.fillStyle = '#5c402c'; ctx.fillRect(x + 3, y - 6, 1, 5); ctx.fillStyle = '#e04238'; ctx.fillRect(x + 4, y - 6, 2, 1);
+    }
+
+    const SHIRTS = ['#2c73c9', '#d14b3a', '#3d9956', '#d99326', '#6b5bb5', '#2a9aa8'];
+
+    class AtrapanieblasGame {
+      constructor(canvas, sound, callbacks) {
+        this.canvas = canvas; this.ctx = canvas.getContext('2d');
+        this.sound = sound; this.callbacks = callbacks;
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        this.viewW = 1280; this.viewH = 720;
+        this.map = generateCoastalMap(2027); this.terrainCanvas = null;
+        this.cam = { x: 0, y: 0, zoom: 1.85, targetX: 0, targetY: 0, targetZoom: 1.85, minZoom: 0.62, maxZoom: 3.4, smoothActive: false };
+        this.keys = new Set();
+        this.pointer = { down: false, lastX: 0, lastY: 0, moved: 0, screenX: 0, screenY: 0, pinchDist: 0 };
+        this.activeTouches = new Map();
+        this.hoveredPad = null;
+        this.time = 0; this.running = false; this.paused = false; this.finished = false;
+        this.reset('exhibition', false);
+        this._bindEvents(); this.resize();
+        this._lastTs = performance.now();
+        requestAnimationFrame((ts) => this._loop(ts));
+      }
+
+      reset(mode = 'exhibition', startNow = true) {
+        this.mode = mode; this.cfg = MODE_CONFIG[mode] || MODE_CONFIG.exhibition;
+        this.running = startNow; this.paused = false; this.finished = false;
+        this.elapsed = 0; this.remaining = this.cfg.durationSeconds ?? 0;
+        this.map = generateCoastalMap(2027);
+        this.water = this.cfg.startWater; this.totalWaterHarvested = this.cfg.startWater;
+        this.funds = this.cfg.startFunds; this.population = 12; this.storageTier = 0; this.selectedPadId = null;
+        this.maxCarriers = this.cfg.startCarriers; this.meshesBuilt = 0;
+        this.milestoneIndex = 0; this.tutorialStep = 0;
+        this.droughtActive = false; this.droughtTimer = 0; this.recoveryTimer = 0;
+        this.waterDrainRate = this.population * this.cfg.waterDrainPerPop;
+        this.houses = this.map.houseSlots.filter((s) => s.starter).map((s) => ({ ...s, anim: 1, abandoned: false }));
+        this.orchards = []; this.trees = this.map.treeSlots.slice(0, 2).map((s) => ({ ...s, anim: 1 }));
+        this.carriers = []; for (let i = 0; i < this.maxCarriers; i++) this._createCarrier(i);
+        this.dispatchQueue = []; this.particles = []; this.floatingTexts = [];
+        const starter = this.map.pads.find((p) => p.starter) || this.map.pads[0];
+        if (starter) { this._installMeshOnPad(starter, true); starter.fill = 84; }
+        this.terrainCanvas = bakeTerrainCanvas(this.map);
+        this.centerOnCaleta(true); this._emitHUD(true);
+      }
+
+      startMode(mode) { this.sound.unlock(); this.reset(mode, true); this.sound.playDispatch(); }
+      continueEndless() { this.mode = 'endless'; this.cfg = MODE_CONFIG.endless; this.finished = false; this.running = true; this._emitHUD(true); }
+
+      _createCarrier(idx) {
+        this.carriers.push({ id: idx, gx: this.map.hub.gx + (idx % 3) * 0.35 - 0.35, gy: this.map.hub.gy + Math.floor(idx / 3) * 0.35, dirX: 1, shirt: SHIRTS[idx % SHIRTS.length], state: 'idle', padId: null, path: [], pathIdx: 0, segProgress: 0, carryingWater: false });
+      }
+
+      getStorageTierObj() { return STORAGE_TIERS[this.storageTier]; }
+      getNextStorageTier() { return STORAGE_TIERS[this.storageTier + 1] || null; }
+      getStorageUpgradeCost() { const n = this.getNextStorageTier(); return n ? Math.round(n.cost * this.cfg.storageCostScale) : null; }
+      getPipeCost(pad) { const len = pad && pad.trail ? pad.trail.length : 20; return Math.round((PIPE_CFG.baseCost + len * PIPE_CFG.perTile) * this.cfg.storageCostScale); }
+      _padFillPerSec(pad, cyc) { return 8.2 * pad.fogYield * this.cfg.fillSpeedMult * cyc.fogMult; }
+      getPipeFlowLps(pad) { return (this._padFillPerSec(pad, this.getCycleState()) / 100) * this.cfg.waterPerDrum * this.getStorageTierObj().waterBonusMult; }
+      getNextMeshCost() { return this.cfg.meshBaseCost + Math.max(0, this.meshesBuilt - 1) * this.cfg.meshCostStep; }
+      getPendingAlerts() { return this.map.pads.filter((p) => p.built && p.alertActive && !p.dispatched && !p.queued); }
+
+      _installMeshOnPad(pad, isFree = false) {
+        const cost = isFree ? 0 : this.getNextMeshCost();
+        if (!isFree && this.funds < cost) {
+          this.sound.playError();
+          const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
+          this._addFloatingText(pos.x, pos.y - 16, `Falta $${cost - Math.floor(this.funds)}`, '#f06449');
+          return false;
+        }
+        this.funds -= cost; pad.built = true; pad.fill = isFree ? 84 : 14; pad.buildAnim = 1.0; this.meshesBuilt += 1;
+        const trail = findTrailPath(this.map, this.map.hub.gx, this.map.hub.gy, pad.gx, pad.gy);
+        pad.trail = trail;
+        for (const s of trail) { const t = this.map.tiles[s.gy]?.[s.gx]; if (t && !t.isWater && !t.isPad) t.isPath = true; }
+        if (!isFree) {
+          this.terrainCanvas = bakeTerrainCanvas(this.map); this.sound.playBuild();
+          const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
+          this._spawnDust(pos.x, pos.y, '#f5e4bc', 10);
+          this._addFloatingText(pos.x, pos.y - 22, `+Malla (${pad.fogLabel})`, '#ffffff');
+          if (this.tutorialStep === 1) this.tutorialStep = 2;
+          this._emitHUD(true);
+        }
+        return true;
+      }
+
+      dispatchToPad(pad) {
+        if (!pad || !pad.built || !pad.alertActive || pad.dispatched || pad.queued) return false;
+        const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
+        const idle = this.carriers.find((c) => c.state === 'idle');
+        if (idle) { this._assignCarrier(idle, pad); this.sound.playDispatch(); this._addFloatingText(pos.x, pos.y - 34, 'En camino', '#bfe8ff'); }
+        else { pad.queued = true; this.dispatchQueue.push(pad.id); this.sound.playDispatch(); this._addFloatingText(pos.x, pos.y - 34, 'En cola', '#ffe8a3'); }
+        if (this.tutorialStep === 0) this.tutorialStep = 1;
+        this._emitHUD(true); return true;
+      }
+
+      _assignCarrier(c, pad) { pad.dispatched = true; pad.queued = false; c.state = 'climbing'; c.padId = pad.id; c.path = pad.trail || [this.map.hub, pad]; c.pathIdx = 0; c.segProgress = 0; c.carryingWater = false; }
+
+      upgradeStorage() {
+        if (!this.running || this.finished) return false;
+        const next = this.getNextStorageTier(), cost = this.getStorageUpgradeCost();
+        if (!next || cost === null) return false;
+        if (this.funds < cost) {
+          this.sound.playError();
+          const hp = isoToWorld(this.map.hub.gx, this.map.hub.gy, 2, this.map.originX, this.map.originY);
+          this._addFloatingText(hp.x, hp.y - 24, `Faltan $${cost - Math.floor(this.funds)}`, '#f26d52');
+          return false;
+        }
+        this.funds -= cost; this.storageTier += 1; this.sound.playUpgrade();
+        const tp = this.storageTier === 1 ? this.map.storagePos.tank : this.map.storagePos.tower;
+        const wp = isoToWorld(tp.gx, tp.gy, tp.h, this.map.originX, this.map.originY);
+        this._spawnDust(wp.x, wp.y, '#8ad4ff', 16);
+        this._addFloatingText(wp.x, wp.y - 28, `¡${next.shortName}!`, '#90e0ff');
+        this.panToWorld(wp.x, wp.y - 10, Math.max(this.cam.zoom, 1.95));
+        this._emitHUD(true); return true;
+      }
+
+      selectPad(pad) { this.selectedPadId = pad ? pad.id : null; this._emitHUD(true); if (pad) this.callbacks.onSelectMesh?.(); }
+      buyPipeForSelected() { const pad = this.map.pads.find((p) => p.id === this.selectedPadId); return pad ? this.buyPipeForPad(pad) : false; }
+
+      // Cada malla compra su propia cañería, una a la vez. El agua baja desde la malla hasta la caleta.
+      buyPipeForPad(pad) {
+        if (!this.running || this.finished || !pad || !pad.built || pad.pipeState !== 'none') return false;
+        const cost = this.getPipeCost(pad), pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
+        if (this.funds < cost) {
+          this.sound.playError();
+          this._addFloatingText(pos.x, pos.y - 24, `Faltan $${cost - Math.floor(this.funds)}`, '#f26d52');
+          return false;
+        }
+        const hadFullDrum = pad.alertActive && !pad.dispatched;
+        this.funds -= cost; pad.pipeState = 'laying'; pad.pipeProgress = 0; pad.pipeAcc = 0;
+        pad.alertActive = false; pad.queued = false;
+        this.dispatchQueue = this.dispatchQueue.filter((id) => id !== pad.id);
+        if (!pad.dispatched) pad.fill = 0;
+        this.sound.playBuild();
+        this._spawnDust(pos.x, pos.y - 2, '#7fd6ff', 10);
+        this._addFloatingText(pos.x, pos.y - 30, 'Instalando cañería', '#9be5ff');
+        this.callbacks.onToast?.('Cañería en obra: el agua bajará sola hasta la caleta');
+        if (hadFullDrum) this._onWaterDelivered(true);
+        this._emitHUD(true); return true;
+      }
+
+      centerOnCaleta(instant = false) {
+        const p = isoToWorld(43.5, 39.5, 3, this.map.originX, this.map.originY), z = this.viewW < 760 ? 1.3 : 1.85;
+        if (instant) { this.cam.x = this.cam.targetX = p.x; this.cam.y = this.cam.targetY = p.y; this.cam.zoom = this.cam.targetZoom = z; this.cam.smoothActive = false; }
+        else this.panToWorld(p.x, p.y, z);
+      }
+      showFullMap() { const p = isoToWorld(30, 30, 4, this.map.originX, this.map.originY); this.panToWorld(p.x, p.y, Math.max(this.cam.minZoom, Math.min(1.05, Math.min(this.viewW / 1380, this.viewH / 820)))); }
+      focusNextAlert() { const a = this.getPendingAlerts(); if (!a.length) return false; const p = isoToWorld(a[0].gx, a[0].gy, a[0].h, this.map.originX, this.map.originY); this.panToWorld(p.x, p.y - 16, Math.max(this.cam.zoom, 2.05)); return true; }
+      zoomBy(f) { this.cam.targetZoom = Math.max(this.cam.minZoom, Math.min(this.cam.maxZoom, this.cam.targetZoom * f)); this.cam.targetX = this.cam.x; this.cam.targetY = this.cam.y; this.cam.smoothActive = true; }
+      panToWorld(wx, wy, zoom = null) { this.cam.targetX = wx; this.cam.targetY = wy; if (zoom !== null) this.cam.targetZoom = Math.max(this.cam.minZoom, Math.min(this.cam.maxZoom, zoom)); this.cam.smoothActive = true; }
+      screenToWorld(sx, sy) { return { x: (sx - this.viewW / 2) / this.cam.zoom + this.cam.x, y: (sy - this.viewH / 2) / this.cam.zoom + this.cam.y }; }
+
+      _loop(ts) {
+        const dt = Math.min(0.05, (ts - this._lastTs) / 1000);
+        this._lastTs = ts; this.time += dt;
+        this._updateCamera(dt); this._updateAmbience(dt);
+        if (this.running && !this.paused && !this.finished) this._updateSimulation(dt);
+        this._render(); requestAnimationFrame((t) => this._loop(t));
+      }
+
+      _updateCamera(dt) {
+        const sp = 380 / this.cam.zoom; let dx = 0, dy = 0;
+        if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) dx -= 1;
+        if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) dx += 1;
+        if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) dy -= 1;
+        if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) dy += 1;
+        if (dx || dy) { this.cam.smoothActive = false; this.cam.x += dx * sp * dt; this.cam.y += dy * sp * dt; }
+        if (this.cam.smoothActive) {
+          const k = 1 - Math.exp(-8 * dt);
+          this.cam.x += (this.cam.targetX - this.cam.x) * k; this.cam.y += (this.cam.targetY - this.cam.y) * k; this.cam.zoom += (this.cam.targetZoom - this.cam.zoom) * k;
+          if (Math.hypot(this.cam.targetX - this.cam.x, this.cam.targetY - this.cam.y) < 0.8 && Math.abs(this.cam.targetZoom - this.cam.zoom) < 0.005) { this.cam.x = this.cam.targetX; this.cam.y = this.cam.targetY; this.cam.zoom = this.cam.targetZoom; this.cam.smoothActive = false; }
+        }
+        this.cam.x = Math.max(160, Math.min(this.map.canvasW - 160, this.cam.x));
+        this.cam.y = Math.max(120, Math.min(this.map.canvasH - 120, this.cam.y));
+      }
+
+      getCycleState() {
+        const dur = this.cfg?.cycleDuration || 30;
+        const p = ((this.elapsed / dur) + 0.06) % 1;
+        if (p < 0.22) {
+          const t = p / 0.22;
+          return { id: 'dawn', icon: '🌅', label: 'Amanecer', fogMult: 1.35, fogDensity: 1.15 - t * 0.45, nightFactor: 0.42 * (1 - t), sunWarmth: Math.sin(t * Math.PI) * 0.85 };
+        }
+        if (p < 0.54) {
+          return { id: 'day', icon: '☀️', label: 'Día', fogMult: 0.58, fogDensity: 0.35, nightFactor: 0, sunWarmth: 0 };
+        }
+        if (p < 0.72) {
+          const t = (p - 0.54) / 0.18;
+          return { id: 'dusk', icon: '🌇', label: 'Atardecer', fogMult: 1.25, fogDensity: 0.45 + t * 0.85, nightFactor: t * 0.55, sunWarmth: Math.sin(t * Math.PI) };
+        }
+        const t = (p - 0.72) / 0.28;
+        const peakNight = 0.55 + Math.sin(t * Math.PI) * 0.34;
+        return { id: 'night', icon: '🌫️', label: 'Camanchaca', fogMult: 1.85, fogDensity: 1.45 + Math.sin(t * Math.PI) * 0.55, nightFactor: peakNight, sunWarmth: 0 };
+      }
+
+      _updateAmbience(dt) {
+        const cyc = this.getCycleState();
+        const windMult = 0.85 + cyc.fogDensity * 0.45;
+        for (const c of this.map.fogClouds) {
+          // La camanchaca entra en diagonal desde el Pacífico hacia la Cordillera de la Costa
+          c.x += c.speed * windMult * dt;
+          c.y -= c.speed * 0.24 * windMult * dt;
+          if (c.x - c.rx > this.map.canvasW + 60 || c.y + c.ry < 40) {
+            c.x = -c.rx - 30 + (Math.random() * 140);
+            c.y = this.map.originY + 260 + Math.random() * 520;
+          }
+        }
+        for (let i = this.particles.length - 1; i >= 0; i--) { const p = this.particles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 28 * dt; p.life -= dt; if (p.life <= 0) this.particles.splice(i, 1); }
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) { const f = this.floatingTexts[i]; f.y -= 16 * dt; f.life -= dt; if (f.life <= 0) this.floatingTexts.splice(i, 1); }
+      }
+
+      _updateSimulation(dt) {
+        this.elapsed += dt;
+        const cyc = this.getCycleState();
+        if (this._lastCycleId && this._lastCycleId !== cyc.id) {
+          if (cyc.id === 'night') this.callbacks.onToast?.('🌫️ ¡Entra la camanchaca nocturna! Captura ×1.8');
+          else if (cyc.id === 'day') this.callbacks.onToast?.('☀️ Mediodía despejado · Menor niebla en los cerros');
+        }
+        this._lastCycleId = cyc.id;
+
+        if (this.cfg.durationSeconds !== null) {
+          this.remaining = Math.max(0, this.cfg.durationSeconds - this.elapsed);
+          if (this.remaining <= 0 && !this.finished) {
+            this.finished = true; this.sound.playFinish(); this._emitHUD(true);
+            const activeHouses = this.houses.filter((h) => !h.abandoned).length;
+            const abandonedHouses = this.houses.length - activeHouses;
+            this.callbacks.onFinish?.({ totalWaterHarvested: Math.round(this.totalWaterHarvested), storageName: this.getStorageTierObj().name, population: this.population, housesCount: activeHouses, abandonedHouses, orchardsCount: this.orchards.filter((o) => !o.dried).length, meshesBuilt: this.meshesBuilt, carriersCount: this.maxCarriers });
+            return;
+          }
+        }
+        const activeOrchards = this.orchards.filter((o) => !o.dried).length;
+        if (activeOrchards > 0) this.funds += activeOrchards * this.cfg.passiveFundsPerOrchard * dt;
+
+        // Consumo continuo de agua de la caleta
+        this.waterDrainRate = this.population > 0 ? this.population * this.cfg.waterDrainPerPop : 0;
+        if (this.waterDrainRate > 0) this.water = Math.max(0, this.water - this.waterDrainRate * dt);
+
+        if (this.water <= 0.05 && this.population > 0) {
+          this.water = 0;
+          if (!this.droughtActive) {
+            this.droughtActive = true;
+            this.droughtTimer = 0;
+            this.sound.playDrought();
+            this.callbacks.onToast?.('¡Sin agua! Recolecta rápido o abandonarán la caleta', 'warn');
+          }
+          this.droughtTimer += dt;
+          if (this.droughtTimer >= this.cfg.droughtTickSeconds) {
+            this.droughtTimer -= this.cfg.droughtTickSeconds;
+            this._applyDroughtTick();
+          }
+        } else {
+          if (this.droughtActive && this.water > 0.5) {
+            this.droughtActive = false;
+            this.droughtTimer = 0;
+            for (const o of this.orchards) o.dried = false;
+          }
+          if (this.water >= this.cfg.recoveryWaterMin && this.houses.some((h) => h.abandoned)) {
+            this.recoveryTimer += dt;
+            if (this.recoveryTimer >= 2.8) {
+              this.recoveryTimer = 0;
+              this._recoverAbandonedHouse();
+            }
+          } else {
+            this.recoveryTimer = 0;
+          }
+        }
+
+        for (const h of this.houses) if (h.anim < 1) h.anim = Math.min(1, h.anim + dt * 2.5);
+        for (const o of this.orchards) if (o.anim < 1) o.anim = Math.min(1, o.anim + dt * 2.5);
+        for (const t of this.trees) if (t.anim < 1) t.anim = Math.min(1, t.anim + dt * 2.5);
+
+        for (const pad of this.map.pads) {
+          if (!pad.built) continue;
+          if (pad.buildAnim > 0) pad.buildAnim = Math.max(0, pad.buildAnim - dt * 2.4);
+          if (pad.pipeState === 'laying') {
+            const dur = Math.max(1.8, (pad.trail ? pad.trail.length : 20) * 0.075);
+            pad.pipeProgress = Math.min(1, pad.pipeProgress + dt / dur);
+            if (pad.pipeProgress >= 1) {
+              pad.pipeState = 'active'; this.sound.playUpgrade();
+              const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
+              this._spawnDust(pos.x, pos.y - 6, '#9be5ff', 8);
+              this._addFloatingText(pos.x, pos.y - 30, '¡Cañería conectada!', '#9be5ff');
+              this.callbacks.onToast?.('¡Cañería conectada! Esta malla ya no necesita transportista');
+              this._emitHUD(true);
+            }
+            continue;
+          }
+          if (pad.pipeState === 'active') {
+            // El agua llega sola por la cañería: sin bidón, sin alerta (!), sin transportista.
+            pad.pipeAcc += (this._padFillPerSec(pad, cyc) / 100) * dt;
+            while (pad.pipeAcc >= 1) { pad.pipeAcc -= 1; this._onWaterDelivered(true); }
+            continue;
+          }
+          if (!pad.alertActive) {
+            pad.fill += this._padFillPerSec(pad, cyc) * dt;
+            if (pad.fill >= 100) { pad.fill = 100; pad.alertActive = true; this.sound.playAlert(); const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY); this._spawnDust(pos.x, pos.y - 26, '#70c8ff', 6); }
+          }
+        }
+
+        const speed = this.cfg.carrierSpeedBase * this.getStorageTierObj().carrierSpeedMult;
+        for (const c of this.carriers) {
+          if (c.state === 'idle') {
+            if (this.dispatchQueue.length > 0) { const target = this.map.pads.find((p) => p.id === this.dispatchQueue.shift()); if (target && target.alertActive && !target.dispatched) this._assignCarrier(c, target); }
+            continue;
+          }
+          const path = c.path;
+          if (c.state === 'climbing') {
+            c.segProgress += speed * dt;
+            while (c.segProgress >= 1 && c.pathIdx < path.length - 1) { c.segProgress -= 1; c.pathIdx += 1; }
+            if (c.pathIdx >= path.length - 1) {
+              const pad = this.map.pads.find((p) => p.id === c.padId);
+              if (pad) { pad.fill = 0; pad.alertActive = false; pad.dispatched = false; pad.queued = false; const wp = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY); this._spawnDust(wp.x, wp.y - 8, '#5ebeff', 7); }
+              c.carryingWater = true; c.state = 'descending'; c.pathIdx = path.length - 1; c.segProgress = 0;
+            } else {
+              const a = path[c.pathIdx], b = path[c.pathIdx + 1];
+              const screenDx = (b.gx - a.gx) - (b.gy - a.gy);
+              if (Math.abs(screenDx) > 0.01) c.dirX = screenDx >= 0 ? 1 : -1;
+              c.gx = a.gx + (b.gx - a.gx) * c.segProgress; c.gy = a.gy + (b.gy - a.gy) * c.segProgress;
+            }
+          } else {
+            c.segProgress += speed * 1.08 * dt;
+            while (c.segProgress >= 1 && c.pathIdx > 0) { c.segProgress -= 1; c.pathIdx -= 1; }
+            if (c.pathIdx <= 0) { c.gx = path[0].gx; c.gy = path[0].gy; c.carryingWater = false; c.state = 'idle'; c.padId = null; this._onWaterDelivered(); }
+            else {
+              const a = path[c.pathIdx], b = path[c.pathIdx - 1];
+              const screenDx = (b.gx - a.gx) - (b.gy - a.gy);
+              if (Math.abs(screenDx) > 0.01) c.dirX = screenDx >= 0 ? 1 : -1;
+              c.gx = a.gx + (b.gx - a.gx) * c.segProgress; c.gy = a.gy + (b.gy - a.gy) * c.segProgress;
+            }
+          }
+        }
+        this._emitHUD(false);
+      }
+
+      _applyDroughtTick() {
+        const greenOrchard = this.orchards.find((o) => !o.dried);
+        if (greenOrchard) greenOrchard.dried = true;
+
+        const popLoss = Math.min(this.population, 3);
+        this.population = Math.max(0, this.population - popLoss);
+
+        let abandonedHouse = null;
+        for (let i = this.houses.length - 1; i >= 0; i--) {
+          if (!this.houses[i].abandoned) {
+            this.houses[i].abandoned = true;
+            abandonedHouse = this.houses[i];
+            break;
+          }
+        }
+        if (this.population === 0) {
+          for (const h of this.houses) h.abandoned = true;
+        }
+
+        const inhabitedCount = this.houses.filter((h) => !h.abandoned).length;
+        if (this.carriers.length > Math.max(1, inhabitedCount)) {
+          const idleIdx = this.carriers.findIndex((c) => c.state === 'idle');
+          if (idleIdx !== -1) {
+            this.carriers.splice(idleIdx, 1);
+            this.maxCarriers = this.carriers.length;
+          }
+        }
+
+        this.sound.playDrought();
+        const target = abandonedHouse || { gx: 42.5, gy: 43.2 };
+        const wp = isoToWorld(target.gx, target.gy, 2, this.map.originX, this.map.originY);
+        this._spawnDust(wp.x, wp.y - 6, '#a39789', 10);
+        this._addFloatingText(wp.x, wp.y - 24, abandonedHouse ? `-${popLoss} hab. · Casa abandonada` : `-${popLoss} hab. · ¡Sequía!`, '#ff7b5c');
+        this.callbacks.onToast?.(this.population === 0 ? '¡La caleta quedó deshabitada! Lleva agua para revivirla' : '¡Falta agua! Familias abandonan sus casas', 'warn');
+        this._emitHUD(true);
+      }
+
+      _recoverAbandonedHouse() {
+        const house = this.houses.find((h) => h.abandoned);
+        if (!house) return;
+        house.abandoned = false;
+        house.anim = 0.65;
+        const popGain = 3;
+        this.population += popGain;
+        const targetCarriers = this.cfg.startCarriers + this.milestoneIndex;
+        if (this.carriers.length < targetCarriers) {
+          this._createCarrier(this.carriers.length);
+          this.maxCarriers = this.carriers.length;
+        }
+        this.sound.playGrowth();
+        const wp = isoToWorld(house.gx, house.gy, 2, this.map.originX, this.map.originY);
+        this._spawnDust(wp.x, wp.y - 6, '#90f2a8', 10);
+        this._addFloatingText(wp.x, wp.y - 24, `+${popGain} hab. · ¡Casa habitada!`, '#a8ff9e');
+        this.callbacks.onToast?.('¡El agua vuelve y las familias regresan!');
+        this._emitHUD(true);
+      }
+
+      _onWaterDelivered(viaPipe = false) {
+        const activeOrchards = this.orchards.filter((o) => !o.dried).length;
+        const tier = this.getStorageTierObj(), liters = Math.round(this.cfg.waterPerDrum * tier.waterBonusMult), earned = Math.round((this.cfg.fundsPerDelivery + activeOrchards * 2.5) * (viaPipe ? 0.8 : 1));
+        const wasFull = this.water >= tier.capacity;
+        this.water = Math.min(tier.capacity, this.water + liters); this.totalWaterHarvested += liters; this.funds += earned;
+        if (this.droughtActive && this.water > 0.5) {
+          this.droughtActive = false;
+          this.droughtTimer = 0;
+          for (const o of this.orchards) o.dried = false;
+        }
+        if (!viaPipe) this.sound.playDeliver();
+        const sp = this.storageTier >= 1 ? this.map.storagePos.tank : this.map.storagePos.drums;
+        const wp = isoToWorld(sp.gx, sp.gy, sp.h, this.map.originX, this.map.originY);
+        this._spawnDust(wp.x, wp.y - 6, '#57baff', viaPipe ? 3 : 9);
+        this._addFloatingText(wp.x, wp.y - 20, wasFull && this.getNextStorageTier() ? `+$${earned} · Estanque lleno` : (viaPipe ? `+${liters}L` : `+${liters}L · +$${earned}`), wasFull ? '#ffe169' : '#74d4ff');
+
+        while (this.milestoneIndex < GROWTH_MILESTONES.length) {
+          const m = GROWTH_MILESTONES[this.milestoneIndex];
+          if (this.water < Math.round(m.water * this.cfg.milestoneScale)) break;
+          this.milestoneIndex += 1; this.population += m.popAdd;
+          for (let i = 0; i < m.houses; i++) if (this.houses.length < this.map.houseSlots.length) this.houses.push({ ...this.map.houseSlots[this.houses.length], anim: 0, abandoned: false });
+          for (let i = 0; i < m.orchards; i++) if (this.orchards.length < this.map.orchardSlots.length) this.orchards.push({ ...this.map.orchardSlots[this.orchards.length], anim: 0, dried: false });
+          for (let i = 0; i < m.trees; i++) if (this.trees.length < this.map.treeSlots.length) this.trees.push({ ...this.map.treeSlots[this.trees.length], anim: 0 });
+          for (let i = 0; i < m.carriersAdd; i++) { this._createCarrier(this.carriers.length); this.maxCarriers = this.carriers.length; }
+          this.sound.playGrowth();
+          const cp = isoToWorld(42.5, 43.2, 2, this.map.originX, this.map.originY);
+          this._addFloatingText(cp.x, cp.y - 26, `+${m.popAdd} hab. · +1 transp.`, '#a8ff9e');
+          this.callbacks.onToast?.(m.label);
+        }
+        this._emitHUD(true);
+      }
+
+      _spawnDust(x, y, color, count = 8) {
+        for (let i = 0; i < count; i++) { const ang = (Math.PI * 2 * i) / count + Math.random() * 0.4, spd = 16 + Math.random() * 24; this.particles.push({ x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 20, color, size: Math.random() > 0.4 ? 2 : 3, life: 0.45 + Math.random() * 0.3 }); }
+      }
+      _addFloatingText(x, y, text, color = '#ffffff') { this.floatingTexts.push({ x, y, text, color, life: 1.1 }); }
+
+      _emitHUD(force = false) {
+        if (!force && Math.floor(this.time * 10) === this._lastHudTick) return;
+        this._lastHudTick = Math.floor(this.time * 10);
+        const tier = this.getStorageTierObj(), next = this.getNextStorageTier(), cost = this.getStorageUpgradeCost();
+        const selPad = this.selectedPadId != null ? this.map.pads.find((p) => p.id === this.selectedPadId && p.built) : null;
+        const selMesh = selPad ? { id: selPad.id, n: this.map.pads.filter((p) => p.built).indexOf(selPad) + 1, fogLabel: selPad.fogLabel, fill: Math.round(selPad.fill), pipeState: selPad.pipeState, pipeProgress: selPad.pipeProgress, cost: this.getPipeCost(selPad), canBuy: this.funds >= this.getPipeCost(selPad), flowPerMin: Math.round(this.getPipeFlowLps(selPad) * 60) } : null;
+        const pipedCount = this.map.pads.filter((p) => p.pipeState === 'active').length;
+        const pipeHint = this.tutorialStep >= 2 && pipedCount === 0 && this.map.pads.some((p) => p.built && p.pipeState === 'none' && this.funds >= this.getPipeCost(p));
+        const cyc = this.getCycleState();
+        this.callbacks.onHUD?.({
+          running: this.running, finished: this.finished, mode: this.mode, remaining: this.remaining,
+          water: Math.floor(this.water), capacity: tier.capacity, funds: Math.floor(this.funds),
+          waterDrainRate: this.waterDrainRate, droughtActive: this.droughtActive,
+          waterLow: this.water <= Math.max(10, tier.capacity * 0.16),
+          abandonedHouses: this.houses.filter((h) => h.abandoned).length,
+          population: this.population, meshesBuilt: this.meshesBuilt, nextMeshCost: this.getNextMeshCost(),
+          carriersIdle: this.carriers.filter((c) => c.state === 'idle').length, carriersTotal: this.maxCarriers,
+          pendingAlerts: this.getPendingAlerts().length, storageName: tier.name,
+          nextStorageName: next?.name || null, nextStorageCap: next?.capacity || null,
+          nextStorageCost: cost, canUpgradeStorage: cost !== null && this.funds >= cost,
+          selMesh, pipeHint, pipedCount,
+          cycleIcon: cyc.icon, cycleLabel: cyc.label, cycleFogMult: cyc.fogMult,
+          tutorialStep: this.tutorialStep,
+        });
+      }
+
+      _sampleElev(gx, gy, fb) {
+        return this.map.sampleTerrain ? this.map.sampleTerrain(gx, gy).h : fb;
+      }
+
+      _render() {
+        const ctx = this.ctx;
+        const cyc = this.getCycleState();
+        ctx.save(); ctx.scale(this.dpr, this.dpr);
+        ctx.fillStyle = PALETTE.fogBg; ctx.fillRect(0, 0, this.viewW, this.viewH);
+        ctx.save();
+        ctx.translate(Math.round(this.viewW / 2), Math.round(this.viewH / 2));
+        ctx.scale(this.cam.zoom, this.cam.zoom);
+        ctx.translate(-Math.round(this.cam.x), -Math.round(this.cam.y));
+        ctx.imageSmoothingEnabled = false;
+
+        if (this.terrainCanvas) ctx.drawImage(this.terrainCanvas, 0, 0);
+        const { originX, originY } = this.map;
+        ctx.fillStyle = 'rgba(220, 248, 255, 0.5)';
+        for (let i = 0; i < 16; i++) {
+          const gx = 10 + ((i * 7) % 34), gy = 40 + ((i * 5) % 14), t = this.map.tiles[gy]?.[gx];
+          if (!t || !t.isWater || t.fogAlpha > 0.65) continue;
+          const wp = isoToWorld(gx, gy, 0, originX, originY), ph = Math.sin(this.time * 2.2 + i * 1.7);
+          if (ph > 0.15) ctx.fillRect(Math.round(wp.x - 3 + ph * 3), Math.round(wp.y + 4), 5, 1);
+        }
+        for (const boat of this.map.boats) { const wp = isoToWorld(boat.gx, boat.gy, 0, originX, originY); drawBoat(ctx, wp.x, wp.y, boat, this.time); }
+        drawMeshPipes(ctx, this.map, this.storageTier, this.time);
+
+        const drawList = [];
+        for (const pr of this.map.props) { if (this.map.tiles[pr.gy][pr.gx].isPath) continue; const wp = isoToWorld(pr.gx, pr.gy, pr.h, originX, originY); drawList.push({ depth: pr.gx + pr.gy, draw: () => pr.type === 'cactus' ? drawCactus(ctx, wp.x, wp.y, pr.variant) : drawRock(ctx, wp.x, wp.y, pr.variant) }); }
+        for (const nh of this.map.northVillage) { const wp = isoToWorld(nh.gx, nh.gy, 2, originX, originY); drawList.push({ depth: nh.gx + nh.gy, draw: () => drawHouse(ctx, wp.x, wp.y, nh, 0.86, this.time, cyc.nightFactor) }); }
+        for (const o of this.orchards) { const wp = isoToWorld(o.gx, o.gy, 2, originX, originY); drawList.push({ depth: o.gx + o.gy - 0.35, draw: () => drawOrchard(ctx, wp.x, wp.y, o.anim, o.dried) }); }
+        const ratio = this.water / this.getStorageTierObj().capacity;
+        { const p = this.map.storagePos.drums, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy, draw: () => drawStorageTambores(ctx, wp.x, wp.y, ratio) }); }
+        if (this.storageTier >= 1) { const p = this.map.storagePos.tank, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy - 0.1, draw: () => drawStorageEstanque(ctx, wp.x, wp.y, ratio, this.time) }); }
+        if (this.storageTier >= 2) { const p = this.map.storagePos.tower, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy + 0.1, draw: () => drawStorageCopa(ctx, wp.x, wp.y, this.time) }); }
+        for (const h of this.houses) { const wp = isoToWorld(h.gx, h.gy, 2, originX, originY); drawList.push({ depth: h.gx + h.gy, draw: () => drawHouse(ctx, wp.x, wp.y, h, h.anim, this.time, cyc.nightFactor) }); }
+        for (const tr of this.trees) { const wp = isoToWorld(tr.gx, tr.gy, 2, originX, originY); drawList.push({ depth: tr.gx + tr.gy + 0.05, draw: () => drawTree(ctx, wp.x, wp.y, tr.anim) }); }
+        const canAfford = this.funds >= this.getNextMeshCost();
+        for (const pad of this.map.pads) {
+          const wp = isoToWorld(pad.gx, pad.gy, pad.h, originX, originY), hov = (this.hoveredPad && this.hoveredPad.id === pad.id) || this.selectedPadId === pad.id;
+          drawList.push({ depth: pad.gx + pad.gy + 0.15, draw: () => pad.built ? drawAtrapanieblas(ctx, wp.x, wp.y, pad, this.time, hov) : drawBuildPad(ctx, wp.x, wp.y, pad, this.time, hov, canAfford) });
+        }
+        for (const c of this.carriers) {
+          const tx = Math.max(0, Math.min(this.map.size - 1, Math.round(c.gx))), ty = Math.max(0, Math.min(this.map.size - 1, Math.round(c.gy)));
+          const wp = isoToWorld(c.gx, c.gy, this._sampleElev(c.gx, c.gy, this.map.tiles[ty][tx].h), originX, originY);
+          drawList.push({ depth: c.gx + c.gy + 0.2, draw: () => drawCarrier(ctx, wp.x, wp.y, c, this.time) });
+        }
+        drawList.sort((a, b) => a.depth - b.depth);
+        for (const it of drawList) it.draw();
+
+        // Bancos de camanchaca en pixel art (densidad dinámica según ciclo día/noche)
+        for (const c of this.map.fogClouds) drawFogBank(ctx, c, this.time, cyc.fogDensity, cyc.sunWarmth, cyc.nightFactor);
+        for (const pad of this.map.pads) if (pad.built && pad.alertActive) { const wp = isoToWorld(pad.gx, pad.gy, pad.h, originX, originY); drawAlertBubble(ctx, wp.x, wp.y, pad, this.time); }
+        for (const p of this.particles) { ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2)); ctx.fillStyle = p.color; ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size); }
+        ctx.globalAlpha = 1;
+
+        ctx.font = 'bold 6px system-ui, sans-serif'; ctx.textAlign = 'center';
+        for (const f of this.floatingTexts) {
+          ctx.globalAlpha = Math.max(0, Math.min(1, f.life / 0.4));
+          ctx.fillStyle = 'rgba(18, 34, 52, 0.85)'; ctx.fillText(f.text, Math.round(f.x) + 0.5, Math.round(f.y) + 0.5);
+          ctx.fillStyle = f.color; ctx.fillText(f.text, Math.round(f.x), Math.round(f.y));
+        }
+        ctx.globalAlpha = 1;
+
+        if (this.hoveredPad && !this.hoveredPad.built && this.running && !this.finished) {
+          const pad = this.hoveredPad, wp = isoToWorld(pad.gx, pad.gy, pad.h, originX, originY);
+          const cost = this.getNextMeshCost(), ok = this.funds >= cost, x = Math.round(wp.x), y = Math.round(wp.y) - 16;
+          const label = `$${cost} · ${pad.fogLabel}`;
+          ctx.font = 'bold 5.5px system-ui, sans-serif';
+          const w = ctx.measureText(label).width + 8;
+          ctx.fillStyle = 'rgba(18, 36, 54, 0.88)'; ctx.fillRect(x - w / 2, y - 11, w, 11);
+          ctx.strokeStyle = ok ? '#ffd952' : '#e0725c'; ctx.lineWidth = 0.7; ctx.strokeRect(x - w / 2, y - 11, w, 11);
+          ctx.fillStyle = ok ? '#fff5cc' : '#ffb8aa'; ctx.fillText(label, x, y - 3.5);
+        }
+        ctx.restore();
+
+        // Iluminación atmosférica de ciclo día / atardecer / noche de camanchaca
+        if (cyc.sunWarmth > 0.02) {
+          ctx.fillStyle = `rgba(235, 134, 62, ${(cyc.sunWarmth * 0.16).toFixed(3)})`;
+          ctx.fillRect(0, 0, this.viewW, this.viewH);
+        }
+        if (cyc.nightFactor > 0.02) {
+          ctx.fillStyle = `rgba(14, 30, 62, ${(cyc.nightFactor * 0.40).toFixed(3)})`;
+          ctx.fillRect(0, 0, this.viewW, this.viewH);
+        }
+        const vigR = Math.round(223 * (1 - cyc.nightFactor * 0.72));
+        const vigG = Math.round(232 * (1 - cyc.nightFactor * 0.62));
+        const vigB = Math.round(236 * (1 - cyc.nightFactor * 0.45));
+        const grad = ctx.createRadialGradient(this.viewW / 2, this.viewH / 2, Math.min(this.viewW, this.viewH) * 0.36, this.viewW / 2, this.viewH / 2, Math.max(this.viewW, this.viewH) * 0.76);
+        grad.addColorStop(0, `rgba(${vigR}, ${vigG}, ${vigB}, 0)`);
+        grad.addColorStop(1, `rgba(${vigR}, ${vigG}, ${vigB}, ${(0.38 + cyc.fogDensity * 0.12).toFixed(3)})`);
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, this.viewW, this.viewH);
+        ctx.restore();
+      }
+
+      _hitTest(wx, wy) {
+        const { originX, originY } = this.map;
+        for (const pad of this.map.pads) {
+          if (!pad.built || !pad.alertActive) continue;
+          const wp = isoToWorld(pad.gx, pad.gy, pad.h, originX, originY);
+          if ((Math.abs(wx - wp.x) <= 18 && Math.abs(wy - (wp.y - 31)) <= 19) || (Math.abs(wx - wp.x) <= 18 && Math.abs(wy - (wp.y - 10)) <= 20)) return { type: 'alert', pad };
+        }
+        let closest = null, best = 20;
+        for (const pad of this.map.pads) { const wp = isoToWorld(pad.gx, pad.gy, pad.h, originX, originY); const d = Math.hypot(wx - wp.x, (wy - (wp.y + 4)) * 1.45); if (d < best) { best = d; closest = pad; } }
+        if (closest) return { type: closest.built ? 'mesh' : 'pad', pad: closest };
+        const tp = isoToWorld(this.map.storagePos.tank.gx, this.map.storagePos.tank.gy, 2, originX, originY);
+        if (Math.hypot(wx - tp.x, wy - tp.y) < 32) return { type: 'storage' };
+        return null;
+      }
+
+      _handleClick(wx, wy) {
+        if (!this.running || this.finished) return;
+        this.sound.unlock();
+        const hit = this._hitTest(wx, wy); if (!hit) return;
+        if (hit.type === 'alert') this.dispatchToPad(hit.pad);
+        else if (hit.type === 'pad') this._installMeshOnPad(hit.pad, false);
+        else if (hit.type === 'mesh') this.selectPad(hit.pad);
+        else if (hit.type === 'storage') {
+          if (this.getNextStorageTier() && this.funds >= this.getStorageUpgradeCost()) this.upgradeStorage();
+          else { const t = this.getStorageTierObj(), wp = isoToWorld(42.5, 43.5, 2, this.map.originX, this.map.originY); this._addFloatingText(wp.x, wp.y - 22, `${Math.floor(this.water)}/${t.capacity}L`, '#cceeff'); }
+        }
+      }
+
+      _bindEvents() {
+        window.addEventListener('resize', () => this.resize());
+        window.addEventListener('keydown', (e) => {
+          this.keys.add(e.code);
+          if (!this.running || this.finished) return;
+          if (e.code === 'Space') { e.preventDefault(); this.focusNextAlert(); }
+          else if (e.code === 'KeyC') this.centerOnCaleta(false);
+          else if (e.code === 'Equal' || e.code === 'NumpadAdd') this.zoomBy(1.22);
+          else if (e.code === 'Minus' || e.code === 'NumpadSubtract') this.zoomBy(0.82);
+        });
+        window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+
+        const c = this.canvas;
+        c.addEventListener('pointerdown', (e) => {
+          this.callbacks.onMapInteract?.();
+          c.setPointerCapture(e.pointerId);
+          this.activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (this.activeTouches.size === 2) { const pts = Array.from(this.activeTouches.values()); this.pointer.pinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y); this.pointer.down = false; return; }
+          this.pointer.down = true; this.pointer.lastX = e.clientX; this.pointer.lastY = e.clientY; this.pointer.moved = 0; this.cam.smoothActive = false;
+        });
+        c.addEventListener('pointermove', (e) => {
+          const rect = c.getBoundingClientRect();
+          this.pointer.screenX = e.clientX - rect.left; this.pointer.screenY = e.clientY - rect.top;
+          if (this.activeTouches.has(e.pointerId)) this.activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (this.activeTouches.size === 2) {
+            const pts = Array.from(this.activeTouches.values()), dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+            if (this.pointer.pinchDist > 0) { this.cam.zoom = Math.max(this.cam.minZoom, Math.min(this.cam.maxZoom, this.cam.zoom * (dist / this.pointer.pinchDist))); this.cam.targetZoom = this.cam.zoom; }
+            this.pointer.pinchDist = dist; return;
+          }
+          if (this.pointer.down) {
+            const dx = e.clientX - this.pointer.lastX, dy = e.clientY - this.pointer.lastY;
+            this.pointer.moved += Math.hypot(dx, dy); this.pointer.lastX = e.clientX; this.pointer.lastY = e.clientY;
+            if (this.pointer.moved > 4) { this.cam.x -= dx / this.cam.zoom; this.cam.y -= dy / this.cam.zoom; this.cam.targetX = this.cam.x; this.cam.targetY = this.cam.y; c.style.cursor = 'grabbing'; }
+          } else {
+            const w = this.screenToWorld(this.pointer.screenX, this.pointer.screenY), hit = this._hitTest(w.x, w.y);
+            this.hoveredPad = hit && (hit.type === 'pad' || hit.type === 'alert' || hit.type === 'mesh') ? hit.pad : null;
+            c.style.cursor = hit ? 'pointer' : 'grab';
+          }
+        });
+        const onEnd = (e) => {
+          this.activeTouches.delete(e.pointerId);
+          if (this.activeTouches.size < 2) this.pointer.pinchDist = 0;
+          if (this.pointer.down && this.pointer.moved < 8) { const rect = c.getBoundingClientRect(), w = this.screenToWorld(e.clientX - rect.left, e.clientY - rect.top); this._handleClick(w.x, w.y); }
+          this.pointer.down = false; c.style.cursor = 'grab';
+        };
+        c.addEventListener('pointerup', onEnd); c.addEventListener('pointercancel', onEnd);
+        c.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const rect = c.getBoundingClientRect(), sx = e.clientX - rect.left, sy = e.clientY - rect.top, before = this.screenToWorld(sx, sy);
+          this.cam.zoom = Math.max(this.cam.minZoom, Math.min(this.cam.maxZoom, this.cam.zoom * (e.deltaY < 0 ? 1.14 : 0.88)));
+          this.cam.targetZoom = this.cam.zoom; this.cam.smoothActive = false;
+          this.cam.x = before.x - (sx - this.viewW / 2) / this.cam.zoom; this.cam.y = before.y - (sy - this.viewH / 2) / this.cam.zoom;
+          this.cam.targetX = this.cam.x; this.cam.targetY = this.cam.y;
+        }, { passive: false });
+      }
+
+      resize() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.viewW = Math.max(320, Math.floor(rect.width)); this.viewH = Math.max(320, Math.floor(rect.height));
+        this.canvas.width = Math.floor(this.viewW * this.dpr); this.canvas.height = Math.floor(this.viewH * this.dpr);
+      }
+    }
+
+    const $ = (id) => document.getElementById(id);
+    const sound = new SoundEngine();
+    let activeDrawer = null, hintDismissed = false, pipeHintDismissed = false, hintKind = 'tutorial', toastTimer = null;
+
+    const dockPanelBtns = document.querySelectorAll('.dock-btn[data-panel]');
+    const drawerPanels = { storage: $('panel-storage'), mesh: $('panel-mesh'), camera: $('panel-camera'), options: $('panel-options') };
+
+    const setDrawer = (name, force = false) => {
+      if ((activeDrawer === name && !force) || !name) { activeDrawer = null; $('dock-drawer').classList.add('hidden'); }
+      else { activeDrawer = name; $('dock-drawer').classList.remove('hidden'); }
+      Object.entries(drawerPanels).forEach(([k, el]) => el.classList.toggle('hidden', k !== activeDrawer));
+      dockPanelBtns.forEach((b) => b.classList.toggle('active', b.dataset.panel === activeDrawer));
+    };
+
+    const showToast = (msg, kind = 'ok') => {
+      const el = $('toast-banner');
+      el.textContent = msg;
+      el.classList.toggle('warn', kind === 'warn');
+      el.classList.add('visible');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('visible'), kind === 'warn' ? 2800 : 2200);
+    };
+
+    const game = new AtrapanieblasGame($('game-canvas'), sound, {
+      onMapInteract() { if (activeDrawer) setDrawer(null); },
+      onSelectMesh() { setDrawer('mesh', true); },
+      onHUD(s) {
+        $('water-val').textContent = `${s.water}/${s.capacity}L`;
+        $('water-drain-tag').textContent = s.waterDrainRate > 0 ? `-${s.waterDrainRate.toFixed(1)}/s` : '0/s';
+        const bar = $('water-bar');
+        bar.style.width = `${Math.min(100, Math.round((s.water / Math.max(1, s.capacity)) * 100))}%`;
+        bar.classList.toggle('danger', s.droughtActive);
+        bar.classList.toggle('warn', !s.droughtActive && s.waterLow);
+        $('water-chip').classList.toggle('danger', s.droughtActive);
+        $('water-chip').classList.toggle('warn', !s.droughtActive && s.waterLow);
+        $('pop-chip').classList.toggle('danger', s.droughtActive || s.abandonedHouses > 0);
+        $('funds-val').textContent = `$${s.funds}`;
+        $('pop-val').textContent = `${s.population}`;
+        $('carriers-val').textContent = `${s.carriersIdle}/${s.carriersTotal}`;
+        $('meshes-val').textContent = `${s.meshesBuilt}`;
+        $('mesh-cost-tag').textContent = `$${s.nextMeshCost}`;
+        $('cycle-ico').textContent = s.cycleIcon || '🌅';
+        $('cycle-val').textContent = s.cycleLabel || 'Amanecer';
+        $('cycle-mult').textContent = `×${(s.cycleFogMult || 1).toFixed(1)}`;
+
+        if (s.mode === 'exhibition') {
+          $('timer-pill').style.display = 'inline-flex';
+          const secs = Math.ceil(s.remaining);
+          $('timer-val').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+          $('timer-pill').classList.toggle('urgent', secs <= 10 && secs > 0);
+        } else {
+          $('timer-pill').style.display = 'none';
+        }
+
+        if (s.pendingAlerts > 0) { $('dock-alert').classList.remove('hidden'); $('alert-badge').textContent = String(s.pendingAlerts); }
+        else { $('dock-alert').classList.add('hidden'); }
+
+        $('storage-cur-name').textContent = `${s.storageName} (${s.capacity} L)`;
+        $('storage-dot').classList.toggle('hidden', !s.canUpgradeStorage);
+        if (s.nextStorageName) {
+          $('btn-upgrade').disabled = !s.canUpgradeStorage;
+          $('storage-next-info').textContent = `Siguiente: ${s.nextStorageName} (${s.nextStorageCap} L)`;
+          $('upgrade-title').textContent = s.canUpgradeStorage ? `Mejorar ahora ($${s.nextStorageCost})` : `Requiere $${s.nextStorageCost}`;
+        } else {
+          $('btn-upgrade').disabled = true;
+          $('storage-next-info').textContent = 'Almacenamiento al máximo.';
+          $('upgrade-title').textContent = 'Nivel máximo';
+        }
+
+        const m = s.selMesh;
+        if (m) {
+          const st = m.pipeState;
+          $('mesh-title').textContent = `Atrapanieblas #${m.n}`;
+          $('mesh-fog').textContent = m.fogLabel;
+          $('mesh-flow').textContent = `${m.flowPerMin} L/min`;
+          $('mesh-pipe-state').textContent = st === 'active' ? 'Conectada a la caleta' : st === 'laying' ? `Instalando… ${Math.round(m.pipeProgress * 100)}%` : 'Sin cañería';
+          $('mesh-bar-fill').style.width = `${st === 'none' ? m.fill : st === 'laying' ? m.pipeProgress * 100 : 100}%`;
+          $('mesh-info').textContent = st === 'none'
+            ? `Hoy el agua se junta en un bidón (${m.fill}%) y debes enviar un transportista. Con cañería baja sola hasta la caleta y desaparece la alerta (!).`
+            : st === 'laying' ? 'Tendiendo la cañería desde la malla hacia la caleta…' : 'El agua baja directo al almacenamiento de la caleta, sin transportistas.';
+          $('btn-mesh-pipe').disabled = st !== 'none' || !m.canBuy;
+          $('mesh-pipe-title').textContent = st === 'none' ? (m.canBuy ? `Comprar cañería ($${m.cost})` : `Requiere $${m.cost}`) : st === 'laying' ? 'Instalando…' : 'Cañería instalada';
+        }
+
+        let hintMsg = null;
+        if (s.tutorialStep < 2) { hintKind = 'tutorial'; hintMsg = s.tutorialStep === 0 ? 'Toca la alerta (!) en el cerro para enviar un transportista' : `Toca una plataforma (+) para instalar otra malla ($${s.nextMeshCost})`; }
+        else if (s.pipeHint) { hintKind = 'pipe'; hintMsg = 'Toca una malla para comprarle su cañería: el agua bajará sola a la caleta'; }
+        const hintOff = hintKind === 'pipe' ? pipeHintDismissed : hintDismissed;
+        if (!s.running || s.finished || hintOff || !hintMsg) { $('hint-banner').classList.add('hidden'); }
+        else { $('hint-banner').classList.remove('hidden'); $('hint-text').textContent = hintMsg; }
+      },
+      onToast: showToast,
+      onFinish(st) {
+        setDrawer(null);
+        $('sum-water').textContent = `${st.totalWaterHarvested} L`;
+        $('sum-pop').textContent = `${st.population} hab.`;
+        $('sum-meshes').textContent = `${st.meshesBuilt}`;
+        $('sum-storage').textContent = st.storageName;
+        const houseSummary = st.abandonedHouses > 0
+          ? `${st.housesCount} casas habitadas (${st.abandonedHouses} abandonadas por sequía)`
+          : `${st.housesCount} casas habitadas`;
+        $('sum-detail').textContent = `Tu caleta cerró el minuto con ${houseSummary}, ${st.orchardsCount} huertos verdes y ${st.carriersCount} transportistas activos.`;
+        $('sum-fact').textContent = EDUCATIONAL_FACTS[Math.floor(Math.random() * EDUCATIONAL_FACTS.length)];
+        $('finish-modal').classList.remove('hidden');
+      },
+    });
+
+    dockPanelBtns.forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); setDrawer(b.dataset.panel); }));
+    document.querySelectorAll('[data-close-drawer]').forEach((b) => b.addEventListener('click', () => setDrawer(null)));
+    $('dock-alert').addEventListener('click', () => { setDrawer(null); game.focusNextAlert(); });
+    $('btn-hint-close').addEventListener('click', () => { if (hintKind === 'pipe') pipeHintDismissed = true; else hintDismissed = true; $('hint-banner').classList.add('hidden'); });
+
+    const launch = (mode) => { hintDismissed = false; pipeHintDismissed = false; setDrawer(null); $('start-modal').classList.add('hidden'); $('finish-modal').classList.add('hidden'); $('hud').classList.remove('hidden'); game.startMode(mode); };
+    $('btn-play-60').addEventListener('click', () => launch('exhibition'));
+    $('btn-play-endless').addEventListener('click', () => launch('endless'));
+    $('btn-replay-60').addEventListener('click', () => launch('exhibition'));
+    $('btn-continue-endless').addEventListener('click', () => { $('finish-modal').classList.add('hidden'); game.continueEndless(); showToast('Modo Libre activado'); });
+    $('btn-menu').addEventListener('click', () => { setDrawer(null); game.paused = true; $('start-modal').classList.remove('hidden'); });
+    $('btn-mute').addEventListener('click', () => { const m = sound.toggleMute(); $('mute-ico').textContent = m ? '🔇' : '🔊'; $('mute-lbl').textContent = m ? 'Sonido silenciado' : 'Sonido activado'; });
+    $('btn-upgrade').addEventListener('click', () => { if (game.upgradeStorage()) setDrawer(null); });
+    $('btn-mesh-pipe').addEventListener('click', () => { game.buyPipeForSelected(); });
+    $('btn-zoom-in').addEventListener('click', () => game.zoomBy(1.24));
+    $('btn-zoom-out').addEventListener('click', () => game.zoomBy(0.8));
+    $('btn-caleta').addEventListener('click', () => { game.centerOnCaleta(false); setDrawer(null); });
+    $('btn-full-map').addEventListener('click', () => { game.showFullMap(); setDrawer(null); });
+  })();
+  </script>
+</body>
+</html>
