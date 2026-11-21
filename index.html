@@ -431,46 +431,94 @@
     function fbm(x, y, seed = 42) { let val = 0, amp = 0.55, freq = 1; for (let i = 0; i < 4; i++) { val += smoothNoise(x * freq, y * freq, seed + i * 97) * amp; freq *= 2.02; amp *= 0.48; } return val; }
     function isoToWorld(gx, gy, h = 0, originX = 0, originY = 0) { return { x: originX + (gx - gy) * (TILE_W / 2), y: originY + (gx + gy) * (TILE_H / 2) - h * ELEV_H }; }
 
+    const BAYER4 = [
+      [0, 8, 2, 10],
+      [12, 4, 14, 6],
+      [3, 11, 1, 9],
+      [15, 7, 13, 5],
+    ];
+    const FOG_RGB = [223, 232, 236];
+    const TERRAIN_RAMPS = {
+      // [shadow, mid-dark, mid, lit, highlight] — paleta cálida del desierto costero chileno
+      wetSand:    [[142, 112, 74],  [168, 136, 94],  [192, 158, 110], [210, 176, 126], [224, 192, 142]],
+      sand:       [[178, 142, 92],  [208, 172, 116], [230, 196, 138], [244, 214, 158], [252, 228, 180]],
+      foothill:   [[148, 96, 62],   [182, 122, 78],  [210, 148, 96],  [228, 170, 116], [242, 192, 138]],
+      terracotta: [[118, 64, 48],   [152, 84, 60],   [184, 106, 74],  [206, 128, 92],  [224, 152, 114]],
+      ridge:      [[112, 84, 78],   [142, 108, 98],  [170, 134, 120], [194, 158, 142], [214, 182, 166]],
+      peak:       [[136, 120, 116], [164, 148, 144], [190, 176, 172], [212, 200, 196], [230, 222, 218]],
+      cliff:      [[104, 70, 54],   [134, 92, 70],   [164, 116, 88],  [188, 140, 108], [208, 164, 130]],
+      path:       [[174, 148, 106], [204, 178, 130], [230, 206, 156], [244, 224, 178], [252, 238, 200]],
+    };
+    const OCEAN_RAMP = [
+      [18, 68, 132], [24, 84, 154], [30, 102, 174], [38, 124, 192],
+      [48, 150, 206], [62, 178, 216], [88, 204, 224], [126, 224, 232],
+    ];
+
     function generateCoastalMap(seed = 2027) {
       const rand = mulberry32(seed), size = MAP_SIZE;
       const canvasW = size * TILE_W + 180, canvasH = size * TILE_H + 22 * ELEV_H + 180;
       const originX = Math.floor(canvasW / 2), originY = 140;
       const tiles = Array.from({ length: size }, () => new Array(size));
+
       const getCoastY = (gx) => {
         let cy = 35.5 + (gx - 12) * 0.24;
         cy -= 4.2 * Math.exp(-Math.pow((gx - 14) / 5.5, 2));
         cy -= 5.0 * Math.exp(-Math.pow((gx - 31) / 5.8, 2));
         cy += 7.2 * Math.exp(-Math.pow((gx - 43.5) / 6.8, 2));
         cy += (smoothNoise(gx * 0.17, 1.5, seed + 11) - 0.5) * 3.0;
+        cy += (smoothNoise(gx * 0.52, 4.1, seed + 37) - 0.5) * 1.05;
         return cy;
       };
+
+      const sampleRawTerrain = (gx, gy) => {
+        const nx = (gx - size * 0.5) / (size * 0.48), ny = (gy - size * 0.5) / (size * 0.48);
+        const distEdge = Math.hypot(nx * 0.96, ny * 0.98) + (fbm(gx * 0.11, gy * 0.11, seed + 501) - 0.5) * 0.34;
+        const fogAlpha = Math.max(0, Math.min(1, (distEdge - 0.72) / 0.28));
+        const inland = getCoastY(gx) - gy;
+        if (inland <= 0) {
+          return { h: 0, isWater: true, waterDepth: Math.min(1, -inland / 11.5), inland, fogAlpha, biome: 'ocean' };
+        }
+        // Transición suave desde la orilla (sin muro vertical de arena)
+        const shoreRamp = Math.min(1, inland / 2.2);
+        let elev = 0.28 + shoreRamp * 1.45;
+        if (inland > 2.6) elev += Math.pow((inland - 2.6) * 0.42, 1.13);
+        elev += 8.6 * Math.exp(-(Math.pow((gx - 18) / 13, 2) + Math.pow((gy - 9) / 8.5, 2)));
+        elev += 5.8 * Math.exp(-(Math.pow((gx - 47) / 8.5, 2) + Math.pow((gy - 27) / 7.5, 2)));
+        elev += 5.1 * Math.exp(-(Math.pow((gx - 35) / 8.0, 2) + Math.pow((gy - 21) / 7.0, 2)));
+        elev += 4.3 * Math.exp(-(Math.pow((gx - 22) / 8.0, 2) + Math.pow((gy - 20) / 6.5, 2)));
+        // Quebradas y crestas erosionadas del norte chileno
+        const baseNoise = fbm(gx * 0.09, gy * 0.09, seed + 17);
+        const ridgeNoise = 1 - Math.abs(fbm(gx * 0.14, gy * 0.14, seed + 89) * 2 - 1);
+        const detail = (smoothNoise(gx * 0.32, gy * 0.32, seed + 73) - 0.5) * 0.85;
+        elev += ((baseNoise - 0.48) * 3.8 + (ridgeNoise - 0.52) * 2.2 + detail) * Math.min(1, inland / 3.5);
+
+        // Explanada suave de la caleta principal
+        const cd = Math.hypot((gx - 42.5) / 6.6, (gy - 43.2) / 5.6);
+        if (cd < 1.25) {
+          const t = Math.max(0, Math.min(1, (cd - 0.74) / 0.51));
+          const b = t * t * (3 - 2 * t);
+          const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
+          elev = targetH * (1 - b) + elev * b;
+        }
+        // Caleta norte
+        const nd = Math.hypot((gx - 15) / 3.6, (gy - 31) / 2.8);
+        if (nd < 1.2) {
+          const t = Math.max(0, Math.min(1, (nd - 0.65) / 0.55));
+          const b = t * t * (3 - 2 * t);
+          const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
+          elev = targetH * (1 - b) + elev * b;
+        }
+        const h = Math.max(0.25, Math.min(19.5, elev));
+        const biome = h <= 2.3 || (h <= 3.1 && inland < 6.2) ? 'sand' : h <= 6.8 ? 'foothill' : h <= 11.8 ? 'terracotta' : h <= 16.2 ? 'ridge' : 'peak';
+        return { h, isWater: false, waterDepth: 0, inland, fogAlpha, biome };
+      };
+
       for (let gy = 0; gy < size; gy++) {
         for (let gx = 0; gx < size; gx++) {
-          const nx = (gx - size * 0.5) / (size * 0.48), ny = (gy - size * 0.5) / (size * 0.48);
-          const distEdge = Math.hypot(nx * 0.96, ny * 0.98) + (fbm(gx * 0.11, gy * 0.11, seed + 501) - 0.5) * 0.34;
-          const fogAlpha = Math.max(0, Math.min(1, (distEdge - 0.72) / 0.28));
-          const inland = getCoastY(gx) - gy;
-          let h = 0, isWater = false, waterDepth = 0, biome = 'ocean';
-          if (inland <= 0) { isWater = true; waterDepth = Math.min(1, -inland / 11.5); }
-          else {
-            let elev = 1.6;
-            if (inland > 3.2) elev += Math.pow((inland - 3.2) * 0.44, 1.16);
-            elev += 9.5 * Math.exp(-(Math.pow((gx - 18) / 13, 2) + Math.pow((gy - 9) / 8.5, 2)));
-            elev += 6.2 * Math.exp(-(Math.pow((gx - 47) / 8.5, 2) + Math.pow((gy - 27) / 7.5, 2)));
-            elev += 5.4 * Math.exp(-(Math.pow((gx - 35) / 8.0, 2) + Math.pow((gy - 21) / 7.0, 2)));
-            elev += 4.6 * Math.exp(-(Math.pow((gx - 22) / 8.0, 2) + Math.pow((gy - 20) / 6.5, 2)));
-            elev += (fbm(gx * 0.09, gy * 0.09, seed + 17) - 0.48) * 4.2 + (smoothNoise(gx * 0.25, gy * 0.25, seed + 73) - 0.5) * 1.4;
-            const cd = Math.hypot((gx - 42.5) / 6.2, (gy - 43.2) / 5.2);
-            if (cd < 1.15) { const b = Math.max(0, Math.min(1, (cd - 0.72) / 0.43)); elev = 2 * (1 - b) + elev * b; }
-            const nd = Math.hypot((gx - 15) / 3.4, (gy - 31) / 2.6);
-            if (nd < 1.15) { const b = Math.max(0, Math.min(1, (nd - 0.65) / 0.5)); elev = 2 * (1 - b) + elev * b; }
-            h = Math.max(1, Math.min(20, Math.round(elev)));
-            biome = h <= 2 || (h <= 3 && inland < 6.5) ? 'sand' : h <= 6 ? 'foothill' : h <= 10 ? 'terracotta' : h <= 15 ? 'ridge' : 'peak';
-          }
-          tiles[gy][gx] = { gx, gy, h, isWater, waterDepth, biome, fogAlpha, isPath: false, isPad: false, padId: null, speck: hash2D(gx, gy, seed + 303) };
+          const s = sampleRawTerrain(gx, gy);
+          tiles[gy][gx] = { gx, gy, h: s.h, isWater: s.isWater, waterDepth: s.waterDepth, biome: s.biome, fogAlpha: s.fogAlpha, isPath: false, isPad: false, padId: null, speck: hash2D(gx, gy, seed + 303) };
         }
       }
-      for (let gy = 39; gy <= 47; gy++) for (let gx = 38; gx <= 47; gx++) if (!tiles[gy][gx].isWater) { tiles[gy][gx].h = 2; tiles[gy][gx].biome = 'sand'; }
 
       const rawPads = [
         { gx: 46, gy: 32, starter: true, zone: 'Lomo Camanchaca' }, { gx: 49, gy: 36, zone: 'Cima Sur' },
@@ -488,11 +536,28 @@
       rawPads.forEach((cfg, idx) => {
         const t = tiles[cfg.gy]?.[cfg.gx];
         if (!t || t.isWater || t.fogAlpha > 0.55) return;
-        const padH = Math.max(5, Math.min(16, t.h));
+        const padH = Math.max(4.5, Math.min(19.0, t.h));
         t.h = padH; t.isPad = true; t.padId = idx;
-        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const nb = tiles[cfg.gy + dy]?.[cfg.gx + dx]; if (nb && !nb.isWater && !nb.isPad && Math.abs(nb.h - padH) > 2) nb.h = padH + Math.sign(nb.h - padH); }
         pads.push({ id: idx, gx: cfg.gx, gy: cfg.gy, h: padH, zone: cfg.zone, fogYield: padH >= 12 ? 1.55 : padH >= 9 ? 1.28 : 1.0, fogLabel: padH >= 12 ? 'Intensa' : padH >= 9 ? 'Alta' : 'Media', starter: Boolean(cfg.starter), built: false, fill: 0, alertActive: false, dispatched: false, queued: false, trail: null, buildAnim: 0, dripPhase: rand() * Math.PI * 2 });
       });
+
+      // Muestreo continuo final (pequeña terraza natural bajo cada plataforma, sin cráteres)
+      const sampleTerrain = (gx, gy) => {
+        const s = sampleRawTerrain(gx, gy);
+        if (s.isWater) return s;
+        let h = s.h;
+        for (let i = 0; i < pads.length; i++) {
+          const p = pads[i];
+          const d = Math.hypot(gx - p.gx, gy - p.gy);
+          if (d < 1.05) {
+            const t = Math.max(0, Math.min(1, (d - 0.45) / 0.6));
+            const b = t * t * (3 - 2 * t);
+            h = p.h * (1 - b) + h * b;
+          }
+        }
+        s.h = h;
+        return s;
+      };
 
       const props = [];
       for (let gy = 5; gy < size - 5; gy++) for (let gx = 5; gx < size - 5; gx++) {
@@ -528,7 +593,7 @@
       for (let gx = 40; gx >= 34; gx--) if (tiles[45]?.[gx]?.isWater) { pierAnchor = { gx: gx + 1, gy: 45 }; break; }
       const boats = [{ gx: pierAnchor.gx - 2.6, gy: pierAnchor.gy + 2.2, phase: 0.2 }, { gx: pierAnchor.gx - 4.4, gy: pierAnchor.gy + 0.5, phase: 2.1 }, { gx: pierAnchor.gx - 1.2, gy: pierAnchor.gy + 4.3, phase: 4.0 }, { gx: 13.5, gy: 34.8, phase: 1.4 }, { gx: 15.6, gy: 35.6, phase: 3.3 }];
       const fogClouds = Array.from({ length: 24 }, () => ({ x: originX + (rand() - 0.5) * 1150, y: originY + 80 + rand() * 560, rx: 42 + rand() * 75, ry: 16 + rand() * 26, speed: 5 + rand() * 9, alpha: 0.14 + rand() * 0.18, phase: rand() * Math.PI * 2 }));
-      return { size, tiles, pads, props, hub, storagePos, houseSlots, orchardSlots, treeSlots, northVillage, pierAnchor, boats, fogClouds, canvasW, canvasH, originX, originY };
+      return { seed, size, tiles, pads, props, hub, storagePos, houseSlots, orchardSlots, treeSlots, northVillage, pierAnchor, boats, fogClouds, canvasW, canvasH, originX, originY, sampleTerrain };
     }
 
     function findTrailPath(map, sx, sy, gx, gy) {
@@ -582,32 +647,168 @@
     function bakeTerrainCanvas(map) {
       const canvas = document.createElement('canvas'); canvas.width = map.canvasW; canvas.height = map.canvasH;
       const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = PALETTE.fogBg; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      const { size, tiles, originX, originY } = map;
-      for (let d = 0; d <= (size - 1) * 2; d++) {
-        for (let gx = 0; gx < size; gx++) {
-          const gy = d - gx; if (gy < 0 || gy >= size) continue;
-          const tile = tiles[gy][gx]; if (tile.fogAlpha >= 0.99) continue;
-          const pos = isoToWorld(gx, gy, tile.h, originX, originY), cx = Math.round(pos.x), cy = Math.round(pos.y);
-          if (tile.isWater) {
-            let col = tile.waterDepth < 0.28 ? PALETTE.oceanShallow[Math.min(2, Math.floor((1 - tile.waterDepth / 0.28) * 3))] : tile.waterDepth < 0.62 ? PALETTE.oceanMid[Math.min(2, Math.floor(((0.62 - tile.waterDepth) / 0.34) * 3))] : PALETTE.oceanDeep[Math.min(2, Math.floor(((1 - tile.waterDepth) / 0.38) * 3))];
-            fillIsoDiamond(ctx, cx, cy, col);
-            const adj = (gx > 0 && !tiles[gy][gx - 1].isWater) || (gy > 0 && !tiles[gy - 1][gx].isWater) || (gx < size - 1 && !tiles[gy][gx + 1].isWater) || (gy < size - 1 && !tiles[gy + 1][gx].isWater);
-            if (adj) { ctx.fillStyle = PALETTE.foam; ctx.fillRect(cx - 4, cy + 2, 4, 1); ctx.fillRect(cx + 1, cy + 3, 5, 1); }
-            else if (tile.speck > 0.86) { ctx.fillStyle = 'rgba(220, 246, 250, 0.35)'; ctx.fillRect(cx - 3, cy + 5, 4, 1); }
-          } else {
-            const pal = tile.isPath ? PALETTE.path : (PALETTE[tile.biome] || PALETTE.sand);
-            const minNb = Math.min(gy < size - 1 ? tiles[gy + 1][gx].h : 0, gx < size - 1 ? tiles[gy][gx + 1].h : 0);
-            fillIsoSides(ctx, cx, cy, Math.min(Math.max(1, tile.h - minNb + 1) * ELEV_H + 2, 48), pal.left, pal.right);
-            fillIsoDiamond(ctx, cx, cy, tile.speck > 0.52 ? pal.top : pal.alt);
-            if (tile.h > (gx > 0 ? tiles[gy][gx - 1].h : tile.h) || tile.h > (gy > 0 ? tiles[gy - 1][gx].h : tile.h) || tile.isPath) drawIsoRim(ctx, cx, cy, pal.rim);
-            if (!tile.isPath && tile.speck < 0.22) { ctx.fillStyle = pal.speck; ctx.fillRect(cx - 3, cy + 4, 2, 1); ctx.fillRect(cx + 2, cy + 6, 2, 1); }
-          }
-          if (tile.fogAlpha > 0.04) { ctx.save(); ctx.globalAlpha = Math.min(0.95, tile.fogAlpha * 1.05); fillIsoDiamond(ctx, cx, cy, PALETTE.fogBg); if (!tile.isWater) fillIsoSides(ctx, cx, cy, 12, PALETTE.fogBg, PALETTE.fogBg); ctx.restore(); }
+      const W = canvas.width, H = canvas.height;
+      const img = ctx.createImageData(W, H), data = img.data;
+      // Rellenar fondo con color de camanchaca
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = FOG_RGB[0]; data[i + 1] = FOG_RGB[1]; data[i + 2] = FOG_RGB[2]; data[i + 3] = 255;
+      }
+
+      const SUB = 4, N = map.size * SUB;
+      const { originX, originY, sampleTerrain, seed } = map;
+
+      // 1. Pre-muestrear grilla fina (240x240)
+      const hGrid = new Float32Array(N * N);
+      const wGrid = new Uint8Array(N * N);
+      const dGrid = new Float32Array(N * N);
+      const inGrid = new Float32Array(N * N);
+      const fGrid = new Float32Array(N * N);
+
+      for (let sy = 0; sy < N; sy++) {
+        const gy = sy / SUB;
+        for (let sx = 0; sx < N; sx++) {
+          const idx = sy * N + sx, gx = sx / SUB;
+          const s = sampleTerrain(gx, gy);
+          hGrid[idx] = s.h;
+          wGrid[idx] = s.isWater ? 1 : 0;
+          dGrid[idx] = s.waterDepth;
+          inGrid[idx] = s.inland;
+          fGrid[idx] = s.fogAlpha;
         }
       }
+
+      // 2. Máscara fina de senderos naturales (angostos, no bloques de 24px)
+      const pathGrid = new Uint8Array(N * N);
+      const stampTrail = (trail) => {
+        if (!trail || trail.length < 2) return;
+        for (let i = 0; i < trail.length - 1; i++) {
+          const a = trail[i], b = trail[i + 1];
+          for (let k = 0; k <= 6; k++) {
+            const t = k / 6;
+            const px = a.gx + (b.gx - a.gx) * t, py = a.gy + (b.gy - a.gy) * t;
+            const csx = Math.round(px * SUB), csy = Math.round(py * SUB);
+            for (let oy = -1; oy <= 1; oy++) {
+              for (let ox = -1; ox <= 1; ox++) {
+                const nsx = csx + ox, nsy = csy + oy;
+                if (nsx < 0 || nsy < 0 || nsx >= N || nsy >= N) continue;
+                const dist = Math.hypot(ox, oy);
+                if (dist <= 1.15) pathGrid[nsy * N + nsx] = dist < 0.6 ? 2 : Math.max(pathGrid[nsy * N + nsx], 1);
+              }
+            }
+          }
+        }
+      };
+      for (const pad of map.pads) if (pad.built && pad.trail) stampTrail(pad.trail);
+
+      const pickRamp = (ramp, v, px, py) => {
+        const clamped = Math.max(0, Math.min(0.999, v));
+        const scaled = clamped * (ramp.length - 1);
+        const lo = Math.floor(scaled), frac = scaled - lo;
+        const bayer = (BAYER4[py & 3][px & 3] + 0.5) / 16;
+        const idx = frac > bayer ? Math.min(ramp.length - 1, lo + 1) : lo;
+        return ramp[idx];
+      };
+
+      const setPx = (px, py, r, g, b, fog) => {
+        if (px < 0 || py < 0 || px >= W || py >= H) return;
+        if (fog > 0.03) {
+          const bayer = (BAYER4[py & 3][px & 3] + 0.5) / 16;
+          if (fog > 0.92 || (fog > 0.55 && (fog - 0.55) / 0.37 > bayer)) {
+            r = FOG_RGB[0]; g = FOG_RGB[1]; b = FOG_RGB[2];
+          } else {
+            const f = fog * 0.72;
+            r = Math.round(r * (1 - f) + FOG_RGB[0] * f);
+            g = Math.round(g * (1 - f) + FOG_RGB[1] * f);
+            b = Math.round(b * (1 - f) + FOG_RGB[2] * f);
+          }
+        }
+        const o = (py * W + px) * 4;
+        data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
+      };
+
+      // 3. Proyección isométrica fina (6x3 px por micro-celda) back-to-front
+      for (let d = 0; d <= (N - 1) * 2; d++) {
+        for (let sx = 0; sx < N; sx++) {
+          const sy = d - sx;
+          if (sy < 0 || sy >= N) continue;
+          const idx = sy * N + sx;
+          const fog = fGrid[idx];
+          if (fog >= 0.99) continue;
+
+          const gx = sx / SUB, gy = sy / SUB;
+          const h = hGrid[idx];
+          const cx = Math.round(originX + (gx - gy) * (TILE_W / 2));
+          const cy = Math.round(originY + (gx + gy) * (TILE_H / 2) - h * ELEV_H);
+
+          if (wGrid[idx]) {
+            const depth = dGrid[idx];
+            const wave = (smoothNoise(gx * 0.85, gy * 0.85, seed + 211) - 0.5) * 0.08;
+            const shoreDist = -inGrid[idx];
+            const isFoam = shoreDist < 0.38 || (shoreDist < 0.85 && hash2D(sx, sy, seed + 909) > 0.68);
+            const col = isFoam ? [226, 248, 250] : pickRamp(OCEAN_RAMP, 1 - depth + wave, cx, cy);
+            for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy, col[0], col[1], col[2], fog);
+            for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 1, col[0], col[1], col[2], fog);
+            for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 2, col[0], col[1], col[2], fog);
+            for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy + 3, col[0], col[1], col[2], fog);
+            continue;
+          }
+
+          // Iluminación solar costera desde el Pacífico (oeste/izquierda: ilumina laderas hacia la costa y esculpe quebradas)
+          const hL = sx > 0 ? hGrid[idx - 1] : h;
+          const hR = sx < N - 1 ? hGrid[idx + 1] : h;
+          const hU = sy > 0 ? hGrid[idx - N] : h;
+          const hD = sy < N - 1 ? hGrid[idx + N] : h;
+          const dhdx = (hR - hL) * (SUB * 0.5);
+          const dhdy = (hD - hU) * (SUB * 0.5);
+          const slope = Math.hypot(dhdx, dhdy);
+          const invLen = 1 / Math.hypot(dhdx, dhdy, 1.5);
+          const ndotl = (-dhdx * -0.58 - dhdy * 0.48 + 1.5 * 0.72) * invLen;
+          const microTex = (hash2D(sx, sy, seed + 613) - 0.5) * 0.12;
+          const shade = Math.max(0.08, Math.min(0.98, ndotl * 0.86 + 0.14 + microTex));
+
+          // Selección orgánica de bioma con transición suave por dithering
+          const inland = inGrid[idx];
+          const pathVal = pathGrid[idx];
+          const bNoise = (smoothNoise(gx * 0.42, gy * 0.42, seed + 401) - 0.5) * 1.4;
+          const hEff = h + bNoise;
+          let ramp;
+          if (pathVal === 2) ramp = TERRAIN_RAMPS.path;
+          else if (inland < 0.82 && h < 1.35) ramp = TERRAIN_RAMPS.wetSand;
+          else if (slope > 2.35 && h > 3.0) ramp = TERRAIN_RAMPS.cliff;
+          else if (hEff < 2.5 || (hEff < 3.4 && inland < 5.8)) ramp = TERRAIN_RAMPS.sand;
+          else if (hEff < 7.0) ramp = TERRAIN_RAMPS.foothill;
+          else if (hEff < 12.2) ramp = TERRAIN_RAMPS.terracotta;
+          else if (hEff < 16.6) ramp = TERRAIN_RAMPS.ridge;
+          else ramp = TERRAIN_RAMPS.peak;
+
+          const topCol = pickRamp(ramp, pathVal === 1 ? Math.max(0.12, shade - 0.14) : shade, cx, cy);
+
+          // Superficie superior del micro-rombo (6x4 px)
+          for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy, topCol[0], topCol[1], topCol[2], fog);
+          for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 1, topCol[0], topCol[1], topCol[2], fog);
+          for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 2, topCol[0], topCol[1], topCol[2], fog);
+          for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy + 3, topCol[0], topCol[1], topCol[2], fog);
+
+          // Falda/acantilado vertical con estratos sedimentarios suaves
+          const minFrontH = Math.min(hR, hD);
+          const dropPx = Math.max(2, Math.min(28, Math.ceil((h - minFrontH) * ELEV_H) + 2));
+          const wallRamp = dropPx > 9 ? TERRAIN_RAMPS.cliff : ramp;
+          for (let dy = 3; dy < 3 + dropPx; dy++) {
+            const py = cy + dy;
+            const strata = ((Math.floor((h * ELEV_H - dy) * 0.45) & 3) === 0) ? -0.09 : 0.03;
+            const leftCol = pickRamp(wallRamp, Math.max(0.1, shade * 0.72 + strata), cx - 2, py);
+            const rightCol = pickRamp(wallRamp, Math.max(0.05, shade * 0.54 + strata), cx + 2, py);
+            for (let rx = -3; rx < 0; rx++) setPx(cx + rx, py, leftCol[0], leftCol[1], leftCol[2], fog);
+            for (let rx = 0; rx <= 3; rx++) setPx(cx + rx, py, rightCol[0], rightCol[1], rightCol[2], fog);
+          }
+        }
+      }
+
+      ctx.putImageData(img, 0, 0);
+
+      // Muelle artesanal de madera de la caleta
       for (let step = 0; step < 5; step++) {
-        const p = isoToWorld(map.pierAnchor.gx - step * 0.45, map.pierAnchor.gy + step * 0.45, 0.8, originX, originY), x = Math.round(p.x), y = Math.round(p.y);
+        const p = isoToWorld(map.pierAnchor.gx - step * 0.45, map.pierAnchor.gy + step * 0.45, 0.75, originX, originY), x = Math.round(p.x), y = Math.round(p.y);
         ctx.fillStyle = '#3d281b'; ctx.fillRect(x - 4, y + 3, 2, 6); ctx.fillRect(x + 3, y + 5, 2, 6);
         ctx.fillStyle = '#754e32'; ctx.fillRect(x - 6, y, 12, 4); ctx.fillStyle = '#966844'; ctx.fillRect(x - 5, y, 10, 2); ctx.fillStyle = '#4e3320'; ctx.fillRect(x - 6, y + 3, 12, 1);
       }
@@ -1152,9 +1353,7 @@
       }
 
       _sampleElev(gx, gy, fb) {
-        const x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
-        const a = this.map.tiles[y0]?.[x0]?.h ?? fb, b = this.map.tiles[y0]?.[x0 + 1]?.h ?? a, c = this.map.tiles[y0 + 1]?.[x0]?.h ?? a, d = this.map.tiles[y0 + 1]?.[x0 + 1]?.h ?? a;
-        return a * (1 - fx) * (1 - fy) + b * fx * (1 - fy) + c * (1 - fx) * fy + d * fx * fy;
+        return this.map.sampleTerrain ? this.map.sampleTerrain(gx, gy).h : fb;
       }
 
       _render() {
