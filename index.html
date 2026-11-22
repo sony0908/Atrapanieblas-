@@ -2174,6 +2174,7 @@
         this._createTechnician(v.id);
       }
       getTechHireCost(villageId = this.selectedVillageId ?? 0) {
+        if (this.level < 2) return null;
         const v = this.map.villages?.[villageId] || this.map.villages?.[0];
         if (!v || !v.unlocked) return null;
         const localCarriers = this.carriers.filter((c) => (c.villageId ?? 0) === v.id).length;
@@ -2182,7 +2183,7 @@
         return Math.round((TECH_CFG.hireBaseCost + localCount * TECH_CFG.hireStep) * this.cfg.storageCostScale);
       }
       hireTechnician(villageId = this.selectedVillageId ?? 0) {
-        if (!this.running || this.finished) return false;
+        if (!this.running || this.finished || this.level < 2) return false;
         const v = this.map.villages?.[villageId] || this.map.villages?.[0];
         if (!v || !v.unlocked) return false;
         const localCarriers = this.carriers.filter((c) => (c.villageId ?? 0) === v.id).length;
@@ -5485,18 +5486,23 @@
                 $('storage-next-info').textContent = 'Almacenamiento de esta caleta al máximo.';
                 $('upgrade-title').textContent = 'Estanque al máximo';
               }
-              $('v-carriers-val').textContent = `👷 ${sv.techsIdle}/${sv.techsTotal} técnicos`;
-              $('v-carrier-sub').textContent = s.level >= 2
-                ? `De los 4 trabajadores de ${sv.shortName}, capacita a los que quedaron libres tras instalar cañerías. Cobran $${TECH_CFG.maintainCost} por mantención y $${TECH_CFG.repairCost} por reparación.`
-                : `De los 4 trabajadores de ${sv.shortName}, capacita a los que queden libres por las cañerías (+35% velocidad de obra y mantención en Nivel 2).`;
-              if (sv.techHireCost !== null) {
-                $('btn-upgrade-carriers').disabled = !sv.canHireTech;
-                $('carrier-upgrade-title').textContent = sv.canHireTech
-                  ? `🎓 Capacitar trabajador a técnico ($${sv.techHireCost})`
-                  : `Requiere $${sv.techHireCost} para capacitar`;
+              if (s.level < 2) {
+                $('v-carriers-val').textContent = 'Nivel 2';
+                $('v-carrier-sub').textContent = `Los 4 trabajadores de ${sv.shortName} acarrean bidones. En el Nivel 2 podrás capacitarlos como Técnicos para reparar y mantener las mallas.`;
+                $('btn-upgrade-carriers').classList.add('hidden');
               } else {
-                $('btn-upgrade-carriers').disabled = true;
-                $('carrier-upgrade-title').textContent = `4/4 trabajadores capacitados en ${sv.shortName}`;
+                $('btn-upgrade-carriers').classList.remove('hidden');
+                $('v-carriers-val').textContent = `👷 ${sv.techsIdle}/${sv.techsTotal} técnicos`;
+                $('v-carrier-sub').textContent = `De los 4 trabajadores de ${sv.shortName}, capacita a los que quedaron libres tras instalar cañerías. Cobran $${TECH_CFG.maintainCost} por mantención y $${TECH_CFG.repairCost} por reparación.`;
+                if (sv.techHireCost !== null) {
+                  $('btn-upgrade-carriers').disabled = !sv.canHireTech;
+                  $('carrier-upgrade-title').textContent = sv.canHireTech
+                    ? `🎓 Capacitar trabajador a técnico ($${sv.techHireCost})`
+                    : `Requiere $${sv.techHireCost} para capacitar`;
+                } else {
+                  $('btn-upgrade-carriers').disabled = true;
+                  $('carrier-upgrade-title').textContent = `4/4 trabajadores capacitados en ${sv.shortName}`;
+                }
               }
             }
           }
