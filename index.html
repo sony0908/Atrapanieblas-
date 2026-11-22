@@ -1109,7 +1109,114 @@
         { gx: piers[2].gx - 4.0, gy: piers[2].gy + 0.9, phase: 3.6 },
       ];
       const fogClouds = Array.from({ length: 34 }, () => ({ x: originX + (rand() - 0.5) * 1650, y: originY + 80 + rand() * 720, rx: 42 + rand() * 75, ry: 16 + rand() * 26, speed: 5 + rand() * 9, alpha: 0.14 + rand() * 0.18, phase: rand() * Math.PI * 2 }));
-      return { seed, size, mapW, mapH, tiles, pads, props, villages, hub, storagePos, houseSlots, orchardSlots, treeSlots, northVillage, pierAnchor, piers, boats, fogClouds, canvasW, canvasH, originX, originY, sampleTerrain };
+
+      // Puntos de rompiente costera para animar las olas llegando a la orilla en toda la extensión del mapa
+      const shoreLine = [];
+      for (let gx = 3.5; gx <= mapW - 3.5; gx += 0.65) {
+        const cy = getCoastY(gx);
+        if (cy > 4 && cy < mapH - 3) {
+          shoreLine.push({ gx, coastY: cy, phase: gx * 0.34 + (rand() - 0.5) * 0.45, speed: 0.52 + (rand() - 0.5) * 0.08 });
+        }
+      }
+
+      // Fauna típica del desierto costero y corriente de Humboldt (Chungungo / Punta Choros / Alto Patache)
+      const wildlife = { land: [], sea: [], sky: [] };
+
+      // 1) Guanacos en pequeñas tropillas por las lomas y quebradas del norte, centro y sur
+      const guanacoHerds = [
+        { cx: 14, cy: 19, count: 3 },
+        { cx: 33, cy: 24, count: 4 },
+        { cx: 55, cy: 27, count: 3 },
+        { cx: 76, cy: 31, count: 3 },
+      ];
+      for (const herd of guanacoHerds) {
+        for (let i = 0; i < herd.count; i++) {
+          const p = snapToLand({ gx: herd.cx + (rand() - 0.5) * 4.5, gy: herd.cy + (rand() - 0.5) * 3.5 }, 4.2);
+          wildlife.land.push({
+            kind: 'guanaco', gx: p.gx, gy: p.gy, homeGx: p.gx, homeGy: p.gy,
+            vx: 0, vy: 0, dirX: rand() > 0.5 ? 1 : -1,
+            state: rand() > 0.4 ? 'graze' : 'walk', timer: 1.5 + rand() * 4.0,
+            phase: rand() * Math.PI * 2, radius: 5.5, speed: 0.72 + rand() * 0.2,
+          });
+        }
+      }
+
+      // 2) Zorros culpeo / chilla merodeando entre los cactus y rocas
+      for (const fx of [22, 38, 50, 63, 79]) {
+        const fy = getCoastY(fx) - 6.5 - rand() * 8;
+        const p = snapToLand({ gx: fx, gy: fy }, 3.8);
+        wildlife.land.push({
+          kind: 'fox', gx: p.gx, gy: p.gy, homeGx: p.gx, homeGy: p.gy,
+          vx: 0, vy: 0, dirX: rand() > 0.5 ? 1 : -1,
+          state: 'walk', timer: 1.2 + rand() * 3.0,
+          phase: rand() * Math.PI * 2, radius: 6.5, speed: 1.15 + rand() * 0.25,
+        });
+      }
+
+      // 3) Cabras nortinas cerca de los faldeos de las 3 caletas
+      const goatColors = ['#efe8dc', '#7d624c', '#4a4039', '#d6b68d'];
+      for (const v of villages) {
+        for (let i = 0; i < 2; i++) {
+          const p = snapToLand({ gx: v.hub.gx + 2.8 + i * 1.4, gy: v.hub.gy - 2.6 - i * 0.8 }, 3.2);
+          wildlife.land.push({
+            kind: 'goat', gx: p.gx, gy: p.gy, homeGx: p.gx, homeGy: p.gy,
+            vx: 0, vy: 0, dirX: rand() > 0.5 ? 1 : -1,
+            state: rand() > 0.5 ? 'graze' : 'walk', timer: 1.5 + rand() * 3.5,
+            phase: rand() * Math.PI * 2, radius: 3.6, speed: 0.58 + rand() * 0.15,
+            coat: goatColors[(v.id * 2 + i) % goatColors.length],
+          });
+        }
+      }
+
+      // 4) Pingüinos de Humboldt y Lobos Marinos en las orillas y roqueríos costeros
+      for (const pgGx of [15.5, 16.4, 39.5, 40.3, 41.1, 48.2, 62.5, 63.3, 73.5]) {
+        const cy = getCoastY(pgGx) - 0.45;
+        wildlife.land.push({
+          kind: 'penguin', gx: pgGx, gy: cy, homeGx: pgGx, homeGy: cy,
+          vx: 0, vy: 0, dirX: rand() > 0.5 ? 1 : -1,
+          state: rand() > 0.45 ? 'idle' : 'walk', timer: 1.0 + rand() * 3.0,
+          phase: rand() * Math.PI * 2, radius: 1.4, speed: 0.35,
+        });
+      }
+      for (const slGx of [22.8, 37.8, 47.4, 61.2, 71.8, 72.6]) {
+        const cy = getCoastY(slGx) + 0.15;
+        wildlife.sea.push({
+          kind: 'seal', gx: slGx, gy: cy, homeGx: slGx, homeGy: cy,
+          dirX: rand() > 0.5 ? 1 : -1, phase: rand() * Math.PI * 2,
+        });
+      }
+
+      // 5) Delfines nariz de botella (toninas de Punta Choros) y Ballenas en mar abierto
+      for (const dGx of [14, 26, 36, 43, 53, 62, 74]) {
+        const cy = getCoastY(dGx) + 4.2 + rand() * 4.8;
+        wildlife.sea.push({
+          kind: 'dolphin', gx: dGx, gy: Math.min(mapH - 2.5, cy),
+          homeGx: dGx, homeGy: Math.min(mapH - 2.5, cy),
+          dirX: rand() > 0.5 ? 1 : -1, speed: 1.35 + rand() * 0.35,
+          phase: rand() * Math.PI * 2,
+        });
+      }
+      for (const wGx of [29, 57]) {
+        const cy = Math.min(mapH - 2.2, getCoastY(wGx) + 8.2);
+        wildlife.sea.push({
+          kind: 'whale', gx: wGx, gy: cy, homeGx: wGx, homeGy: cy,
+          dirX: wGx < 45 ? 1 : -1, speed: 0.45, phase: rand() * Math.PI * 2,
+        });
+      }
+
+      // 6) Pelícanos y gaviotas planeando sobre la costa y las caletas
+      for (let i = 0; i < 11; i++) {
+        const bGx = 10 + (i * 7.1) % (mapW - 18);
+        const bGy = getCoastY(bGx) - 1.5 + (rand() - 0.5) * 6;
+        wildlife.sky.push({
+          kind: i % 3 === 0 ? 'pelican' : 'seagull',
+          cx: bGx, cy: bGy, rx: 3.2 + rand() * 3.5, ry: 1.8 + rand() * 2.2,
+          angle: rand() * Math.PI * 2, angSpeed: (0.42 + rand() * 0.28) * (i % 2 === 0 ? 1 : -1),
+          flapPhase: rand() * Math.PI * 2,
+        });
+      }
+
+      return { seed, size, mapW, mapH, tiles, pads, props, villages, hub, storagePos, houseSlots, orchardSlots, treeSlots, northVillage, pierAnchor, piers, boats, fogClouds, shoreLine, wildlife, getCoastY, canvasW, canvasH, originX, originY, sampleTerrain };
     }
 
     function findTrailPath(map, rawSx, rawSy, rawGx, rawGy) {
@@ -2092,6 +2199,333 @@
       ctx.fillStyle = '#3a6f9e'; ctx.fillRect(x - 1, y - 4, 2, 1); ctx.fillStyle = '#5c402c'; ctx.fillRect(x + 3, y - 6, 1, 5); ctx.fillStyle = '#e04238'; ctx.fillRect(x + 4, y - 6, 2, 1);
     }
 
+    // ===== Olas animadas rompiendo en la orilla y trenes de olas del Pacífico =====
+    function drawShoreWaves(ctx, map, time, inView, lod) {
+      const { originX, originY, shoreLine } = map;
+      if (!shoreLine) return;
+      const step = lod === 0 ? 2 : 1;
+
+      for (let i = 0; i < shoreLine.length; i += step) {
+        const s = shoreLine[i];
+        const shoreWp = isoToWorld(s.gx, s.coastY, 0.85, originX, originY);
+        if (!inView(shoreWp.x, shoreWp.y)) continue;
+
+        // Dos trenes de olas desfasados que avanzan desde el mar hacia la arena de la playa
+        for (let w = 0; w < 2; w++) {
+          const p = (time * s.speed + s.phase + w * 0.5) % 1; // 0 = mar adentro -> 1 = resaca en la arena
+          if (p < 0.74) {
+            // Ola avanzando hacia la costa
+            const t = p / 0.74;
+            const ease = 1 - Math.pow(1 - t, 1.85);
+            const curGy = s.coastY + 2.35 * (1 - ease);
+            const curH = 0.15 + ease * 0.72;
+            const wp = isoToWorld(s.gx, curGy, curH, originX, originY);
+            const wx = Math.round(wp.x), wy = Math.round(wp.y);
+
+            // Cuerpo turquesa de la ola en perspectiva isométrica
+            ctx.fillStyle = t < 0.4 ? 'rgba(64, 184, 212, 0.55)' : 'rgba(92, 212, 228, 0.78)';
+            ctx.fillRect(wx - 4, wy + 1, 5, 2);
+            ctx.fillRect(wx, wy - 1, 5, 2);
+
+            // Cresta blanca que crece al acercarse a la rompiente
+            if (t > 0.28) {
+              const crestA = Math.min(0.95, (t - 0.28) * 1.45);
+              ctx.fillStyle = `rgba(235, 253, 255, ${crestA.toFixed(2)})`;
+              ctx.fillRect(wx - 4, wy, 5, 1);
+              ctx.fillRect(wx, wy - 1, 5, 1);
+              if (t > 0.58) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(wx - 3, wy, 7, 1);
+              }
+            }
+          }
+
+          // Rompiente de espuma blanca y resaca húmeda sobre la arena de la orilla
+          if (p >= 0.54) {
+            const b = (p - 0.54) / 0.46; // 0 = impacto en la orilla -> 1 = espuma se disipa
+            const runUp = Math.sin(b * Math.PI);
+            const foamGy = s.coastY + 0.22 - runUp * 0.42;
+            const fWp = isoToWorld(s.gx, foamGy, 0.92, originX, originY);
+            const fx = Math.round(fWp.x), fy = Math.round(fWp.y);
+
+            // Orilla de arena mojada cuando la ola empieza a retirarse
+            if (b > 0.32) {
+              ctx.fillStyle = `rgba(92, 138, 148, ${(0.28 * (1 - b)).toFixed(2)})`;
+              ctx.fillRect(fx - 5, fy - 1, 10, 2);
+            }
+
+            // Línea de espuma blanca burbujeante en la orilla
+            const foamAlpha = b < 0.45 ? 0.94 : 0.94 * (1 - (b - 0.45) / 0.55);
+            if (foamAlpha > 0.06) {
+              ctx.fillStyle = `rgba(255, 255, 255, ${foamAlpha.toFixed(2)})`;
+              ctx.fillRect(fx - 5, fy, 6, 2);
+              ctx.fillRect(fx, fy - 2, 6, 2);
+              if (lod >= 1 && b < 0.42) {
+                // Salpicaduras de espuma al romper la ola
+                ctx.fillStyle = '#dcf8ff';
+                ctx.fillRect(fx - 6, fy + 1, 2, 1);
+                ctx.fillRect(fx + 5, fy - 3, 2, 1);
+                if ((i & 1) === 0) ctx.fillRect(fx - 1, fy - 3, 2, 1);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // ===== Fauna típica del Norte Chico / Desierto Costero y Corriente de Humboldt =====
+    function drawLandAnimal(ctx, wx, wy, a, time) {
+      const moving = a.state === 'walk';
+      const walkPh = moving ? time * (a.kind === 'fox' ? 11 : 7.5) + a.phase : 0;
+      const step = moving ? (Math.sin(walkPh) > 0.25 ? 1 : Math.sin(walkPh) < -0.25 ? -1 : 0) : 0;
+      const x = Math.round(wx), y = Math.round(wy) + 2;
+      const dir = a.dirX < 0 ? -1 : 1;
+
+      ctx.save();
+      ctx.translate(x, y);
+
+      if (a.kind === 'guanaco') {
+        // Guanaco nortino: sombra, patas largas, pelaje canela con vientre blanco y cuello esbelto
+        ctx.fillStyle = 'rgba(42, 30, 20, 0.28)';
+        ctx.fillRect(-5, 0, 10, 2);
+        if (dir < 0) ctx.scale(-1, 1);
+
+        // Patas delgadas color gamuza
+        ctx.fillStyle = '#9e6b43';
+        ctx.fillRect(-3 - step, -4, 1, 4);
+        ctx.fillRect(-1 + step, -4, 1, 4);
+        ctx.fillRect(2 - step, -4, 1, 4);
+        ctx.fillRect(4 + step, -4, 1, 4);
+
+        // Cuerpo canela / terracota claro y pecho blanco
+        ctx.fillStyle = '#c8783e';
+        ctx.fillRect(-4, -8, 9, 4);
+        ctx.fillStyle = '#e09356';
+        ctx.fillRect(-3, -8, 7, 2);
+        ctx.fillStyle = '#f5eee4';
+        ctx.fillRect(-3, -5, 7, 1);
+        ctx.fillRect(3, -8, 2, 3);
+        // Cola corta
+        ctx.fillStyle = '#a35d2b';
+        ctx.fillRect(-5, -8, 1, 2);
+
+        // Cuello y cabeza (erguido al caminar o inclinado al pastar)
+        const grazing = !moving && Math.sin(time * 1.6 + a.phase) > -0.2;
+        if (grazing) {
+          ctx.fillStyle = '#c8783e';
+          ctx.fillRect(4, -7, 3, 2);
+          ctx.fillRect(6, -6, 2, 2);
+          ctx.fillStyle = '#f5eee4';
+          ctx.fillRect(4, -5, 2, 1);
+          ctx.fillStyle = '#5e5047';
+          ctx.fillRect(7, -5, 3, 2);
+          ctx.fillRect(7, -7, 1, 2);
+        } else {
+          ctx.fillStyle = '#c8783e';
+          ctx.fillRect(3, -13, 2, 6);
+          ctx.fillStyle = '#f5eee4';
+          ctx.fillRect(4, -12, 1, 5);
+          // Cabeza grisácea y orejas atentas
+          ctx.fillStyle = '#5e5047';
+          ctx.fillRect(3, -15, 4, 2);
+          ctx.fillStyle = '#3b322c';
+          ctx.fillRect(3, -17, 1, 2);
+          ctx.fillRect(5, -16, 1, 1);
+        }
+      } else if (a.kind === 'fox') {
+        // Zorro culpeo del desierto: lomo gris/rojizo y cola tupida de punta negra
+        ctx.fillStyle = 'rgba(42, 30, 20, 0.25)';
+        ctx.fillRect(-4, 0, 8, 2);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#7a4628';
+        ctx.fillRect(-2 - step, -2, 1, 2);
+        ctx.fillRect(2 + step, -2, 1, 2);
+        // Cola tupida
+        ctx.fillStyle = '#9c7d65';
+        ctx.fillRect(-6, -5, 3, 2);
+        ctx.fillStyle = '#2e241f';
+        ctx.fillRect(-7, -5, 1, 2);
+        // Cuerpo y cabeza
+        ctx.fillStyle = '#bf6939';
+        ctx.fillRect(-3, -5, 6, 3);
+        ctx.fillStyle = '#877668';
+        ctx.fillRect(-2, -5, 4, 1);
+        ctx.fillStyle = '#d47c4a';
+        ctx.fillRect(2, -7, 3, 3);
+        ctx.fillStyle = '#f0e4d6';
+        ctx.fillRect(4, -5, 2, 1);
+        ctx.fillStyle = '#3b281c';
+        ctx.fillRect(2, -8, 1, 1);
+        ctx.fillRect(4, -8, 1, 1);
+      } else if (a.kind === 'goat') {
+        // Cabra nortina
+        ctx.fillStyle = 'rgba(42, 30, 20, 0.25)';
+        ctx.fillRect(-3, 0, 7, 2);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#4a3d33';
+        ctx.fillRect(-2 - step, -3, 1, 3);
+        ctx.fillRect(2 + step, -3, 1, 3);
+        ctx.fillStyle = a.coat || '#efe8dc';
+        ctx.fillRect(-3, -6, 6, 3);
+        const graze = !moving && Math.sin(time * 2 + a.phase) > 0;
+        ctx.fillRect(2, graze ? -5 : -8, 3, 3);
+        ctx.fillStyle = '#b5a38a';
+        ctx.fillRect(2, graze ? -6 : -9, 1, 1);
+      } else if (a.kind === 'penguin') {
+        // Pingüino de Humboldt en las rocas costeras
+        const waddle = moving ? Math.round(Math.sin(time * 12 + a.phase)) : 0;
+        ctx.fillStyle = 'rgba(20, 30, 42, 0.28)';
+        ctx.fillRect(-2, 0, 5, 1);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#1d2530';
+        ctx.fillRect(-2, -6 + waddle, 4, 6);
+        ctx.fillStyle = '#f5f9fc';
+        ctx.fillRect(0, -5 + waddle, 2, 4);
+        // Banda pectoral negra característica del Pingüino de Humboldt
+        ctx.fillStyle = '#1d2530';
+        ctx.fillRect(0, -4 + waddle, 1, 1);
+        ctx.fillStyle = '#e09028';
+        ctx.fillRect(-1, -1, 3, 1);
+        ctx.fillStyle = '#414d5c';
+        ctx.fillRect(2, -6 + waddle, 1, 1);
+      }
+      ctx.restore();
+    }
+
+    function drawSeaAnimal(ctx, wx, wy, a, time) {
+      const x = Math.round(wx), y = Math.round(wy);
+      const dir = a.dirX < 0 ? -1 : 1;
+      ctx.save();
+      ctx.translate(x, y);
+
+      if (a.kind === 'seal') {
+        // Lobo marino asoleándose en el roquerío de la orilla
+        const bob = Math.sin(time * 2.4 + a.phase) > 0.4 ? -1 : 0;
+        ctx.fillStyle = 'rgba(220, 248, 255, 0.65)';
+        ctx.fillRect(-6, 1, 12, 1);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#593b28';
+        ctx.fillRect(-5, -3, 8, 4);
+        ctx.fillStyle = '#755139';
+        ctx.fillRect(-3, -4, 6, 3);
+        ctx.fillRect(2, -7 + bob, 3, 4);
+        ctx.fillStyle = '#3d271a';
+        ctx.fillRect(4, -7 + bob, 2, 2);
+        ctx.fillRect(-6, -1, 2, 2);
+      } else if (a.kind === 'dolphin') {
+        // Delfín nariz de botella (Tonina de Punta Choros): nada y salta en arco fuera del agua
+        const cyc = (time * 0.55 + a.phase) % 2.4;
+        if (cyc < 1.0) {
+          // Salto parabólico fuera del agua
+          const p = cyc; // 0..1
+          const arcY = -Math.round(Math.sin(p * Math.PI) * 11);
+          const pitch = p < 0.38 ? -1 : p > 0.62 ? 1 : 0;
+          // Espuma en el agua al saltar
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.fillRect(-6, 0, 12, 1);
+          if (p < 0.25 || p > 0.75) {
+            ctx.fillRect(-4, -2, 2, 2);
+            ctx.fillRect(3, -2, 2, 2);
+          }
+          if (dir < 0) ctx.scale(-1, 1);
+          ctx.translate(0, arcY);
+          ctx.fillStyle = '#436987';
+          ctx.fillRect(-4, -2 - pitch, 8, 3);
+          ctx.fillStyle = '#73a0c2';
+          ctx.fillRect(-3, -3 - pitch, 6, 2);
+          // Aleta dorsal
+          ctx.fillStyle = '#345570';
+          ctx.fillRect(-1, -5, 2, 2);
+          // Cola y trompa
+          ctx.fillRect(-6, -1 + pitch, 2, 2);
+          ctx.fillStyle = '#8cb6d4';
+          ctx.fillRect(4, -1 + pitch, 2, 2);
+          ctx.fillStyle = '#e4f4fc';
+          ctx.fillRect(-2, 0, 5, 1);
+        } else {
+          // Aleta dorsal cortando el agua con estela blanca
+          const ripple = Math.round(Math.sin(time * 4 + a.phase) * 1.5);
+          ctx.fillStyle = 'rgba(230, 250, 255, 0.8)';
+          ctx.fillRect(-5 + ripple, 0, 10, 1);
+          if (dir < 0) ctx.scale(-1, 1);
+          ctx.fillStyle = '#395c78';
+          ctx.fillRect(-1, -3, 3, 3);
+          ctx.fillStyle = '#6993b3';
+          ctx.fillRect(0, -2, 2, 2);
+        }
+      } else if (a.kind === 'whale') {
+        // Ballena en aguas profundas: emerge el lomo y lanza su chorro de vapor blanco
+        const cyc = (time * 0.28 + a.phase) % 3.2;
+        if (cyc < 2.2) {
+          const surf = Math.sin((cyc / 2.2) * Math.PI);
+          const lift = Math.round(surf * 3);
+          ctx.fillStyle = 'rgba(230, 252, 255, 0.85)';
+          ctx.fillRect(-12, 1, 24, 1);
+          ctx.fillRect(-9, 2, 18, 1);
+          if (dir < 0) ctx.scale(-1, 1);
+          // Gran lomo oscuro
+          ctx.fillStyle = '#1e344a';
+          ctx.fillRect(-9, -2 - lift, 18, 3 + lift);
+          ctx.fillStyle = '#335270';
+          ctx.fillRect(-7, -3 - lift, 14, 2);
+          ctx.fillStyle = '#4e7396';
+          ctx.fillRect(-5, -3 - lift, 9, 1);
+          // Aleta dorsal pequeña
+          ctx.fillStyle = '#1e344a';
+          ctx.fillRect(-5, -5 - lift, 3, 2);
+
+          // Chorro de vapor (soplo de la ballena) cuando está en la cima
+          if (cyc > 0.55 && cyc < 1.55) {
+            const sp = (cyc - 0.55) / 1.0;
+            const hSpout = Math.round(6 + Math.sin(sp * Math.PI) * 9);
+            ctx.fillStyle = `rgba(240, 252, 255, ${(0.88 * (1 - sp * 0.5)).toFixed(2)})`;
+            ctx.fillRect(5, -3 - lift - hSpout, 2, hSpout);
+            ctx.fillRect(3, -4 - lift - hSpout, 6, 3);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(2, -5 - lift - hSpout, 2, 2);
+            ctx.fillRect(7, -5 - lift - hSpout, 2, 2);
+          }
+          // Aleta caudal al sumergirse
+          if (cyc > 1.65) {
+            ctx.fillStyle = '#1e344a';
+            ctx.fillRect(-12, -6, 3, 5);
+            ctx.fillRect(-14, -7, 5, 2);
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawSkyBird(ctx, wx, wy, b, time) {
+      const x = Math.round(wx), y = Math.round(wy) - 26;
+      const flap = Math.sin(time * (b.kind === 'pelican' ? 5.2 : 7.5) + b.flapPhase);
+      const wingY = flap > 0.35 ? -2 : flap < -0.35 ? 2 : 0;
+
+      // Sombra suave proyectada sobre el mar o la arena
+      ctx.fillStyle = 'rgba(24, 38, 52, 0.18)';
+      ctx.fillRect(x - 3, y + 26, 6, 1);
+
+      if (b.kind === 'pelican') {
+        // Pelícano chileno: mayor envergadura, plumaje pardo/gris y saco gular amarillo
+        ctx.fillStyle = '#5c524a';
+        ctx.fillRect(x - 5, y + wingY, 4, 1);
+        ctx.fillRect(x + 2, y + wingY, 4, 1);
+        ctx.fillStyle = '#d9dee3';
+        ctx.fillRect(x - 1, y - 1, 3, 2);
+        ctx.fillStyle = '#e8b338';
+        ctx.fillRect(x + 2, y, 2, 1);
+      } else {
+        // Gaviota costera
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x - 4, y + wingY, 3, 1);
+        ctx.fillRect(x + 1, y + wingY, 3, 1);
+        ctx.fillRect(x - 1, y, 2, 1);
+        ctx.fillStyle = '#5c7082';
+        ctx.fillRect(x - 4, y + wingY, 1, 1);
+        ctx.fillRect(x + 3, y + wingY, 1, 1);
+      }
+    }
+
     const SHIRTS = ['#2c73c9', '#d14b3a', '#3d9956', '#d99326', '#6b5bb5', '#2a9aa8'];
 
     class AtrapanieblasGame {
@@ -2984,6 +3418,59 @@
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { const f = this.floatingTexts[i]; f.y -= 16 * dt; f.life -= dt; if (f.life <= 0) this.floatingTexts.splice(i, 1); }
         if (this.shakeT > 0) this.shakeT = Math.max(0, this.shakeT - dt * 2.4);
         for (const pad of this.map.pads) if (pad.signalFlash > 0) pad.signalFlash = Math.max(0, pad.signalFlash - dt);
+
+        // Movimiento orgánico de la fauna terrestre, marina y aves costeras
+        const wl = this.map.wildlife;
+        if (wl) {
+          const getCY = this.map.getCoastY;
+          for (const a of wl.land) {
+            a.timer -= dt;
+            if (a.timer <= 0) {
+              if (a.state === 'walk') {
+                a.state = 'graze';
+                a.timer = 1.8 + Math.random() * 3.6;
+                a.vx = 0; a.vy = 0;
+              } else {
+                a.state = 'walk';
+                a.timer = 1.6 + Math.random() * 2.8;
+                const ang = Math.atan2(a.homeGy - a.gy, a.homeGx - a.gx) + (Math.random() - 0.5) * 2.1;
+                a.vx = Math.cos(ang) * a.speed;
+                a.vy = Math.sin(ang) * a.speed;
+                const screenDx = a.vx - a.vy;
+                if (Math.abs(screenDx) > 0.02) a.dirX = screenDx >= 0 ? 1 : -1;
+              }
+            }
+            if (a.state === 'walk') {
+              let nx = a.gx + a.vx * dt;
+              let ny = a.gy + a.vy * dt;
+              const minInland = a.kind === 'penguin' ? 0.25 : 2.8;
+              const coastY = getCY ? getCY(nx) : 36;
+              if (coastY - ny < minInland) {
+                ny = coastY - minInland;
+                a.vy = -Math.abs(a.vy);
+              }
+              if (Math.hypot(nx - a.homeGx, ny - a.homeGy) > a.radius) {
+                a.vx = (a.homeGx - a.gx) * 0.45;
+                a.vy = (a.homeGy - a.gy) * 0.45;
+              }
+              a.gx = Math.max(4, Math.min(this.map.mapW - 4, nx));
+              a.gy = Math.max(5, Math.min(this.map.mapH - 4, ny));
+            }
+          }
+          for (const s of wl.sea) {
+            if (s.kind === 'dolphin' || s.kind === 'whale') {
+              s.gx += s.dirX * s.speed * dt;
+              if (Math.abs(s.gx - s.homeGx) > (s.kind === 'whale' ? 9 : 5.5)) {
+                s.dirX = s.gx > s.homeGx ? -1 : 1;
+              }
+              const minSeaGy = (getCY ? getCY(s.gx) : 36) + (s.kind === 'whale' ? 6.5 : 3.2);
+              s.gy = Math.max(minSeaGy, Math.min(this.map.mapH - 2, s.homeGy + Math.sin(this.time * 0.6 + s.phase) * 1.1));
+            }
+          }
+          for (const b of wl.sky) {
+            b.angle += b.angSpeed * dt;
+          }
+        }
       }
 
       _updateSimulation(dt) {
@@ -3494,15 +3981,28 @@
         const terr = this.terrainLOD ? (lod === 0 ? this.terrainLOD.lo : this.terrainLOD.hi) : this.terrainCanvas;
         if (terr) ctx.drawImage(terr, 0, 0);
         const { originX, originY } = this.map;
+
+        // Olas rompiendo en la orilla y crestas marinas
+        drawShoreWaves(ctx, this.map, this.time, inView, lod);
         if (lod >= 1) {
-          ctx.fillStyle = 'rgba(220, 248, 255, 0.5)';
-          for (let i = 0; i < 24; i++) {
-            const gx = 8 + ((i * 9) % (this.map.mapW - 14)), gy = 34 + ((i * 5) % 18), t = this.map.tiles[gy]?.[gx];
+          ctx.fillStyle = 'rgba(220, 248, 255, 0.52)';
+          for (let i = 0; i < 36; i++) {
+            const gx = 6 + ((i * 7) % (this.map.mapW - 12)), gy = 33 + ((i * 5) % 20), t = this.map.tiles[gy]?.[gx];
             if (!t || !t.isWater || t.fogAlpha > 0.65) continue;
-            const wp = isoToWorld(gx, gy, 0, originX, originY);
+            const drift = ((this.time * 0.65 + i * 0.37) % 1) * 1.4;
+            const wp = isoToWorld(gx, gy - drift, 0, originX, originY);
             if (!inView(wp.x, wp.y)) continue;
             const ph = Math.sin(this.time * 2.2 + i * 1.7);
-            if (ph > 0.15) ctx.fillRect(Math.round(wp.x - 3 + ph * 3), Math.round(wp.y + 4), 5, 1);
+            if (ph > 0.05) {
+              ctx.fillRect(Math.round(wp.x - 4), Math.round(wp.y + 3), 6, 1);
+              ctx.fillRect(Math.round(wp.x + 1), Math.round(wp.y + 1), 4, 1);
+            }
+          }
+        }
+        if (this.map.wildlife?.sea) {
+          for (const sa of this.map.wildlife.sea) {
+            const wp = isoToWorld(sa.gx, sa.gy, sa.kind === 'seal' ? 0.8 : 0, originX, originY);
+            if (inView(wp.x, wp.y)) drawSeaAnimal(ctx, wp.x, wp.y, sa, this.time);
           }
         }
         for (const boat of this.map.boats) {
@@ -3614,8 +4114,25 @@
           const wp = isoToWorld(t.gx, t.gy, this._sampleElev(t.gx, t.gy, this.map.tiles[ty]?.[tx]?.h ?? 2), originX, originY);
           if (inView(wp.x, wp.y)) drawList.push({ depth: t.gx + t.gy + 0.22, draw: () => drawTechnician(ctx, wp.x, wp.y, t, this.time) });
         }
+        if (this.map.wildlife?.land) {
+          for (const la of this.map.wildlife.land) {
+            const tx = Math.max(0, Math.min(this.map.mapW - 1, Math.round(la.gx))), ty = Math.max(0, Math.min(this.map.mapH - 1, Math.round(la.gy)));
+            const h = la.kind === 'penguin' ? 1.1 : this._sampleElev(la.gx, la.gy, this.map.tiles[ty]?.[tx]?.h ?? 2);
+            const wp = isoToWorld(la.gx, la.gy, h, originX, originY);
+            if (inView(wp.x, wp.y)) drawList.push({ depth: la.gx + la.gy + 0.12, draw: () => drawLandAnimal(ctx, wp.x, wp.y, la, this.time) });
+          }
+        }
         drawList.sort((a, b) => a.depth - b.depth);
         for (const it of drawList) it.draw();
+
+        if (this.map.wildlife?.sky) {
+          for (const b of this.map.wildlife.sky) {
+            const bgx = b.cx + Math.cos(b.angle) * b.rx;
+            const bgy = b.cy + Math.sin(b.angle) * b.ry;
+            const wp = isoToWorld(bgx, bgy, 1.5, originX, originY);
+            if (inView(wp.x, wp.y)) drawSkyBird(ctx, wp.x, wp.y, b, this.time);
+          }
+        }
 
         // Cartel interactivo sobre cada caleta (muestra agua local o costo de conexión; al pinchar abre sus mejoras)
         for (const v of (this.map.villages || [])) {
