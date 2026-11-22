@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atrapanieblas — Catálogo de Sprites y Animaciones (GIF View)</title>
+  <style>
+    :root {
+      --bg: #0d1824;
+      --panel: #132435;
+      --card: #172b3f;
+      --border: rgba(145, 208, 242, 0.18);
+      --accent: #63d7ff;
+      --gold: #ffd75e;
+      --text: #eaf4fb;
+      --muted: #93b0c4;
+      --mono: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+      --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 50% 0%, #1a334a 0%, var(--bg) 70%);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      padding: 20px 18px 48px;
+    }
+    .header {
+      max-width: 1320px;
+      margin: 0 auto 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: rgba(19, 36, 53, 0.88);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 20px;
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 10px;
+      z-index: 20;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+    }
+    .title-box h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+      color: #ffffff;
+    }
+    .title-box p {
+      margin: 4px 0 0;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(9, 19, 30, 0.65);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .btn {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      padding: 6px 11px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      font-family: var(--sans);
+    }
+    .btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.06); }
+    .btn.active {
+      background: linear-gradient(180deg, #2b77a8 0%, #1e5982 100%);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(43, 119, 168, 0.45);
+    }
+    .tabs {
+      max-width: 1320px;
+      margin: 0 auto 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tab-btn {
+      background: rgba(23, 43, 63, 0.85);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 99px;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tab-btn:hover { color: #ffffff; border-color: rgba(99, 215, 255, 0.45); }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #0b1c2c;
+      border-color: var(--accent);
+      box-shadow: 0 4px 14px rgba(99, 215, 255, 0.32);
+    }
+    .grid {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(25, 47, 68, 0.94) 0%, rgba(17, 33, 49, 0.96) 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(99, 215, 255, 0.42);
+    }
+    .card.wide {
+      grid-column: span 2;
+    }
+    @media (max-width: 680px) {
+      .card.wide { grid-column: span 1; }
+    }
+    .stage-wrap {
+      position: relative;
+      height: 185px;
+      background: #102233;
+      display: grid;
+      place-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      overflow: hidden;
+    }
+    .stage-wrap canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+    }
+    .gif-badge {
+      position: absolute;
+      top: 9px;
+      left: 10px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: rgba(8, 17, 26, 0.72);
+      color: var(--gold);
+      border: 1px solid rgba(255, 215, 94, 0.35);
+      pointer-events: none;
+    }
+    .cat-tag {
+      position: absolute;
+      top: 9px;
+      right: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: rgba(15, 32, 48, 0.78);
+      color: #b5dbf2;
+      border: 1px solid rgba(145, 208, 242, 0.22);
+      pointer-events: none;
+    }
+    .card-body {
+      padding: 12px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+    }
+    .card-title {
+      margin: 0;
+      font-size: 14.5px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .card-desc {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.42;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="title-box">
+      <h1>🎨 Atrapanieblas — Catálogo de Sprites y Animaciones</h1>
+      <p>Vista ampliada estilo GIF en tiempo real de todos los elementos del juego (sin terreno): humanos, atrapanieblas, casas, estanques, animales y olas.</p>
+    </div>
+    <div class="controls">
+      <div class="ctrl-group" id="zoom-group" title="Escala de píxel">
+        <button class="btn" data-zoom="3" type="button">Zoom ×3</button>
+        <button class="btn active" data-zoom="4" type="button">Zoom ×4</button>
+        <button class="btn" data-zoom="6" type="button">Zoom ×6</button>
+      </div>
+      <div class="ctrl-group" id="speed-group" title="Velocidad de animación">
+        <button class="btn" data-speed="0" type="button">⏸ Pausa</button>
+        <button class="btn" data-speed="0.4" type="button">0.4×</button>
+        <button class="btn active" data-speed="1" type="button">1×</button>
+        <button class="btn" data-speed="1.8" type="button">1.8×</button>
+      </div>
+      <div class="ctrl-group" id="bg-group" title="Fondo del visor">
+        <button class="btn active" data-bg="context" type="button">Contextual</button>
+        <button class="btn" data-bg="dark" type="button">Oscuro</button>
+        <button class="btn" data-bg="day" type="button">Día</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="cat-tabs">
+    <button class="tab-btn active" data-cat="all" type="button">Todos (28)</button>
+    <button class="tab-btn" data-cat="humanos" type="button">👥 Humanos (5)</button>
+    <button class="tab-btn" data-cat="mallas" type="button">🕸️ Atrapanieblas y Red (7)</button>
+    <button class="tab-btn" data-cat="pueblo" type="button">🏠 Casas y Almacenamiento (8)</button>
+    <button class="tab-btn" data-cat="fauna-mar" type="button">🐋 Mar, Olas y Fauna Marina (5)</button>
+    <button class="tab-btn" data-cat="fauna-tierra" type="button">🦙 Fauna Terrestre y Aves (5)</button>
+    <button class="tab-btn" data-cat="flora" type="button">🌵 Flora y Rocas (3)</button>
+  </nav>
+
+  <main class="grid" id="cards-grid"></main>
+
+  <script>
+  (() => {
+    const SHIRTS = ['#2c73c9', '#d14b3a', '#3d9956', '#d99326', '#6b5bb5', '#2a9aa8'];
+
+    function shadeColor(hex, p) {
+      const n = parseInt(hex.slice(1), 16);
+      return `rgb(${Math.max(0,Math.min(255,((n>>16)&255)+p))},${Math.max(0,Math.min(255,((n>>8)&255)+p))},${Math.max(0,Math.min(255,(n&255)+p))})`;
+    }
+    function fillIsoDiamond(ctx, cx, cy, color) {
+      ctx.fillStyle = color; const x0 = Math.round(cx), y0 = Math.round(cy);
+      ctx.fillRect(x0 - 2, y0, 4, 1); ctx.fillRect(x0 - 4, y0 + 1, 8, 1); ctx.fillRect(x0 - 6, y0 + 2, 12, 1);
+      ctx.fillRect(x0 - 8, y0 + 3, 16, 1); ctx.fillRect(x0 - 10, y0 + 4, 20, 1); ctx.fillRect(x0 - 12, y0 + 5, 24, 1);
+      ctx.fillRect(x0 - 10, y0 + 6, 20, 1); ctx.fillRect(x0 - 8, y0 + 7, 16, 1); ctx.fillRect(x0 - 6, y0 + 8, 12, 1);
+      ctx.fillRect(x0 - 4, y0 + 9, 8, 1); ctx.fillRect(x0 - 2, y0 + 10, 4, 1);
+    }
+    function fillIsoSides(ctx, cx, cy, dropPx, lc, rc) {
+      if (dropPx <= 0) return; const x0 = Math.round(cx), y0 = Math.round(cy);
+      ctx.fillStyle = lc; for (let i = 0; i < 6; i++) ctx.fillRect(x0 - 12 + i * 2, y0 + 6 + i, 2, dropPx);
+      ctx.fillStyle = rc; for (let i = 0; i < 6; i++) ctx.fillRect(x0 + i * 2, y0 + 11 - i, 2, dropPx);
+    }
+    function drawIsoRim(ctx, cx, cy, rc) {
+      const x0 = Math.round(cx), y0 = Math.round(cy); ctx.fillStyle = rc;
+      ctx.fillRect(x0 - 2, y0, 4, 1); ctx.fillRect(x0 - 4, y0 + 1, 2, 1); ctx.fillRect(x0 + 2, y0 + 1, 2, 1); ctx.fillRect(x0 - 6, y0 + 2, 2, 1); ctx.fillRect(x0 + 4, y0 + 2, 2, 1);
+    }
+    function drawPixelMatrix(ctx, rows, pal, ox, oy) {
+      for (let r = 0; r < rows.length; r++) {
+        const row = rows[r];
+        let c = 0;
+        while (c < row.length) {
+          const ch = row[c];
+          if (ch === '.' || ch === ' ' || !pal[ch]) { c++; continue; }
+          let end = c + 1;
+          while (end < row.length && row[end] === ch) end++;
+          ctx.fillStyle = pal[ch];
+          ctx.fillRect(ox + c, oy + r, end - c, 1);
+          c = end;
+        }
+      }
+    }
+
+    // ===== Funciones de dibujo idénticas al juego =====
+    function drawBuildPad(ctx, wx, wy, pad, time, hovered, canAfford) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 1;
+      fillIsoSides(ctx, cx, cy, 4, '#8d7451', '#6f593c');
+      fillIsoDiamond(ctx, cx, cy, hovered ? (canAfford ? '#ebd49d' : '#e3b09e') : '#d4ba8b');
+      ctx.fillStyle = hovered ? '#ffffff' : 'rgba(255, 250, 232, 0.85)';
+      for (const [dx, dy] of [[-10,4],[-7,2],[-4,1],[3,1],[6,2],[9,4],[-9,6],[-6,8],[-3,9],[3,9],[6,8],[9,6]]) ctx.fillRect(cx + dx, cy + dy, 2, 1);
+      ctx.fillStyle = '#ffe04d'; ctx.fillRect(cx - 12, cy + 4, 2, 2); ctx.fillRect(cx + 10, cy + 4, 2, 2); ctx.fillRect(cx - 1, cy - 1, 2, 2); ctx.fillRect(cx - 1, cy + 9, 2, 2);
+      const py = Math.round(cy + 5 + (hovered ? -1 : 0));
+      ctx.fillStyle = canAfford ? '#b57b16' : '#806954'; ctx.fillRect(cx - 4, py - 2, 8, 6); ctx.fillRect(cx - 3, py - 3, 6, 8);
+      ctx.fillStyle = canAfford ? (hovered ? '#ffe86b' : '#f2c341') : '#a8937d'; ctx.fillRect(cx - 3, py - 2, 6, 5);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 1, py - 2, 2, 5); ctx.fillRect(cx - 2, py, 4, 1);
+    }
+
+    function drawAtrapanieblas(ctx, wx, wy, pad, time, hovered) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 4;
+      const up = pad.meshUp !== false;
+      const cond = pad.condition == null ? 100 : pad.condition;
+      const salt = pad.salt == null ? 0 : pad.salt;
+      const torn = Boolean(pad.torn);
+      const wobble = pad.windRisk ? Math.round(Math.sin(time * 34) * 0.9) : 0;
+      ctx.save(); ctx.translate(cx + wobble, cy);
+      ctx.fillStyle = 'rgba(48, 36, 36, 0.28)'; ctx.fillRect(-10, 1, 22, 5); ctx.fillRect(-7, 6, 16, 2);
+      const xL = -11, yL = 5, xM = 0, yM = -1, xR = 11, yR = -6, meshH = 22;
+
+      if (!up) {
+        const stub = (px, py) => { ctx.fillStyle = '#4e3526'; ctx.fillRect(px - 1, py - 13, 2, 15); ctx.fillStyle = '#75533d'; ctx.fillRect(px - 1, py - 13, 1, 14); ctx.fillStyle = '#2c1c13'; ctx.fillRect(px - 1, py + 2, 2, 1); };
+        stub(xL, yL); stub(xM, yM); stub(xR, yR);
+        ctx.fillStyle = 'rgba(30, 26, 24, 0.26)'; ctx.fillRect(-9, 3, 20, 3);
+        ctx.fillStyle = '#7d96a8'; ctx.fillRect(-8, -3, 17, 6);
+        ctx.fillStyle = '#c3d6e1'; ctx.fillRect(-8, -4, 17, 2);
+        ctx.fillStyle = '#a2b8c6'; ctx.fillRect(-8, -2, 17, 1);
+        ctx.fillStyle = '#61798c'; ctx.fillRect(-8, 2, 17, 1);
+        for (let i = 0; i < 4; i++) { ctx.fillStyle = '#5b7386'; ctx.fillRect(-7 + i * 4, -3, 1, 5); }
+        ctx.fillStyle = '#2f4352'; ctx.fillRect(-1, -5, 2, 8);
+        ctx.fillStyle = '#f0c24e'; ctx.fillRect(3, -4, 3, 1); ctx.fillRect(4, -3, 1, 2);
+        ctx.restore();
+        return;
+      }
+
+      const dirt = Math.max(0, Math.min(1, (100 - cond) / 100));
+      const panelCol = `rgba(${186 - Math.round(dirt * 52)}, ${212 - Math.round(dirt * 54)}, ${226 - Math.round(dirt * 46)}, 0.8)`;
+      const drawPanel = (x0, y0, x1, y1) => {
+        const steps = x1 - x0;
+        for (let dx = 0; dx <= steps; dx++) {
+          const bx = x0 + dx, by = Math.round(y0 + (y1 - y0) * (dx / steps));
+          ctx.fillStyle = hovered ? 'rgba(224, 242, 250, 0.9)' : panelCol; ctx.fillRect(bx, by - meshH, 1, meshH);
+          if (dx % 2 === 0) { ctx.fillStyle = dirt > 0.45 ? '#7d7a72' : '#6f899c'; ctx.fillRect(bx, by - meshH, 1, meshH); }
+        }
+        ctx.fillStyle = dirt > 0.45 ? '#8d857a' : '#7f98aa';
+        for (let row = 2; row < meshH - 1; row += 3) for (let dx = 0; dx <= steps; dx++) ctx.fillRect(x0 + dx, Math.round(y0 + (y1 - y0) * (dx / steps)) - row, 1, 1);
+      };
+      drawPanel(xL + 1, yL - 2, xM - 1, yM - 2); drawPanel(xM + 1, yM - 2, xR - 1, yR - 2);
+      const pole = (px, py) => { ctx.fillStyle = '#4e3526'; ctx.fillRect(px - 1, py - meshH - 3, 2, meshH + 4); ctx.fillStyle = '#75533d'; ctx.fillRect(px - 1, py - meshH - 3, 1, meshH + 3); };
+      pole(xL, yL); pole(xM, yM); pole(xR, yR);
+      for (let dx = 0; dx <= xR - xL; dx++) { const gx = xL + dx, gy = Math.round(yL + (yR - yL) * (dx / (xR - xL))) - 2; ctx.fillStyle = torn ? '#4a6c86' : '#1f70c7'; ctx.fillRect(gx, gy, 1, 2); ctx.fillStyle = torn ? '#86a9bf' : '#6ec2ff'; ctx.fillRect(gx, gy, 1, 1); }
+
+      if (cond < 62) {
+        ctx.fillStyle = 'rgba(28, 32, 38, 0.82)';
+        ctx.fillRect(-7, -12, 3, 4); ctx.fillRect(3, -16, 2, 5); ctx.fillRect(6, -7, 2, 3);
+        ctx.fillStyle = 'rgba(94, 106, 116, 0.9)'; ctx.fillRect(-6, -8, 2, 2); ctx.fillRect(4, -14, 3, 2);
+      }
+      if (torn) {
+        ctx.fillStyle = 'rgba(22, 26, 32, 0.92)';
+        ctx.fillRect(-9, -9, 4, 6); ctx.fillRect(-2, -18, 3, 7); ctx.fillRect(5, -13, 4, 7);
+        ctx.fillStyle = '#b96a4f'; ctx.fillRect(-8, -9, 1, 4); ctx.fillRect(6, -12, 1, 4);
+      }
+      if (salt > 28) {
+        const grains = Math.round((salt - 28) / 3.2);
+        for (let i = 0; i < grains; i++) {
+          const rx = xL + 1 + ((i * 7 + 3) % 21), ry = -2 - Math.round(((i * 13 + 5) % 20));
+          ctx.fillStyle = i % 3 === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(224, 244, 252, 0.66)';
+          ctx.fillRect(rx, ry, 1, 1);
+        }
+        if (salt > 78) { ctx.fillStyle = 'rgba(236, 250, 255, 0.5)'; ctx.fillRect(-9, -20, 18, 1); }
+      }
+
+      if (!pad.alertActive && !torn) for (let i = 0; i < 3; i++) { const p = (time * 1.15 + (pad.dripPhase || 0) + i * 0.37) % 1, dropX = xL + 4 + i * 7, baseY = Math.round(yL + (yR - yL) * ((dropX - xL) / (xR - xL))) - 2; ctx.fillStyle = '#53b8ff'; ctx.fillRect(dropX, Math.round(baseY - meshH * (1 - p)), 1, 2); }
+      if (pad.pipeState === 'none') {
+        const bx = xL + 2, by = yL - 6;
+        ctx.fillStyle = '#144c8f'; ctx.fillRect(bx, by, 7, 9); ctx.fillStyle = '#247ad9'; ctx.fillRect(bx + 1, by + 1, 5, 7);
+        ctx.fillStyle = '#0e3669'; ctx.fillRect(bx + 2, by - 1, 3, 1); ctx.fillStyle = '#73c6ff'; ctx.fillRect(bx + 2, by + 2, 1, 5);
+        if (!pad.alertActive && pad.fill > 2 && !torn) { ctx.fillStyle = 'rgba(18, 38, 62, 0.72)'; ctx.fillRect(-7, 7, 16, 4); ctx.fillStyle = '#47b8ff'; ctx.fillRect(-6, 8, Math.round((pad.fill / 100) * 14), 2); }
+      } else {
+        ctx.fillStyle = '#1a3854'; ctx.fillRect(xL + 1, yL - 2, 16, 4);
+        ctx.fillStyle = '#295780'; ctx.fillRect(xL + 1, yL - 2, 16, 3);
+        ctx.fillStyle = '#68a9d9'; ctx.fillRect(xL + 1, yL - 2, 16, 1);
+        ctx.fillStyle = '#c9402a'; ctx.fillRect(xL + 4, yL - 6, 3, 4);
+        ctx.fillStyle = '#ff9b83'; ctx.fillRect(xL + 4, yL - 6, 1, 1);
+        if (pad.pipeState === 'active' && up && !torn) { const ft = Math.floor((time * 14) % 15); ctx.fillStyle = '#b8ebff'; ctx.fillRect(xL + 1 + ft, yL - 2, 2, 1); }
+      }
+      ctx.restore();
+    }
+
+    function drawAlertBubble(ctx, wx, wy, pad, time) {
+      const cx = Math.round(wx), cy = Math.round(wy) - 34 + Math.round(Math.sin(time * 5.2) * 2);
+      ctx.fillStyle = 'rgba(20, 42, 70, 0.22)'; ctx.fillRect(cx - 7, cy - 7, 14, 14);
+      ctx.fillStyle = '#25446b'; ctx.fillRect(cx - 7, cy - 9, 14, 14); ctx.fillRect(cx - 8, cy - 8, 16, 12); ctx.fillRect(cx - 2, cy + 5, 4, 2); ctx.fillRect(cx - 1, cy + 7, 2, 1);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 6, cy - 8, 12, 12); ctx.fillRect(cx - 7, cy - 7, 14, 10); ctx.fillRect(cx - 1, cy + 4, 2, 2);
+      ctx.fillStyle = '#1b5fb5'; ctx.fillRect(cx - 3, cy - 6, 6, 9); ctx.fillRect(cx - 2, cy - 7, 4, 1);
+      ctx.fillStyle = '#3391f0'; ctx.fillRect(cx - 2, cy - 5, 4, 7);
+      ctx.fillStyle = '#8ad0ff'; ctx.fillRect(cx - 2, cy - 4, 1, 5);
+      const bx = cx + 6, by = cy - 8;
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(bx - 3, by - 3, 7, 7);
+      ctx.fillStyle = '#f28b16'; ctx.fillRect(bx - 2, by - 3, 5, 7); ctx.fillRect(bx - 3, by - 2, 7, 5);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(bx, by - 2, 1, 3); ctx.fillRect(bx, by + 2, 1, 1);
+    }
+
+    function drawTaskBubble(ctx, wx, wy, kind, time) {
+      const urgent = kind === 'roll';
+      const bob = Math.round(Math.sin(time * (urgent ? 7.5 : 4.4)) * 2);
+      const cx = Math.round(wx), cy = Math.round(wy) - 44 + bob;
+      const accent = kind === 'roll' ? '#e07414' : kind === 'unroll' ? '#2f9e63' : kind === 'maintain' ? '#3d93b8' : '#cf4a30';
+      ctx.fillStyle = 'rgba(14, 26, 40, 0.3)'; ctx.fillRect(cx - 7, cy - 6, 15, 14);
+      ctx.fillStyle = accent; ctx.fillRect(cx - 8, cy - 8, 16, 14); ctx.fillRect(cx - 7, cy - 9, 14, 16);
+      ctx.fillStyle = '#fdfbf3'; ctx.fillRect(cx - 7, cy - 7, 14, 12); ctx.fillRect(cx - 6, cy - 8, 12, 14);
+      ctx.fillStyle = accent; ctx.fillRect(cx - 1, cy + 6, 2, 2);
+      if (kind === 'roll') {
+        ctx.fillStyle = '#d96f10';
+        ctx.fillRect(cx - 1, cy - 6, 2, 1); ctx.fillRect(cx - 2, cy - 5, 4, 1); ctx.fillRect(cx - 3, cy - 4, 6, 1);
+        ctx.fillRect(cx - 4, cy - 3, 8, 1); ctx.fillRect(cx - 5, cy - 2, 10, 2); ctx.fillRect(cx - 6, cy, 12, 1);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 1, cy - 5, 2, 4); ctx.fillRect(cx - 1, cy, 2, 1);
+      } else if (kind === 'maintain') {
+        ctx.fillStyle = '#dff6ff'; ctx.fillRect(cx - 3, cy - 1, 6, 3); ctx.fillRect(cx - 2, cy - 3, 4, 7); ctx.fillRect(cx - 1, cy - 5, 2, 9);
+        ctx.fillStyle = '#59b6d6'; ctx.fillRect(cx, cy - 3, 1, 5);
+      } else {
+        ctx.fillStyle = '#8b98a4'; ctx.fillRect(cx - 4, cy - 4, 2, 5); ctx.fillRect(cx - 2, cy, 3, 2); ctx.fillRect(cx + 1, cy + 1, 2, 2);
+        ctx.fillStyle = '#cf4a30'; ctx.fillRect(cx - 5, cy - 5, 4, 1);
+      }
+    }
+
+    function drawSignalMast(ctx, wx, wy, time, active) {
+      const x = Math.round(wx), y = Math.round(wy), top = y - 42;
+      ctx.fillStyle = 'rgba(30, 26, 22, 0.25)'; ctx.fillRect(x - 8, y + 1, 17, 3);
+      ctx.fillStyle = '#8d8f8c'; ctx.fillRect(x - 7, y - 2, 15, 3);
+      ctx.fillStyle = '#b6b8b2'; ctx.fillRect(x - 6, y - 3, 13, 2);
+      ctx.fillStyle = '#3f4c58'; ctx.fillRect(x - 1, top, 2, 40);
+      ctx.fillStyle = '#68798a'; ctx.fillRect(x - 1, top, 1, 40);
+      for (let i = 0; i < 6; i++) { ctx.fillStyle = '#3f4c58'; ctx.fillRect(x - 4, top + 5 + i * 6, 8, 1); }
+      ctx.fillStyle = '#3f4c58'; ctx.fillRect(x - 6, top + 2, 12, 1);
+      const blink = 0.5 + 0.5 * Math.sin(time * (active ? 9 : 3));
+      ctx.fillStyle = `rgba(120, 235, 255, ${blink.toFixed(2)})`; ctx.fillRect(x - 2, top - 4, 4, 4);
+      ctx.fillStyle = '#eaffff'; ctx.fillRect(x - 1, top - 3, 2, 2);
+      if (!active) return;
+      for (let i = 0; i < 3; i++) {
+        const ph = (time * 0.9 + i / 3) % 1;
+        ctx.strokeStyle = `rgba(130, 235, 255, ${(0.55 * (1 - ph)).toFixed(3)})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(x, top - 2, 4 + ph * 20, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+
+    function drawCarrier(ctx, wx, wy, carrier, time) {
+      const moving = carrier.state !== 'idle';
+      const walkPhase = moving ? time * 12 + (carrier.id || 0) * 1.7 : 0;
+      const stride = moving ? Math.sin(walkPhase) : 0;
+      const bob = moving && Math.abs(stride) > 0.55 ? -1 : 0;
+      const x = Math.round(wx), y = Math.round(wy) + bob;
+      const dir = carrier.dirX < 0 ? -1 : 1;
+      ctx.save(); ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(38, 28, 20, 0.34)'; ctx.fillRect(-3, 1 - bob, 6, 2);
+      if (dir < 0) ctx.scale(-1, 1);
+      const step = moving ? (stride > 0.25 ? 1 : stride < -0.25 ? -1 : 0) : 0;
+      ctx.fillStyle = '#263850'; ctx.fillRect(-2 - step, -3, 2, 3);
+      ctx.fillStyle = '#3b291e'; ctx.fillRect(-2 - step, 0, 2, 1);
+      ctx.fillStyle = '#385273'; ctx.fillRect(0 + step, -3, 2, 3);
+      ctx.fillStyle = '#4f3728'; ctx.fillRect(0 + step, 0, 2, 1);
+      if (carrier.carryingWater) {
+        ctx.fillStyle = '#124687'; ctx.fillRect(-5, -8, 4, 5);
+        ctx.fillStyle = '#257ee0'; ctx.fillRect(-4, -7, 2, 3);
+        ctx.fillStyle = '#8ad6ff'; ctx.fillRect(-4, -7, 1, 2);
+      }
+      ctx.fillStyle = shadeColor(carrier.shirt, -26); ctx.fillRect(-2, -7, 4, 4);
+      ctx.fillStyle = carrier.shirt; ctx.fillRect(-1, -7, 3, 4);
+      ctx.fillStyle = shadeColor(carrier.shirt, 18); ctx.fillRect(1, -7, 1, 3);
+      if (carrier.carryingWater) { ctx.fillStyle = '#5c4430'; ctx.fillRect(-1, -7, 1, 3); }
+      const arm = moving ? (stride > 0 ? 1 : 0) : 0;
+      ctx.fillStyle = '#e3b38c'; ctx.fillRect(2, -5 + arm, 1, 2);
+      if (!carrier.carryingWater) {
+        ctx.fillStyle = '#2c5c8f'; ctx.fillRect(2 + arm, -4, 2, 3);
+        ctx.fillStyle = '#6eb4f0'; ctx.fillRect(2 + arm, -4, 1, 1);
+      }
+      ctx.fillStyle = '#473326'; ctx.fillRect(-2, -10, 3, 3);
+      ctx.fillStyle = '#eab991'; ctx.fillRect(-1, -10, 3, 3);
+      ctx.fillStyle = '#1f1b18'; ctx.fillRect(1, -9, 1, 1);
+      ctx.fillStyle = '#8f6b42'; ctx.fillRect(-4, -10, 8, 1);
+      ctx.fillStyle = '#e6ca95'; ctx.fillRect(-4, -11, 8, 1);
+      ctx.fillStyle = '#3b4f66'; ctx.fillRect(-2, -12, 4, 1);
+      ctx.fillStyle = '#d9b980'; ctx.fillRect(-1, -13, 3, 1);
+      ctx.restore();
+    }
+
+    function drawTechnician(ctx, wx, wy, tech, time) {
+      const moving = tech.state === 'climbing' || tech.state === 'returning';
+      const walkPhase = time * 13 + (tech.id || 0) * 2.1;
+      const stride = moving ? Math.sin(walkPhase) : 0;
+      const bob = moving && Math.abs(stride) > 0.55 ? -1 : 0;
+      const working = tech.state === 'working';
+      const swing = working ? Math.round(Math.sin(time * 15)) : 0;
+      const x = Math.round(wx), y = Math.round(wy) + bob;
+      ctx.save(); ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(38, 28, 20, 0.34)'; ctx.fillRect(-3, 1 - bob, 6, 2);
+      if (tech.dirX < 0) ctx.scale(-1, 1);
+      const step = moving ? (stride > 0.25 ? 1 : stride < -0.25 ? -1 : 0) : 0;
+      ctx.fillStyle = '#2d3f57'; ctx.fillRect(-2 - step, -3, 2, 3); ctx.fillStyle = '#3b291e'; ctx.fillRect(-2 - step, 0, 2, 1);
+      ctx.fillStyle = '#3a4f6b'; ctx.fillRect(0 + step, -3, 2, 3); ctx.fillStyle = '#4f3728'; ctx.fillRect(0 + step, 0, 2, 1);
+      ctx.fillStyle = '#b35c1c'; ctx.fillRect(-2, -7, 4, 4);
+      ctx.fillStyle = '#e8892b'; ctx.fillRect(-1, -7, 3, 4);
+      ctx.fillStyle = '#ffc46b'; ctx.fillRect(1, -7, 1, 3);
+      ctx.fillStyle = '#f6e7a8'; ctx.fillRect(-2, -5, 4, 1);
+      if (working) {
+        ctx.fillStyle = '#8c6a3a'; ctx.fillRect(2, -7 + swing, 2, 3);
+        ctx.fillStyle = '#cfdde8'; ctx.fillRect(2, -9 + swing, 3, 2);
+        ctx.fillStyle = '#7f909f'; ctx.fillRect(3, -8 + swing, 1, 1);
+      } else {
+        ctx.fillStyle = '#9c3a2a'; ctx.fillRect(2 + Math.round(stride * 0.4), -4, 2, 3);
+        ctx.fillStyle = '#d6dde3'; ctx.fillRect(2 + Math.round(stride * 0.4), -5, 2, 1);
+      }
+      ctx.fillStyle = '#eab991'; ctx.fillRect(-1, -10, 3, 3);
+      ctx.fillStyle = '#1f1b18'; ctx.fillRect(1, -9, 1, 1);
+      ctx.fillStyle = '#f0b81e'; ctx.fillRect(-2, -12, 5, 2); ctx.fillRect(-3, -11, 7, 1);
+      ctx.fillStyle = '#ffe27a'; ctx.fillRect(-1, -12, 2, 1);
+      ctx.restore();
+    }
+
+    function drawHouse(ctx, wx, wy, house, anim = 1, time = 0, nightFactor = 0) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 4;
+      const ab = Boolean(house.abandoned);
+      const litNight = !ab && nightFactor > 0.32;
+      const wallBase = ab ? '#8a8279' : house.wall;
+      const roofBase = ab ? '#544e49' : house.roof;
+      const wallLit = shadeColor(wallBase, 10), wallMid = shadeColor(wallBase, -4), wallShd = shadeColor(wallBase, -28), wallDeep = shadeColor(wallBase, -42);
+      const roofLit = shadeColor(roofBase, 16), roofMid = roofBase, roofShd = shadeColor(roofBase, -26), roofEdge = shadeColor(roofBase, -40);
+      const trimCol = ab ? '#6b635b' : '#ebe4d5', plinthL = ab ? '#635c55' : '#8a7e6e', plinthR = ab ? '#4a443f' : '#695f52';
+      ctx.save(); ctx.translate(cx, cy);
+      ctx.fillStyle = 'rgba(42, 34, 28, 0.28)';
+      ctx.fillRect(-10, 2, 24, 5); ctx.fillRect(-6, 7, 20, 2); ctx.fillRect(6, -1, 10, 4);
+      if (house.style === 'flat') {
+        const W = 12, H = 11;
+        for (let i = 0; i < W; i++) {
+          const x = -W + i, yBot = Math.floor(i * 0.5);
+          ctx.fillStyle = i === 0 ? trimCol : ((i % 3 === 0) ? wallMid : wallLit); ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthL; ctx.fillRect(x, yBot - 2, 1, 2);
+          ctx.fillStyle = wallMid; ctx.fillRect(x, yBot - H, 1, 1);
+        }
+        for (let i = 0; i < W; i++) {
+          const x = i, yBot = Math.floor((W - 1 - i) * 0.5);
+          ctx.fillStyle = i === W - 1 ? wallDeep : ((i % 3 === 0) ? wallDeep : wallShd); ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthR; ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        ctx.fillStyle = wallMid; ctx.fillRect(0, -H + 5, 1, H - 2);
+        for (let r = 0; r < 12; r++) { const hw = r < 6 ? (r + 1) * 2 : (12 - r) * 2; ctx.fillStyle = roofEdge; ctx.fillRect(-hw, -17 + r, hw * 2, 1); }
+        for (let r = 1; r < 11; r++) { const hw = Math.max(1, (r < 6 ? (r + 1) * 2 : (12 - r) * 2) - 2); ctx.fillStyle = r < 6 ? roofMid : roofShd; ctx.fillRect(-hw, -17 + r, hw * 2, 1); }
+        ctx.fillStyle = roofLit; ctx.fillRect(-2, -17, 4, 1); ctx.fillRect(-6, -15, 3, 1); ctx.fillRect(-10, -13, 3, 1);
+        ctx.fillStyle = ab ? '#2a2320' : '#4a3121'; ctx.fillRect(-9, -4, 3, 6);
+        ctx.fillStyle = ab ? '#3c3430' : '#6e4b34'; ctx.fillRect(-8, -3, 2, 4);
+        ctx.fillStyle = '#9e9282'; ctx.fillRect(-10, 2, 4, 1);
+        ctx.fillStyle = roofShd; ctx.fillRect(-10, -5, 5, 1);
+        const drawWin = (wx0, wy0, isRight) => {
+          ctx.fillStyle = trimCol; ctx.fillRect(wx0 - 1, wy0 - 1, 4, 4);
+          if (ab) { ctx.fillStyle = '#241e1c'; ctx.fillRect(wx0, wy0, 2, 2); ctx.fillStyle = '#7c5d3f'; ctx.fillRect(wx0 - 1, wy0, 4, 1); }
+          else if (litNight) { ctx.fillStyle = '#ffcb6b'; ctx.fillRect(wx0, wy0, 2, 2); ctx.fillStyle = '#fff3b8'; ctx.fillRect(wx0, wy0, 1, 1); }
+          else { ctx.fillStyle = isRight ? '#2a3d4d' : '#3d5e78'; ctx.fillRect(wx0, wy0, 2, 2); ctx.fillStyle = isRight ? '#6d93ad' : '#b7d7e8'; ctx.fillRect(wx0, wy0, 1, 1); }
+        };
+        drawWin(-4, -4, false); drawWin(3, -3, true); drawWin(8, -5, true);
+        if (ab) { ctx.fillStyle = '#7c5d3f'; ctx.fillRect(-9, -3, 3, 1); ctx.fillRect(-9, -1, 3, 1); }
+        ctx.fillStyle = '#47433e'; ctx.fillRect(-3, -15, 6, 2);
+        if (ab) { ctx.fillStyle = '#4d545c'; ctx.fillRect(-2, -20, 5, 5); ctx.fillStyle = '#68717a'; ctx.fillRect(-1, -19, 3, 3); }
+        else { ctx.fillStyle = '#1d568f'; ctx.fillRect(-2, -20, 5, 5); ctx.fillStyle = '#3180c9'; ctx.fillRect(-1, -19, 3, 3); ctx.fillStyle = '#7fc2f0'; ctx.fillRect(-1, -19, 1, 2); ctx.fillStyle = '#123a63'; ctx.fillRect(-1, -21, 3, 1); }
+      } else {
+        const W = 13, H = 11;
+        for (let i = 0; i < W; i++) {
+          const x = -W + i, yBot = Math.floor(i * 0.5);
+          ctx.fillStyle = i === 0 ? trimCol : ((i % 2 === 0) ? wallLit : wallMid); ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthL; ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        for (let i = 0; i < W; i++) {
+          const x = i, yBot = Math.floor((W - 1 - i) * 0.5);
+          ctx.fillStyle = i === W - 1 ? wallDeep : ((i % 2 === 0) ? wallShd : wallDeep); ctx.fillRect(x, yBot - H, 1, H);
+          ctx.fillStyle = plinthR; ctx.fillRect(x, yBot - 2, 1, 2);
+        }
+        for (let x = -14; x <= 14; x++) {
+          const ax = Math.abs(x), yEave = -4 - Math.floor(ax * 0.5), yTop = -19 + Math.floor(Math.max(0, ax - 5) * 0.88), hCol = yEave - yTop + 1;
+          if (hCol <= 0) continue;
+          const isLeft = x < 0, isRib = (x & 3) === 0;
+          ctx.fillStyle = isLeft ? (isRib ? roofLit : roofMid) : (isRib ? roofEdge : roofShd); ctx.fillRect(x, yTop, 1, hCol);
+          ctx.fillStyle = roofEdge; ctx.fillRect(x, yEave, 1, 1);
+        }
+        ctx.fillStyle = roofLit; ctx.fillRect(-5, -20, 11, 2);
+        ctx.fillStyle = roofEdge; ctx.fillRect(-5, -18, 11, 1);
+        ctx.fillStyle = ab ? '#4a4541' : '#6e5c50'; ctx.fillRect(-4, -24, 3, 6);
+        ctx.fillStyle = ab ? '#635d58' : '#8f7a6c'; ctx.fillRect(-4, -24, 1, 5);
+        ctx.fillStyle = '#3b332e'; ctx.fillRect(-5, -25, 5, 1);
+        ctx.fillStyle = trimCol; ctx.fillRect(-10, -4, 4, 6);
+        ctx.fillStyle = ab ? '#26201d' : '#573926'; ctx.fillRect(-9, -3, 3, 5);
+        ctx.fillStyle = '#9e9282'; ctx.fillRect(-10, 2, 4, 1);
+        const drawWinG = (wx0, wy0, isRight) => {
+          ctx.fillStyle = trimCol; ctx.fillRect(wx0 - 1, wy0 - 1, 4, 4);
+          if (ab) { ctx.fillStyle = '#221c1a'; ctx.fillRect(wx0, wy0, 2, 2); ctx.fillStyle = '#7c5d3f'; ctx.fillRect(wx0 - 1, wy0, 4, 1); }
+          else if (litNight) { ctx.fillStyle = '#ffcb6b'; ctx.fillRect(wx0, wy0, 2, 2); ctx.fillStyle = '#fff3b8'; ctx.fillRect(wx0, wy0, 1, 1); }
+          else { ctx.fillStyle = isRight ? '#2a3d4d' : '#3d5e78'; ctx.fillRect(wx0, wy0, 2, 2); ctx.fillStyle = isRight ? '#6d93ad' : '#b7d7e8'; ctx.fillRect(wx0, wy0, 1, 1); }
+        };
+        drawWinG(-4, -4, false); drawWinG(3, -3, true); drawWinG(8, -5, true);
+        if (!ab) {
+          for (let k = 0; k < 2; k++) {
+            const ph = (time * 0.8 + k * 0.5) % 1;
+            ctx.fillStyle = `rgba(240, 246, 250, ${(0.5 * (1 - ph)).toFixed(2)})`;
+            ctx.fillRect(Math.round(-4 + Math.sin(ph * 4) * 2), Math.round(-27 - ph * 8), 2, 2);
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawStorageTambores(ctx, wx, wy, waterRatio) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 3;
+      ctx.save(); ctx.translate(cx, cy);
+      ctx.fillStyle = 'rgba(42, 30, 22, 0.28)'; ctx.fillRect(-11, 2, 22, 5);
+      fillIsoSides(ctx, 0, -3, 3, '#8f7d67', '#70614f'); fillIsoDiamond(ctx, 0, -3, '#c4b39b');
+      for (const [dx, dy] of [[-5,0],[0,-2],[5,0],[-2,2],[3,2]]) {
+        ctx.fillStyle = '#13498a'; ctx.fillRect(dx - 2, dy - 7, 5, 7);
+        ctx.fillStyle = '#2579d6'; ctx.fillRect(dx - 1, dy - 6, 3, 5);
+        ctx.fillStyle = '#7ac6ff'; ctx.fillRect(dx - 1, dy - 6, 1, 5);
+        ctx.fillStyle = '#0e3669'; ctx.fillRect(dx - 2, dy - 8, 5, 1);
+        ctx.fillStyle = waterRatio > 0.2 ? '#61d4ff' : '#1b3d63'; ctx.fillRect(dx - 1, dy - 8, 3, 1);
+      }
+      ctx.restore();
+    }
+
+    function drawStorageEstanque(ctx, wx, wy, waterRatio, time) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 4;
+      ctx.save(); ctx.translate(cx, cy);
+      ctx.fillStyle = 'rgba(35, 28, 22, 0.3)'; ctx.fillRect(-15, 2, 30, 6);
+      const rx = 13, ry = 6.5, wallH = 8;
+      for (let dx = -rx; dx <= rx; dx++) {
+        const span = Math.round(ry * Math.sqrt(Math.max(0, 1 - (dx * dx) / (rx * rx))));
+        ctx.fillStyle = dx < -3 ? '#b5afa4' : dx < 4 ? '#9c968c' : '#7d776e';
+        ctx.fillRect(dx, -wallH + span, 1, wallH);
+        ctx.fillStyle = '#5e5952'; ctx.fillRect(dx, span - 1, 1, 1);
+      }
+      for (let dy = -6; dy <= 6; dy++) {
+        const span = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+        ctx.fillStyle = '#d4cfc5'; ctx.fillRect(-span, -wallH + dy, span * 2, 1);
+        if (span > 2) { ctx.fillStyle = waterRatio > 0.08 ? (dy < 0 ? '#1e78b8' : '#2892d6') : '#47433e'; ctx.fillRect(-span + 2, -wallH + dy, (span - 2) * 2, 1); }
+      }
+      if (waterRatio > 0.15) { const s = Math.round(Math.sin(time * 2.6) * 2); ctx.fillStyle = '#8be0ff'; ctx.fillRect(-5 + s, -wallH - 1, 6, 1); ctx.fillRect(1 - s, -wallH + 2, 5, 1); }
+      ctx.restore();
+    }
+
+    function drawStorageCopa(ctx, wx, wy, time) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 4;
+      ctx.save(); ctx.translate(cx, cy);
+      ctx.fillStyle = 'rgba(35, 25, 20, 0.32)'; ctx.fillRect(-10, 1, 20, 5);
+      ctx.fillStyle = '#455463'; ctx.fillRect(-6, -18, 2, 19); ctx.fillRect(4, -18, 2, 19); ctx.fillRect(-1, -16, 2, 18);
+      ctx.fillStyle = '#607385'; ctx.fillRect(-5, -13, 10, 1); ctx.fillRect(-5, -7, 10, 1);
+      for (let dy = -30; dy <= -18; dy++) {
+        const t = (dy + 30) / 12, half = t < 0.25 ? Math.round(4 + t * 20) : t > 0.8 ? Math.round(9 - (t - 0.8) * 15) : 9;
+        for (let dx = -half; dx <= half; dx++) { ctx.fillStyle = dx < -3 ? '#eef6fa' : dx < 3 ? '#cbe0ec' : '#96b3c4'; ctx.fillRect(dx, dy, 1, 1); }
+      }
+      ctx.fillStyle = '#2585c4'; ctx.fillRect(-9, -25, 18, 2); ctx.fillStyle = '#6ad2ff'; ctx.fillRect(-8, -25, 10, 1);
+      ctx.fillStyle = Math.sin(time * 4) > 0 ? '#ff5945' : '#9e281b'; ctx.fillRect(-1, -33, 2, 2);
+      ctx.restore();
+    }
+
+    function drawOrchard(ctx, wx, wy, anim = 1, dried = false) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 2;
+      ctx.save(); ctx.translate(cx, cy);
+      fillIsoDiamond(ctx, 0, -4, dried ? '#8a7254' : '#6b472c');
+      ctx.fillStyle = dried ? '#9c8346' : '#3d8c30';
+      for (const [dx, dy] of [[-6,0],[-2,-2],[2,-2],[6,0],[-4,2],[0,0],[4,2],[-2,4],[2,4]]) {
+        ctx.fillRect(dx - 1, dy - 2, 3, 2);
+        ctx.fillStyle = dried ? '#bfa45e' : '#6fd649'; ctx.fillRect(dx, dy - 3, 1, 1);
+        ctx.fillStyle = dried ? '#9c8346' : '#3d8c30';
+      }
+      if (!dried) { ctx.fillStyle = '#3d9fe8'; ctx.fillRect(-9, 2, 4, 1); ctx.fillRect(-6, 4, 4, 1); }
+      ctx.restore();
+    }
+
+    function drawTree(ctx, wx, wy) {
+      const cx = Math.round(wx), cy = Math.round(wy) + 3;
+      ctx.save(); ctx.translate(cx, cy);
+      ctx.fillStyle = 'rgba(48, 38, 22, 0.25)'; ctx.fillRect(-4, 1, 8, 3);
+      ctx.fillStyle = '#694a32'; ctx.fillRect(-1, -4, 3, 6);
+      ctx.fillStyle = '#2d6929'; ctx.fillRect(-5, -10, 10, 7);
+      ctx.fillStyle = '#438f3c'; ctx.fillRect(-5, -12, 10, 6); ctx.fillRect(-4, -14, 8, 3);
+      ctx.fillStyle = '#62b84e'; ctx.fillRect(-3, -13, 5, 3);
+      ctx.restore();
+    }
+    function drawCactus(ctx, wx, wy, v = 0) {
+      const x = Math.round(wx), y = Math.round(wy) + 4;
+      ctx.fillStyle = 'rgba(60, 38, 22, 0.22)'; ctx.fillRect(x - 2, y, 5, 2);
+      ctx.fillStyle = '#3e7538'; ctx.fillRect(x - 1, y - 9, 2, 9); ctx.fillStyle = '#5ea150'; ctx.fillRect(x - 1, y - 9, 1, 8);
+      if (v !== 2) { ctx.fillStyle = '#498740'; ctx.fillRect(x - 4, y - 6, 3, 1); ctx.fillRect(x - 4, y - 8, 1, 3); }
+      if (v !== 1) { ctx.fillStyle = '#3e7538'; ctx.fillRect(x + 1, y - 5, 3, 1); ctx.fillRect(x + 3, y - 7, 1, 3); }
+    }
+    function drawRock(ctx, wx, wy, v = 0) {
+      const x = Math.round(wx), y = Math.round(wy) + 4;
+      ctx.fillStyle = 'rgba(42, 30, 30, 0.22)'; ctx.fillRect(x - 4, y, 9, 2);
+      ctx.fillStyle = '#8b7f7c'; ctx.fillRect(x - 4, y - 3, 4, 4); ctx.fillRect(x - 2, y - 5, 3, 3);
+      ctx.fillStyle = '#635957'; ctx.fillRect(x, y - 3, v === 0 ? 4 : 3, 4); ctx.fillRect(x, y - 5, 2, 3);
+    }
+    function drawBoat(ctx, wx, wy, boat, time) {
+      const x = Math.round(wx + Math.sin(time * 0.6 + boat.phase) * 3), y = Math.round(wy + Math.sin(time * 2.2 + boat.phase) * 1.4);
+      ctx.fillStyle = 'rgba(225, 250, 255, 0.65)'; ctx.fillRect(x - 7, y + 2, 14, 1);
+      ctx.fillStyle = '#a83c2b'; ctx.fillRect(x - 5, y, 10, 2); ctx.fillRect(x - 4, y + 1, 8, 1);
+      ctx.fillStyle = '#f2ede4'; ctx.fillRect(x - 4, y - 2, 8, 2); ctx.fillStyle = '#d9d3c7'; ctx.fillRect(x - 2, y - 5, 4, 3);
+      ctx.fillStyle = '#3a6f9e'; ctx.fillRect(x - 1, y - 4, 2, 1); ctx.fillStyle = '#5c402c'; ctx.fillRect(x + 3, y - 6, 1, 5); ctx.fillStyle = '#e04238'; ctx.fillRect(x + 4, y - 6, 2, 1);
+    }
+
+    function drawLandAnimal(ctx, wx, wy, a, time) {
+      const moving = a.state === 'walk';
+      const walkPh = moving ? time * (a.kind === 'fox' ? 11 : 7.5) + a.phase : 0;
+      const step = moving ? (Math.sin(walkPh) > 0.25 ? 1 : Math.sin(walkPh) < -0.25 ? -1 : 0) : 0;
+      const x = Math.round(wx), y = Math.round(wy) + 2;
+      const dir = a.dirX < 0 ? -1 : 1;
+      ctx.save(); ctx.translate(x, y);
+      if (a.kind === 'guanaco') {
+        ctx.fillStyle = 'rgba(42, 30, 20, 0.28)'; ctx.fillRect(-5, 0, 10, 2);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#9e6b43';
+        ctx.fillRect(-3 - step, -4, 1, 4); ctx.fillRect(-1 + step, -4, 1, 4);
+        ctx.fillRect(2 - step, -4, 1, 4); ctx.fillRect(4 + step, -4, 1, 4);
+        ctx.fillStyle = '#c8783e'; ctx.fillRect(-4, -8, 9, 4);
+        ctx.fillStyle = '#e09356'; ctx.fillRect(-3, -8, 7, 2);
+        ctx.fillStyle = '#f5eee4'; ctx.fillRect(-3, -5, 7, 1); ctx.fillRect(3, -8, 2, 3);
+        ctx.fillStyle = '#a35d2b'; ctx.fillRect(-5, -8, 1, 2);
+        const grazing = !moving && Math.sin(time * 1.6 + a.phase) > -0.2;
+        if (grazing) {
+          ctx.fillStyle = '#c8783e'; ctx.fillRect(4, -7, 3, 2); ctx.fillRect(6, -6, 2, 2);
+          ctx.fillStyle = '#f5eee4'; ctx.fillRect(4, -5, 2, 1);
+          ctx.fillStyle = '#5e5047'; ctx.fillRect(7, -5, 3, 2); ctx.fillRect(7, -7, 1, 2);
+        } else {
+          ctx.fillStyle = '#c8783e'; ctx.fillRect(3, -13, 2, 6);
+          ctx.fillStyle = '#f5eee4'; ctx.fillRect(4, -12, 1, 5);
+          ctx.fillStyle = '#5e5047'; ctx.fillRect(3, -15, 4, 2);
+          ctx.fillStyle = '#3b322c'; ctx.fillRect(3, -17, 1, 2); ctx.fillRect(5, -16, 1, 1);
+        }
+      } else if (a.kind === 'fox') {
+        ctx.fillStyle = 'rgba(42, 30, 20, 0.25)'; ctx.fillRect(-4, 0, 8, 2);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#7a4628'; ctx.fillRect(-2 - step, -2, 1, 2); ctx.fillRect(2 + step, -2, 1, 2);
+        ctx.fillStyle = '#9c7d65'; ctx.fillRect(-6, -5, 3, 2);
+        ctx.fillStyle = '#2e241f'; ctx.fillRect(-7, -5, 1, 2);
+        ctx.fillStyle = '#bf6939'; ctx.fillRect(-3, -5, 6, 3);
+        ctx.fillStyle = '#877668'; ctx.fillRect(-2, -5, 4, 1);
+        ctx.fillStyle = '#d47c4a'; ctx.fillRect(2, -7, 3, 3);
+        ctx.fillStyle = '#f0e4d6'; ctx.fillRect(4, -5, 2, 1);
+        ctx.fillStyle = '#3b281c'; ctx.fillRect(2, -8, 1, 1); ctx.fillRect(4, -8, 1, 1);
+      } else if (a.kind === 'goat') {
+        ctx.fillStyle = 'rgba(42, 30, 20, 0.25)'; ctx.fillRect(-3, 0, 7, 2);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#4a3d33'; ctx.fillRect(-2 - step, -3, 1, 3); ctx.fillRect(2 + step, -3, 1, 3);
+        ctx.fillStyle = a.coat || '#efe8dc'; ctx.fillRect(-3, -6, 6, 3);
+        const graze = !moving && Math.sin(time * 2 + a.phase) > 0;
+        ctx.fillRect(2, graze ? -5 : -8, 3, 3);
+        ctx.fillStyle = '#b5a38a'; ctx.fillRect(2, graze ? -6 : -9, 1, 1);
+      } else if (a.kind === 'penguin') {
+        const waddle = moving ? Math.round(Math.sin(time * 12 + a.phase)) : 0;
+        ctx.fillStyle = 'rgba(20, 30, 42, 0.28)'; ctx.fillRect(-2, 0, 5, 1);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#1d2530'; ctx.fillRect(-2, -6 + waddle, 4, 6);
+        ctx.fillStyle = '#f5f9fc'; ctx.fillRect(0, -5 + waddle, 2, 4);
+        ctx.fillStyle = '#1d2530'; ctx.fillRect(0, -4 + waddle, 1, 1);
+        ctx.fillStyle = '#e09028'; ctx.fillRect(-1, -1, 3, 1);
+        ctx.fillStyle = '#414d5c'; ctx.fillRect(2, -6 + waddle, 1, 1);
+      }
+      ctx.restore();
+    }
+
+    const DOLPHIN_PAL = { d: '#1d405c', m: '#34668c', l: '#639bc2', b: '#d8f1fa', e: '#0d2030' };
+    const DOLPHIN_SPRITES = {
+      up: [
+        '.......d.......',
+        '......dmd......',
+        '.....dmllmd....',
+        '....dmlmmllmd..',
+        '...dmmbbbbmled.',
+        '..dmmbbbbbbmmd.',
+        '.dd.dmbbbb..dd.',
+        'd...dd.........',
+        '....d..........',
+      ],
+      arch: [
+        '......dd.......',
+        '.....dmd.......',
+        '...ddmllmmdd...',
+        '..dmllmmmmllmd.',
+        '.dmmbbbbbbbbled',
+        'dd.dmbbbbbb..dd',
+        '....d..........',
+      ],
+      down: [
+        '.d.............',
+        'dd.............',
+        '.dd..dmmdd.....',
+        '..dmmlllmmmd...',
+        '...dmbbbbmlmd..',
+        '....d..dbbmled.',
+        '........dmmmd..',
+        '..........dd...',
+      ],
+      fin: [
+        '..dd..',
+        '.dmd..',
+        'dmmmd.',
+      ],
+    };
+
+    const WHALE_PAL = { k: '#0e2236', d: '#183552', m: '#284e73', l: '#4a79a3', g: '#7da5c4', w: '#d7effa', e: '#081520' };
+    const WHALE_BODY_SPRITE = [
+      '.............dd.............',
+      '............dkkd............',
+      '......dddddkllllkddddd......',
+      '....ddkllllmmmmmmllllkdd....',
+      '..ddkllmmmmmmmmmmmmmmllkdd..',
+      '.dkkmmmmmmmmmmmmmmmmmmmmlkd.',
+      'dkkmmmmmmmmmmmmmmmmmmmemmmkd',
+      'kkgwggggmmmmmmmmmmmmggggggkk',
+      '.kkwwgggggmmmmmmmmgggggggkk.',
+      '......ddkwk................',
+      '.......dkwk................',
+    ];
+    const WHALE_FLUKE_SPRITE = [
+      '.kkw........wkk.',
+      'dkkkk......kkkkd',
+      '.dkkkkk..kkkkkd.',
+      '...dkkkkkkkkd...',
+      '.....dkkkkd.....',
+      '......dkkd......',
+      '......dkkd......',
+      '.....dkkkkd.....',
+    ];
+
+    function drawSeaAnimal(ctx, wx, wy, a, time) {
+      const x = Math.round(wx), y = Math.round(wy);
+      const dir = a.dirX < 0 ? -1 : 1;
+      ctx.save(); ctx.translate(x, y);
+      if (a.kind === 'seal') {
+        const bob = Math.sin(time * 2.4 + a.phase) > 0.4 ? -1 : 0;
+        ctx.fillStyle = 'rgba(220, 248, 255, 0.65)'; ctx.fillRect(-6, 1, 12, 1);
+        if (dir < 0) ctx.scale(-1, 1);
+        ctx.fillStyle = '#593b28'; ctx.fillRect(-5, -3, 8, 4);
+        ctx.fillStyle = '#755139'; ctx.fillRect(-3, -4, 6, 3);
+        ctx.fillRect(2, -7 + bob, 3, 4);
+        ctx.fillStyle = '#3d271a'; ctx.fillRect(4, -7 + bob, 2, 2); ctx.fillRect(-6, -1, 2, 2);
+      } else if (a.kind === 'fish') {
+        if (dir < 0) ctx.scale(-1, 1);
+        const offsets = [{ dx: 0, dy: 0, ph: 0 }, { dx: -5, dy: -2, ph: 1.1 }, { dx: -4, dy: 2, ph: 2.3 }, { dx: -9, dy: 0, ph: 3.5 }, { dx: 4, dy: 1, ph: 4.7 }];
+        for (const f of offsets) {
+          const wag = Math.round(Math.sin(time * 9 + a.phase + f.ph) * 0.8);
+          const fx = f.dx, fy = f.dy + wag;
+          ctx.fillStyle = '#25668c'; ctx.fillRect(fx - 2, fy - 1, 1, 1); ctx.fillRect(fx - 2, fy + 1, 1, 1);
+          ctx.fillStyle = '#3282ab'; ctx.fillRect(fx - 1, fy, 4, 1);
+          ctx.fillStyle = '#8ce4f5'; ctx.fillRect(fx, fy - 1, 2, 1);
+          if (Math.sin(time * 5 + a.phase + f.ph) > 0.25) { ctx.fillStyle = '#e8fcff'; ctx.fillRect(fx, fy, 2, 1); }
+        }
+      } else if (a.kind === 'dolphin') {
+        const cyc = (time * 0.52 + a.phase) % 2.2;
+        if (cyc < 1.05) {
+          const p = cyc / 1.05;
+          const arcY = -Math.round(Math.sin(p * Math.PI) * 10);
+          const spr = p < 0.34 ? DOLPHIN_SPRITES.up : p < 0.68 ? DOLPHIN_SPRITES.arch : DOLPHIN_SPRITES.down;
+          ctx.fillStyle = 'rgba(240, 253, 255, 0.88)'; ctx.fillRect(-7, 0, 14, 1);
+          if (p < 0.26 || p > 0.74) { ctx.fillStyle = '#ffffff'; ctx.fillRect(-5, -2, 2, 1); ctx.fillRect(4, -2, 2, 1); ctx.fillRect(0, -3, 1, 1); }
+          if (dir < 0) ctx.scale(-1, 1);
+          drawPixelMatrix(ctx, spr, DOLPHIN_PAL, -7, arcY - 6);
+        } else {
+          const sw = Math.round(Math.sin(time * 3.6 + a.phase) * 1.5);
+          ctx.fillStyle = 'rgba(195, 240, 252, 0.78)'; ctx.fillRect(-6 + sw, 0, 11, 1);
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(-3 + sw, 1, 6, 1);
+          if (dir < 0) ctx.scale(-1, 1);
+          drawPixelMatrix(ctx, DOLPHIN_SPRITES.fin, DOLPHIN_PAL, -2, -3);
+        }
+      } else if (a.kind === 'whale') {
+        const cyc = (time * 0.36 + a.phase) % 3.2;
+        ctx.fillStyle = 'rgba(13, 44, 77, 0.42)';
+        ctx.fillRect(-13, 0, 26, 4); ctx.fillRect(-10, -1, 20, 6);
+        if (cyc < 2.2) {
+          const p = cyc / 2.2;
+          const surf = Math.sin(p * Math.PI);
+          const visRows = Math.max(2, Math.min(WHALE_BODY_SPRITE.length, Math.round(2 + surf * 8)));
+          ctx.fillStyle = 'rgba(170, 234, 246, 0.78)'; ctx.fillRect(-15, 0, 30, 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'; ctx.fillRect(-13, 0, 26, 1); ctx.fillRect(-10, 1, 20, 1);
+          ctx.save();
+          if (dir < 0) ctx.scale(-1, 1);
+          drawPixelMatrix(ctx, WHALE_BODY_SPRITE.slice(0, visRows), WHALE_PAL, -14, -visRows + 1);
+          if (p > 0.24 && p < 0.68) {
+            const sp = (p - 0.24) / 0.44;
+            const blowY = -visRows + 2, blowX = 7;
+            const alpha = (1 - sp * 0.65) * 0.92;
+            ctx.fillStyle = `rgba(240, 253, 255, ${alpha.toFixed(2)})`;
+            const maxH = Math.round(4 + sp * 10);
+            for (let h = 1; h <= maxH; h += 2) {
+              const spread = Math.floor(h * 0.42), windDrift = -Math.floor(h * 0.25 * sp);
+              ctx.fillRect(blowX + windDrift, blowY - h, 1, 1);
+              if (h > 3) {
+                ctx.fillRect(blowX - spread + windDrift, blowY - h + 1, 1, 1);
+                ctx.fillRect(blowX + spread + windDrift, blowY - h + 1, 1, 1);
+              }
+            }
+          }
+          ctx.restore();
+        } else if (cyc < 3.05) {
+          const fp = (cyc - 2.2) / 0.85;
+          const fLift = Math.sin(fp * Math.PI);
+          const fRows = Math.max(2, Math.min(WHALE_FLUKE_SPRITE.length, Math.round(1 + fLift * WHALE_FLUKE_SPRITE.length)));
+          ctx.fillStyle = 'rgba(235, 252, 255, 0.88)'; ctx.fillRect(-8, 0, 16, 1); ctx.fillRect(-5, 1, 10, 1);
+          ctx.save();
+          if (dir < 0) ctx.scale(-1, 1);
+          drawPixelMatrix(ctx, WHALE_FLUKE_SPRITE.slice(0, fRows), WHALE_PAL, -13, -fRows + 1);
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawSkyBird(ctx, wx, wy, b, time) {
+      const x = Math.round(wx), y = Math.round(wy) - 8;
+      const flap = Math.sin(time * (b.kind === 'pelican' ? 5.2 : 7.5) + b.flapPhase);
+      const wingY = flap > 0.35 ? -2 : flap < -0.35 ? 2 : 0;
+      ctx.fillStyle = 'rgba(24, 38, 52, 0.24)'; ctx.fillRect(x - 3, y + 18, 6, 1);
+      if (b.kind === 'pelican') {
+        ctx.fillStyle = '#5c524a'; ctx.fillRect(x - 5, y + wingY, 4, 1); ctx.fillRect(x + 2, y + wingY, 4, 1);
+        ctx.fillStyle = '#d9dee3'; ctx.fillRect(x - 1, y - 1, 3, 2);
+        ctx.fillStyle = '#e8b338'; ctx.fillRect(x + 2, y, 2, 1);
+      } else {
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 4, y + wingY, 3, 1); ctx.fillRect(x + 1, y + wingY, 3, 1); ctx.fillRect(x - 1, y, 2, 1);
+        ctx.fillStyle = '#5c7082'; ctx.fillRect(x - 4, y + wingY, 1, 1); ctx.fillRect(x + 3, y + wingY, 1, 1);
+      }
+    }
+
+    // ===== Demostración de las olas continuas de la orilla (estilo GIF) =====
+    function drawShoreWaveDemo(ctx, cx, cy, time) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.fillStyle = '#e2c184';
+      ctx.fillRect(-52, -26, 104, 24);
+      ctx.fillStyle = '#1d65b0';
+      ctx.fillRect(-52, -4, 104, 32);
+      ctx.fillStyle = '#2d8fd0';
+      ctx.fillRect(-52, -4, 104, 18);
+      ctx.fillStyle = '#47bdd4';
+      ctx.fillRect(-52, -4, 104, 8);
+
+      const coastAt = (x) => -4 + Math.sin(x * 0.08) * 3.5;
+
+      for (let x = -48; x <= 48; x += 2) {
+        const swell = Math.sin(time * 1.6 + x * 0.07) * 1.4;
+        const y = Math.round(coastAt(x) + swell);
+        ctx.fillStyle = 'rgba(130, 224, 235, 0.6)';
+        ctx.fillRect(x, y - 1, 3, 3);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+        ctx.fillRect(x, y, 3, 2);
+      }
+
+      for (let w = 0; w < 2; w++) {
+        const prog = (time * 0.25 + w * 0.5) % 1;
+        const dist = 20 * (1 - Math.pow(prog, 1.25)) + 2;
+        const alpha = prog < 0.18 ? (prog / 0.18) * 0.85 : prog > 0.82 ? ((1 - prog) / 0.18) * 0.85 : 0.85;
+        for (let x = -46; x <= 46; x += 2) {
+          if (Math.sin(x * 0.09 + w * 2) < -0.35) continue;
+          const y = Math.round(coastAt(x) + dist + Math.sin(x * 0.07 + time) * 0.8);
+          ctx.fillStyle = `rgba(55, 172, 204, ${(alpha * 0.55).toFixed(2)})`;
+          ctx.fillRect(x, y + 1, 3, 1);
+          ctx.fillStyle = `rgba(246, 253, 255, ${alpha.toFixed(2)})`;
+          ctx.fillRect(x, y, 3, 1);
+        }
+      }
+      ctx.restore();
+    }
+
+    const ITEMS = [
+      {
+        id: 'carrier-up', cat: 'humanos', catLabel: 'Humanos', bg: 'land',
+        title: 'Transportista subiendo al cerro',
+        desc: 'Trabajador local con chupalla nortina subiendo por el sendero con el bidón vacío en la mano.',
+        draw: (ctx, cx, cy, t) => {
+          drawCarrier(ctx, cx - 10, cy + 6, { id: 0, dirX: 1, shirt: SHIRTS[0], state: 'climbing', carryingWater: false }, t);
+          drawCarrier(ctx, cx + 10, cy + 6, { id: 1, dirX: -1, shirt: SHIRTS[1], state: 'climbing', carryingWater: false }, t);
+        },
+      },
+      {
+        id: 'carrier-down', cat: 'humanos', catLabel: 'Humanos', bg: 'land',
+        title: 'Transportista bajando con agua',
+        desc: 'Regresa a la caleta cargando el bidón azul lleno (30 L) en la espalda.',
+        draw: (ctx, cx, cy, t) => {
+          drawCarrier(ctx, cx - 10, cy + 6, { id: 2, dirX: 1, shirt: SHIRTS[2], state: 'descending', carryingWater: true }, t);
+          drawCarrier(ctx, cx + 10, cy + 6, { id: 3, dirX: -1, shirt: SHIRTS[3], state: 'descending', carryingWater: true }, t);
+        },
+      },
+      {
+        id: 'carrier-idle', cat: 'humanos', catLabel: 'Humanos', bg: 'land',
+        title: 'Cuadrilla de 4 trabajadores por caleta',
+        desc: 'Los 4 trabajadores base de cada caleta esperando órdenes (en Nivel 2 se capacitan como técnicos).',
+        draw: (ctx, cx, cy, t) => {
+          for (let i = 0; i < 4; i++) {
+            drawCarrier(ctx, cx - 18 + i * 12, cy + 6, { id: i, dirX: i < 2 ? 1 : -1, shirt: SHIRTS[i], state: 'idle', carryingWater: false }, t);
+          }
+        },
+      },
+      {
+        id: 'tech-walk', cat: 'humanos', catLabel: 'Humanos', bg: 'land',
+        title: 'Técnico subiendo a mantención',
+        desc: 'Trabajador capacitado con casco amarillo, overol naranja reflectante y caja de herramientas.',
+        draw: (ctx, cx, cy, t) => {
+          drawTechnician(ctx, cx - 9, cy + 6, { id: 0, dirX: 1, state: 'climbing' }, t);
+          drawTechnician(ctx, cx + 9, cy + 6, { id: 1, dirX: -1, state: 'returning' }, t);
+        },
+      },
+      {
+        id: 'tech-work', cat: 'humanos', catLabel: 'Humanos', bg: 'land',
+        title: 'Técnico reparando / limpiando sal',
+        desc: 'Animación de trabajo con herramienta en mano limpiando salinidad ($18) o reparando malla ($35).',
+        draw: (ctx, cx, cy, t) => {
+          drawTechnician(ctx, cx, cy + 6, { id: 0, dirX: 1, state: 'working' }, t);
+        },
+      },
+      {
+        id: 'pad-empty', cat: 'mallas', catLabel: 'Atrapanieblas', bg: 'land',
+        title: 'Plataforma de instalación (+)',
+        desc: 'Terreno nivelado en la loma costera listo para construir un nuevo atrapanieblas.',
+        draw: (ctx, cx, cy, t) => {
+          drawBuildPad(ctx, cx, cy - 2, {}, t, Math.sin(t * 2.5) > 0, true);
+        },
+      },
+      {
+        id: 'mesh-drum', cat: 'mallas', catLabel: 'Atrapanieblas', bg: 'land',
+        title: 'Atrapanieblas con bidón y goteo',
+        desc: 'Malla Raschel capturando gotas de camanchaca que llenan el bidón azul hasta activar la alerta (!).',
+        draw: (ctx, cx, cy, t) => {
+          const fill = (t * 28) % 120;
+          const alert = fill >= 100;
+          fillIsoSides(ctx, cx, cy + 15, 4, '#b99a6b', '#97784f');
+          fillIsoDiamond(ctx, cx, cy + 15, '#dcc08d');
+          drawAtrapanieblas(ctx, cx, cy + 8, { built: true, meshUp: true, pipeState: 'none', fill: Math.min(100, fill), alertActive: alert, condition: 100, salt: 0 }, t, false);
+          if (alert) drawAlertBubble(ctx, cx, cy + 16, { id: 1 }, t);
+        },
+      },
+      {
+        id: 'mesh-pipe', cat: 'mallas', catLabel: 'Atrapanieblas', bg: 'land',
+        title: 'Atrapanieblas con cañería directa',
+        desc: 'Colector inferior con válvula roja y pulsos de agua que bajan directo al estanque de la caleta.',
+        draw: (ctx, cx, cy, t) => {
+          fillIsoSides(ctx, cx, cy + 13, 4, '#b99a6b', '#97784f');
+          fillIsoDiamond(ctx, cx, cy + 13, '#dcc08d');
+          drawAtrapanieblas(ctx, cx, cy + 6, { built: true, meshUp: true, pipeState: 'active', fill: 0, condition: 100, salt: 0 }, t, false);
+        },
+      },
+      {
+        id: 'mesh-rolled', cat: 'mallas', catLabel: 'Atrapanieblas', bg: 'land',
+        title: 'Atrapanieblas enrollado (0 L/s)',
+        desc: 'Paño amarrado a la base: detiene la captura de agua, resiste ráfagas y ahorra mantención en Nivel 2.',
+        draw: (ctx, cx, cy, t) => {
+          fillIsoSides(ctx, cx, cy + 13, 4, '#b99a6b', '#97784f');
+          fillIsoDiamond(ctx, cx, cy + 13, '#dcc08d');
+          drawAtrapanieblas(ctx, cx, cy + 6, { built: true, meshUp: false, pipeState: 'active', fill: 0, condition: 100, salt: 0 }, t, false);
+        },
+      },
+      {
+        id: 'mesh-salt', cat: 'mallas', catLabel: 'Atrapanieblas', bg: 'land',
+        title: 'Malla con salinidad alta (🧂 $18)',
+        desc: 'Costra de sal acumulada sobre el paño que reduce el caudal hasta que un técnico la limpia.',
+        draw: (ctx, cx, cy, t) => {
+          fillIsoSides(ctx, cx, cy + 15, 4, '#b99a6b', '#97784f');
+          fillIsoDiamond(ctx, cx, cy + 15, '#dcc08d');
+          drawAtrapanieblas(ctx, cx, cy + 8, { built: true, meshUp: true, pipeState: 'active', condition: 82, salt: 88 }, t, false);
+          drawTaskBubble(ctx, cx, cy + 18, 'maintain', t);
+        },
+      },
+      {
+        id: 'mesh-torn', cat: 'mallas', catLabel: 'Atrapanieblas', bg: 'land',
+        title: 'Malla rota por ráfaga (🔧 $35)',
+        desc: 'Paño desgarrado tras una ráfaga sin enrollar: produce 0 L/s hasta que un técnico la repara.',
+        draw: (ctx, cx, cy, t) => {
+          fillIsoSides(ctx, cx, cy + 15, 4, '#b99a6b', '#97784f');
+          fillIsoDiamond(ctx, cx, cy + 15, '#dcc08d');
+          drawAtrapanieblas(ctx, cx, cy + 8, { built: true, meshUp: true, pipeState: 'active', condition: 18, salt: 45, torn: true }, t, false);
+          drawTaskBubble(ctx, cx, cy + 18, 'repair', t);
+        },
+      },
+      {
+        id: 'signal-mast', cat: 'mallas', catLabel: 'Atrapanieblas', bg: 'land',
+        title: 'Antena de señal remota del pueblo',
+        desc: 'Torre de radio que envía el pulso de enrollado/despliegue a distancia hacia las mallas.',
+        draw: (ctx, cx, cy, t) => {
+          drawSignalMast(ctx, cx, cy + 20, t, true);
+        },
+      },
+      {
+        id: 'house-gable', cat: 'pueblo', catLabel: 'Caleta', bg: 'land',
+        title: 'Casa costera de techo a dos aguas',
+        desc: 'Vivienda de caleta con techo de zinc acanalado, humo suave de chimenea y ventanas iluminadas de noche.',
+        draw: (ctx, cx, cy, t) => {
+          const night = (Math.sin(t * 0.9) + 1) * 0.45;
+          drawHouse(ctx, cx, cy + 8, { style: 'gable', roof: '#2d4f82', wall: '#d6bf97', abandoned: false }, 1, t, night);
+        },
+      },
+      {
+        id: 'house-flat', cat: 'pueblo', catLabel: 'Caleta', bg: 'land',
+        title: 'Casa nortina de techo plano con tinaco',
+        desc: 'Arquitectura costera del norte con antepecho superior y estanque azul de reserva en la terraza.',
+        draw: (ctx, cx, cy, t) => {
+          const night = (Math.sin(t * 0.9) + 1) * 0.45;
+          drawHouse(ctx, cx, cy + 8, { style: 'flat', roof: '#b3b0aa', wall: '#c7c3bc', abandoned: false }, 1, t, night);
+        },
+      },
+      {
+        id: 'house-abandoned', cat: 'pueblo', catLabel: 'Caleta', bg: 'land',
+        title: 'Casa abandonada por sequía',
+        desc: 'Cuando una caleta se queda sin agua, las ventanas se tapian y las familias emigran (0 hab. = Derrota).',
+        draw: (ctx, cx, cy, t) => {
+          drawHouse(ctx, cx, cy + 8, { style: 'gable', roof: '#2d4f82', wall: '#d6bf97', abandoned: true }, 1, t, 0);
+        },
+      },
+      {
+        id: 'storage-0', cat: 'pueblo', catLabel: 'Almacenamiento', bg: 'land',
+        title: 'Nivel 0: Tambores Básicos (120 L)',
+        desc: 'Batería inicial de 5 tambores azules sobre radier de madera en cada caleta.',
+        draw: (ctx, cx, cy, t) => {
+          drawStorageTambores(ctx, cx, cy + 4, 0.5 + 0.45 * Math.sin(t * 1.5));
+        },
+      },
+      {
+        id: 'storage-1', cat: 'pueblo', catLabel: 'Almacenamiento', bg: 'land',
+        title: 'Nivel 1: Estanque Comunitario (320 L)',
+        desc: 'Estanque circular de mampostería con ondas de agua animadas.',
+        draw: (ctx, cx, cy, t) => {
+          drawStorageEstanque(ctx, cx, cy + 4, 0.8, t);
+        },
+      },
+      {
+        id: 'storage-2', cat: 'pueblo', catLabel: 'Almacenamiento', bg: 'land',
+        title: 'Nivel 2: Copa de Agua Elevada (700 L)',
+        desc: 'Torre hidropresurizada con estructura metálica y baliza superior intermitente.',
+        draw: (ctx, cx, cy, t) => {
+          drawStorageCopa(ctx, cx, cy + 15, t);
+        },
+      },
+      {
+        id: 'orchard', cat: 'pueblo', catLabel: 'Caleta', bg: 'land',
+        title: 'Huerto comunitario (Verde vs Seco)',
+        desc: 'Cultivos con surcos de riego (+$0.03/L al precio del agua); se secan si la caleta entra en sequía.',
+        draw: (ctx, cx, cy, t) => {
+          drawOrchard(ctx, cx - 15, cy + 2, 1, false);
+          drawOrchard(ctx, cx + 15, cy + 2, 1, true);
+        },
+      },
+      {
+        id: 'boat', cat: 'pueblo', catLabel: 'Caleta', bg: 'sea',
+        title: 'Bote pesquero artesanal',
+        desc: 'Embarcación de madera con cabina y banderín rojo meciéndose en el muelle de cada caleta.',
+        draw: (ctx, cx, cy, t) => {
+          drawBoat(ctx, cx, cy + 2, { phase: 0 }, t);
+        },
+      },
+      {
+        id: 'shore-waves', cat: 'fauna-mar', catLabel: 'Mar y Olas', bg: 'sea', wide: true,
+        title: 'Olas continuas llegando a la orilla (Estilo GIF)',
+        desc: 'Cinta continua de espuma blanca que abraza la curva de la playa + líneas finas de ola paralelas que avanzan con suavidad.',
+        draw: (ctx, cx, cy, t) => {
+          drawShoreWaveDemo(ctx, cx, cy, t);
+        },
+      },
+      {
+        id: 'whale', cat: 'fauna-mar', catLabel: 'Fauna Marina', bg: 'sea',
+        title: 'Ballena Jorobada (Emersión, soplo y cola)',
+        desc: 'Sombra submarina, lomo arqueado con anillo de espuma, soplo de vapor en abanico y aleta caudal bifurcada al sumergirse.',
+        draw: (ctx, cx, cy, t) => {
+          drawSeaAnimal(ctx, cx, cy + 6, { kind: 'whale', dirX: 1, phase: 0 }, t);
+        },
+      },
+      {
+        id: 'dolphin', cat: 'fauna-mar', catLabel: 'Fauna Marina', bg: 'sea',
+        title: 'Delfines / Toninas de Punta Choros',
+        desc: 'Salto parabólico fuera del agua en 3 posturas curvas pixel-art y nado superficial con aleta dorsal.',
+        draw: (ctx, cx, cy, t) => {
+          drawSeaAnimal(ctx, cx - 10, cy + 5, { kind: 'dolphin', dirX: 1, phase: 0 }, t);
+          drawSeaAnimal(ctx, cx + 10, cy + 7, { kind: 'dolphin', dirX: 1, phase: 0.9 }, t);
+        },
+      },
+      {
+        id: 'fish-school', cat: 'fauna-mar', catLabel: 'Fauna Marina', bg: 'sea',
+        title: 'Cardumen de peces (Anchovetas / Jureles)',
+        desc: 'Grupo de 5 peces azul-plateados con cola ahorquillada nadando en formación y destellando bajo el sol.',
+        draw: (ctx, cx, cy, t) => {
+          drawSeaAnimal(ctx, cx, cy + 2, { kind: 'fish', dirX: 1, phase: 0 }, t);
+        },
+      },
+      {
+        id: 'seal', cat: 'fauna-mar', catLabel: 'Fauna Marina', bg: 'sea',
+        title: 'Lobo marino costero',
+        desc: 'Descansando sobre el roquerío de la orilla con espuma marina en la base.',
+        draw: (ctx, cx, cy, t) => {
+          drawSeaAnimal(ctx, cx - 9, cy + 4, { kind: 'seal', dirX: 1, phase: 0 }, t);
+          drawSeaAnimal(ctx, cx + 9, cy + 4, { kind: 'seal', dirX: -1, phase: 1.7 }, t);
+        },
+      },
+      {
+        id: 'guanaco', cat: 'fauna-tierra', catLabel: 'Fauna Terrestre', bg: 'land',
+        title: 'Guanaco del desierto costero',
+        desc: 'Camina en tropillas por las lomas áridas (izquierda) y se detiene a pastar inclinando el cuello (derecha).',
+        draw: (ctx, cx, cy, t) => {
+          drawLandAnimal(ctx, cx - 11, cy + 6, { kind: 'guanaco', state: 'walk', dirX: 1, phase: 0 }, t);
+          drawLandAnimal(ctx, cx + 11, cy + 6, { kind: 'guanaco', state: 'graze', dirX: -1, phase: 0 }, t);
+        },
+      },
+      {
+        id: 'fox', cat: 'fauna-tierra', catLabel: 'Fauna Terrestre', bg: 'land',
+        title: 'Zorro Culpeo / Chilla',
+        desc: 'Zorro del desierto nortino de lomo gris-rojizo y cola tupida con punta oscura.',
+        draw: (ctx, cx, cy, t) => {
+          drawLandAnimal(ctx, cx - 9, cy + 4, { kind: 'fox', state: 'walk', dirX: 1, phase: 0 }, t);
+          drawLandAnimal(ctx, cx + 9, cy + 4, { kind: 'fox', state: 'graze', dirX: -1, phase: 1.4 }, t);
+        },
+      },
+      {
+        id: 'goat', cat: 'fauna-tierra', catLabel: 'Fauna Terrestre', bg: 'land',
+        title: 'Cabras nortinas (Variantes de pelaje)',
+        desc: 'Rondan y pastan en los faldeos cercanos a las caletas costeras.',
+        draw: (ctx, cx, cy, t) => {
+          drawLandAnimal(ctx, cx - 12, cy + 4, { kind: 'goat', state: 'walk', dirX: 1, phase: 0, coat: '#efe8dc' }, t);
+          drawLandAnimal(ctx, cx, cy + 4, { kind: 'goat', state: 'graze', dirX: 1, phase: 0.8, coat: '#7d624c' }, t);
+          drawLandAnimal(ctx, cx + 12, cy + 4, { kind: 'goat', state: 'walk', dirX: -1, phase: 1.6, coat: '#4a4039' }, t);
+        },
+      },
+      {
+        id: 'penguin', cat: 'fauna-tierra', catLabel: 'Fauna Costera', bg: 'land',
+        title: 'Pingüino de Humboldt',
+        desc: 'Ave emblemática de la Reserva Punta Choros con su banda pectoral negra y caminata con bamboleo.',
+        draw: (ctx, cx, cy, t) => {
+          drawLandAnimal(ctx, cx - 9, cy + 4, { kind: 'penguin', state: 'walk', dirX: 1, phase: 0 }, t);
+          drawLandAnimal(ctx, cx, cy + 4, { kind: 'penguin', state: 'idle', dirX: 1, phase: 1 }, t);
+          drawLandAnimal(ctx, cx + 9, cy + 4, { kind: 'penguin', state: 'walk', dirX: -1, phase: 2 }, t);
+        },
+      },
+      {
+        id: 'seabirds', cat: 'fauna-tierra', catLabel: 'Aves Costeras', bg: 'sea',
+        title: 'Pelícano chileno y Gaviota',
+        desc: 'Planeando y batiendo las alas sobre la costa con su sombra proyectada sobre el agua.',
+        draw: (ctx, cx, cy, t) => {
+          drawSkyBird(ctx, cx - 11, cy, { kind: 'pelican', flapPhase: 0 }, t);
+          drawSkyBird(ctx, cx + 11, cy, { kind: 'seagull', flapPhase: 1.5 }, t);
+        },
+      },
+      {
+        id: 'tree-cactus', cat: 'flora', catLabel: 'Flora y Rocas', bg: 'land',
+        title: 'Árbol costero y Cactus candelabro',
+        desc: 'Árboles que brotan al crecer la caleta y las 3 variantes de cactus del desierto costero.',
+        draw: (ctx, cx, cy) => {
+          drawTree(ctx, cx - 16, cy + 5);
+          drawCactus(ctx, cx - 2, cy + 5, 0);
+          drawCactus(ctx, cx + 8, cy + 5, 1);
+          drawCactus(ctx, cx + 18, cy + 5, 2);
+        },
+      },
+      {
+        id: 'rocks', cat: 'flora', catLabel: 'Flora y Rocas', bg: 'land',
+        title: 'Rocas del desierto costero',
+        desc: 'Afloramientos rocosos que visten las laderas de terracota y cumbres.',
+        draw: (ctx, cx, cy) => {
+          drawRock(ctx, cx - 9, cy + 3, 0);
+          drawRock(ctx, cx + 9, cy + 3, 1);
+        },
+      },
+    ];
+
+    let pixelZoom = 4;
+    let speedMult = 1;
+    let bgMode = 'context';
+    let activeCat = 'all';
+    let simTime = 0;
+    let lastTs = performance.now();
+
+    const gridEl = document.getElementById('cards-grid');
+    const cardRuntime = [];
+
+    function buildCards() {
+      gridEl.innerHTML = '';
+      cardRuntime.length = 0;
+      const filtered = activeCat === 'all' ? ITEMS : ITEMS.filter((it) => it.cat === activeCat);
+      for (const item of filtered) {
+        const card = document.createElement('article');
+        card.className = `card${item.wide ? ' wide' : ''}`;
+        card.innerHTML = `
+          <div class="stage-wrap">
+            <canvas></canvas>
+            <span class="gif-badge">GIF · LOOP</span>
+            <span class="cat-tag">${item.catLabel}</span>
+          </div>
+          <div class="card-body">
+            <h3 class="card-title">${item.title}</h3>
+            <p class="card-desc">${item.desc}</p>
+          </div>
+        `;
+        gridEl.appendChild(card);
+        const cv = card.querySelector('canvas');
+        cardRuntime.push({ item, cv, ctx: cv.getContext('2d') });
+      }
+    }
+
+    function drawBackground(ctx, w, h, itemBg) {
+      if (bgMode === 'dark') {
+        ctx.fillStyle = '#0e1b28';
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+        ctx.fillRect(0, Math.round(h * 0.62), w, 1);
+        return;
+      }
+      if (bgMode === 'day') {
+        ctx.fillStyle = '#dbe7ec';
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.fillRect(0, Math.round(h * 0.65), w, 1);
+        return;
+      }
+      if (itemBg === 'sea') {
+        const g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, '#19579e');
+        g.addColorStop(0.55, '#257ec2');
+        g.addColorStop(1, '#3198d4');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      } else {
+        const g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, '#233b52');
+        g.addColorStop(0.58, '#2b455e');
+        g.addColorStop(0.59, '#c9a66b');
+        g.addColorStop(1, '#b08b52');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      }
+    }
+
+    function loop(ts) {
+      const dt = Math.min(0.05, (ts - lastTs) / 1000);
+      lastTs = ts;
+      simTime += dt * speedMult;
+
+      for (const rc of cardRuntime) {
+        const { cv, ctx, item } = rc;
+        const rect = cv.getBoundingClientRect();
+        const lw = Math.max(40, Math.round(rect.width / pixelZoom));
+        const lh = Math.max(30, Math.round(rect.height / pixelZoom));
+        if (cv.width !== lw || cv.height !== lh) {
+          cv.width = lw;
+          cv.height = lh;
+        }
+        ctx.imageSmoothingEnabled = false;
+        drawBackground(ctx, lw, lh, item.bg);
+        item.draw(ctx, Math.round(lw / 2), Math.round(lh * 0.56), simTime);
+      }
+      requestAnimationFrame(loop);
+    }
+
+    document.getElementById('cat-tabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-cat]');
+      if (!btn) return;
+      activeCat = btn.dataset.cat;
+      document.querySelectorAll('#cat-tabs .tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
+      buildCards();
+    });
+
+    document.getElementById('zoom-group').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-zoom]');
+      if (!btn) return;
+      pixelZoom = Number(btn.dataset.zoom);
+      document.querySelectorAll('#zoom-group .btn').forEach((b) => b.classList.toggle('active', b === btn));
+    });
+
+    document.getElementById('speed-group').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-speed]');
+      if (!btn) return;
+      speedMult = Number(btn.dataset.speed);
+      document.querySelectorAll('#speed-group .btn').forEach((b) => b.classList.toggle('active', b === btn));
+    });
+
+    document.getElementById('bg-group').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-bg]');
+      if (!btn) return;
+      bgMode = btn.dataset.bg;
+      document.querySelectorAll('#bg-group .btn').forEach((b) => b.classList.toggle('active', b === btn));
+    });
+
+    buildCards();
+    requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>

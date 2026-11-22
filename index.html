@@ -1110,12 +1110,12 @@
       ];
       const fogClouds = Array.from({ length: 34 }, () => ({ x: originX + (rand() - 0.5) * 1650, y: originY + 80 + rand() * 720, rx: 42 + rand() * 75, ry: 16 + rand() * 26, speed: 5 + rand() * 9, alpha: 0.14 + rand() * 0.18, phase: rand() * Math.PI * 2 }));
 
-      // Puntos de rompiente costera para animar las olas llegando a la orilla en toda la extensión del mapa
+      // Puntos continuos de la costa para dibujar líneas de espuma y olas paralelas suaves (estilo ilustración/GIF)
       const shoreLine = [];
-      for (let gx = 3.5; gx <= mapW - 3.5; gx += 0.65) {
+      for (let gx = 3.0; gx <= mapW - 3.0; gx += 0.35) {
         const cy = getCoastY(gx);
         if (cy > 4 && cy < mapH - 3) {
-          shoreLine.push({ gx, coastY: cy, phase: gx * 0.34 + (rand() - 0.5) * 0.45, speed: 0.52 + (rand() - 0.5) * 0.08 });
+          shoreLine.push({ gx, coastY: cy });
         }
       }
 
@@ -1186,21 +1186,30 @@
         });
       }
 
-      // 5) Delfines nariz de botella (toninas de Punta Choros) y Ballenas en mar abierto
-      for (const dGx of [14, 26, 36, 43, 53, 62, 74]) {
-        const cy = getCoastY(dGx) + 4.2 + rand() * 4.8;
+      // 5) Delfines nariz de botella (toninas), cardúmenes de peces y Ballenas jorobadas en mar abierto
+      for (const dGx of [16, 35, 44, 61, 73]) {
+        const cy = getCoastY(dGx) + 4.4 + rand() * 3.8;
         wildlife.sea.push({
-          kind: 'dolphin', gx: dGx, gy: Math.min(mapH - 2.5, cy),
-          homeGx: dGx, homeGy: Math.min(mapH - 2.5, cy),
-          dirX: rand() > 0.5 ? 1 : -1, speed: 1.35 + rand() * 0.35,
+          kind: 'dolphin', gx: dGx, gy: Math.min(mapH - 2.8, cy),
+          homeGx: dGx, homeGy: Math.min(mapH - 2.8, cy),
+          dirX: rand() > 0.5 ? 1 : -1, speed: 1.15 + rand() * 0.25,
           phase: rand() * Math.PI * 2,
         });
       }
-      for (const wGx of [29, 57]) {
-        const cy = Math.min(mapH - 2.2, getCoastY(wGx) + 8.2);
+      for (const fGx of [19, 31, 42, 54, 65, 76]) {
+        const cy = getCoastY(fGx) + 2.4 + rand() * 3.2;
+        wildlife.sea.push({
+          kind: 'fish', gx: fGx, gy: Math.min(mapH - 2.5, cy),
+          homeGx: fGx, homeGy: Math.min(mapH - 2.5, cy),
+          dirX: rand() > 0.5 ? 1 : -1, speed: 0.75 + rand() * 0.2,
+          phase: rand() * Math.PI * 2,
+        });
+      }
+      for (const wGx of [27, 56]) {
+        const cy = Math.min(mapH - 2.6, getCoastY(wGx) + 8.6);
         wildlife.sea.push({
           kind: 'whale', gx: wGx, gy: cy, homeGx: wGx, homeGy: cy,
-          dirX: wGx < 45 ? 1 : -1, speed: 0.45, phase: rand() * Math.PI * 2,
+          dirX: wGx < 45 ? 1 : -1, speed: 0.36, phase: rand() * Math.PI * 2,
         });
       }
 
@@ -2199,76 +2208,79 @@
       ctx.fillStyle = '#3a6f9e'; ctx.fillRect(x - 1, y - 4, 2, 1); ctx.fillStyle = '#5c402c'; ctx.fillRect(x + 3, y - 6, 1, 5); ctx.fillStyle = '#e04238'; ctx.fillRect(x + 4, y - 6, 2, 1);
     }
 
-    // ===== Olas animadas rompiendo en la orilla y trenes de olas del Pacífico =====
+    // Helper para dibujar matrices de sprites pixel-art con paleta de colores por carácter
+    function drawPixelMatrix(ctx, rows, pal, ox, oy) {
+      for (let r = 0; r < rows.length; r++) {
+        const row = rows[r];
+        let c = 0;
+        while (c < row.length) {
+          const ch = row[c];
+          if (ch === '.' || ch === ' ' || !pal[ch]) { c++; continue; }
+          let end = c + 1;
+          while (end < row.length && row[end] === ch) end++;
+          ctx.fillStyle = pal[ch];
+          ctx.fillRect(ox + c, oy + r, end - c, 1);
+          c = end;
+        }
+      }
+    }
+
+    // ===== Olas de espuma continuas siguiendo el contorno de la costa (estilo ilustración costera) =====
     function drawShoreWaves(ctx, map, time, inView, lod) {
       const { originX, originY, shoreLine } = map;
-      if (!shoreLine) return;
+      if (!shoreLine || !shoreLine.length) return;
       const step = lod === 0 ? 2 : 1;
 
+      // 1) Borde continuo de espuma blanca que abraza toda la orilla y respira suavemente con la resaca
       for (let i = 0; i < shoreLine.length; i += step) {
         const s = shoreLine[i];
-        const shoreWp = isoToWorld(s.gx, s.coastY, 0.85, originX, originY);
-        if (!inView(shoreWp.x, shoreWp.y)) continue;
+        const swell = Math.sin(time * 1.45 + s.gx * 0.14) * 0.22 + Math.sin(time * 0.9 - s.gx * 0.08) * 0.12;
+        const foamGy = s.coastY + 0.12 + swell;
+        const wp = isoToWorld(s.gx, foamGy, 0.85, originX, originY);
+        if (!inView(wp.x, wp.y)) continue;
+        const x = Math.round(wp.x), y = Math.round(wp.y);
 
-        // Dos trenes de olas desfasados que avanzan desde el mar hacia la arena de la playa
-        for (let w = 0; w < 2; w++) {
-          const p = (time * s.speed + s.phase + w * 0.5) % 1; // 0 = mar adentro -> 1 = resaca en la arena
-          if (p < 0.74) {
-            // Ola avanzando hacia la costa
-            const t = p / 0.74;
-            const ease = 1 - Math.pow(1 - t, 1.85);
-            const curGy = s.coastY + 2.35 * (1 - ease);
-            const curH = 0.15 + ease * 0.72;
-            const wp = isoToWorld(s.gx, curGy, curH, originX, originY);
-            const wx = Math.round(wp.x), wy = Math.round(wp.y);
+        // Franja húmeda turquesa clara pegada a la arena/roca
+        ctx.fillStyle = 'rgba(130, 224, 235, 0.55)';
+        ctx.fillRect(x - 3, y + 1, 7, 2);
 
-            // Cuerpo turquesa de la ola en perspectiva isométrica
-            ctx.fillStyle = t < 0.4 ? 'rgba(64, 184, 212, 0.55)' : 'rgba(92, 212, 228, 0.78)';
-            ctx.fillRect(wx - 4, wy + 1, 5, 2);
-            ctx.fillRect(wx, wy - 1, 5, 2);
+        // Cinta continua de espuma blanca en la orilla con encaje orgánico
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.fillRect(x - 3, y, 6, 2);
+        if (((i + Math.floor(time * 2)) & 3) !== 0) {
+          ctx.fillStyle = 'rgba(232, 250, 255, 0.78)';
+          ctx.fillRect(x - 2, y + 2, 4, 1);
+        }
+      }
 
-            // Cresta blanca que crece al acercarse a la rompiente
-            if (t > 0.28) {
-              const crestA = Math.min(0.95, (t - 0.28) * 1.45);
-              ctx.fillStyle = `rgba(235, 253, 255, ${crestA.toFixed(2)})`;
-              ctx.fillRect(wx - 4, wy, 5, 1);
-              ctx.fillRect(wx, wy - 1, 5, 1);
-              if (t > 0.58) {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(wx - 3, wy, 7, 1);
-              }
-            }
-          }
+      // 2) Líneas de ola largas, finas y paralelas a la curva de la costa que avanzan suavemente hacia la playa
+      for (let w = 0; w < 2; w++) {
+        const waveProg = (time * 0.22 + w * 0.5) % 1; // 0 = mar adentro -> 1 = llega a la espuma de la orilla
+        const distFromShore = 3.6 * (1 - Math.pow(waveProg, 1.25)) + 0.25;
+        const alpha = waveProg < 0.18
+          ? (waveProg / 0.18) * 0.78
+          : waveProg > 0.82
+            ? ((1 - waveProg) / 0.18) * 0.78
+            : 0.78;
+        if (alpha < 0.05) continue;
 
-          // Rompiente de espuma blanca y resaca húmeda sobre la arena de la orilla
-          if (p >= 0.54) {
-            const b = (p - 0.54) / 0.46; // 0 = impacto en la orilla -> 1 = espuma se disipa
-            const runUp = Math.sin(b * Math.PI);
-            const foamGy = s.coastY + 0.22 - runUp * 0.42;
-            const fWp = isoToWorld(s.gx, foamGy, 0.92, originX, originY);
-            const fx = Math.round(fWp.x), fy = Math.round(fWp.y);
+        for (let i = 0; i < shoreLine.length; i += step) {
+          const s = shoreLine[i];
+          // Crea tramos largos y continuos de ola siguiendo cada bahía (con pausas suaves entre tramos)
+          const ribbonMask = Math.sin(s.gx * 0.19 + w * 2.4 + time * 0.25);
+          if (ribbonMask < -0.25) continue;
 
-            // Orilla de arena mojada cuando la ola empieza a retirarse
-            if (b > 0.32) {
-              ctx.fillStyle = `rgba(92, 138, 148, ${(0.28 * (1 - b)).toFixed(2)})`;
-              ctx.fillRect(fx - 5, fy - 1, 10, 2);
-            }
+          const localCurve = Math.sin(s.gx * 0.12 + time * 0.8) * 0.14;
+          const wp = isoToWorld(s.gx, s.coastY + distFromShore + localCurve, 0.35, originX, originY);
+          if (!inView(wp.x, wp.y)) continue;
+          const x = Math.round(wp.x), y = Math.round(wp.y);
 
-            // Línea de espuma blanca burbujeante en la orilla
-            const foamAlpha = b < 0.45 ? 0.94 : 0.94 * (1 - (b - 0.45) / 0.55);
-            if (foamAlpha > 0.06) {
-              ctx.fillStyle = `rgba(255, 255, 255, ${foamAlpha.toFixed(2)})`;
-              ctx.fillRect(fx - 5, fy, 6, 2);
-              ctx.fillRect(fx, fy - 2, 6, 2);
-              if (lod >= 1 && b < 0.42) {
-                // Salpicaduras de espuma al romper la ola
-                ctx.fillStyle = '#dcf8ff';
-                ctx.fillRect(fx - 6, fy + 1, 2, 1);
-                ctx.fillRect(fx + 5, fy - 3, 2, 1);
-                if ((i & 1) === 0) ctx.fillRect(fx - 1, fy - 3, 2, 1);
-              }
-            }
-          }
+          // Sombra turquesa suave bajo la cresta de la ola
+          ctx.fillStyle = `rgba(60, 178, 206, ${(alpha * 0.55).toFixed(2)})`;
+          ctx.fillRect(x - 2, y + 1, 5, 1);
+          // Cresta blanca fina y continua paralela a la costa
+          ctx.fillStyle = `rgba(245, 253, 255, ${alpha.toFixed(2)})`;
+          ctx.fillRect(x - 2, y, 5, 1);
         }
       }
     }
@@ -2392,6 +2404,86 @@
       ctx.restore();
     }
 
+    const DOLPHIN_PAL = {
+      d: '#1d405c', // contorno / aleta dorsal oscura
+      m: '#34668c', // dorso azul pizarra
+      l: '#639bc2', // brillo superior
+      b: '#d8f1fa', // vientre claro
+      e: '#0d2030', // ojo
+    };
+    const DOLPHIN_SPRITES = {
+      up: [
+        '.......d.......',
+        '......dmd......',
+        '.....dmllmd....',
+        '....dmlmmllmd..',
+        '...dmmbbbbmled.',
+        '..dmmbbbbbbmmd.',
+        '.dd.dmbbbb..dd.',
+        'd...dd.........',
+        '....d..........',
+      ],
+      arch: [
+        '......dd.......',
+        '.....dmd.......',
+        '...ddmllmmdd...',
+        '..dmllmmmmllmd.',
+        '.dmmbbbbbbbbled',
+        'dd.dmbbbbbb..dd',
+        '....d..........',
+      ],
+      down: [
+        '.d.............',
+        'dd.............',
+        '.dd..dmmdd.....',
+        '..dmmlllmmmd...',
+        '...dmbbbbmlmd..',
+        '....d..dbbmled.',
+        '........dmmmd..',
+        '..........dd...',
+      ],
+      fin: [
+        '..dd..',
+        '.dmd..',
+        'dmmmd.',
+      ],
+    };
+
+    const WHALE_PAL = {
+      k: '#0e2236', // azul marino profundo
+      d: '#183552', // dorso oscuro
+      m: '#284e73', // flanco medio
+      l: '#4a79a3', // luz dorsal
+      g: '#7da5c4', // pliegues ventrales
+      w: '#d7effa', // blanco aleta / vientre
+      e: '#081520', // ojo
+    };
+    // Silueta pixel-art detallada de Ballena Jorobada (lomo arqueado, aleta dorsal, pliegues gulares y tubérculos)
+    const WHALE_BODY_SPRITE = [
+      '.............dd.............',
+      '............dkkd............',
+      '......dddddkllllkddddd......',
+      '....ddkllllmmmmmmllllkdd....',
+      '..ddkllmmmmmmmmmmmmmmllkdd..',
+      '.dkkmmmmmmmmmmmmmmmmmmmmlkd.',
+      'dkkmmmmmmmmmmmmmmmmmmmemmmkd',
+      'kkgwggggmmmmmmmmmmmmggggggkk',
+      '.kkwwgggggmmmmmmmmgggggggkk.',
+      '......ddkwk................',
+      '.......dkwk................',
+    ];
+    // Aleta caudal bifurcada (fluke) en perspectiva isométrica cuando la ballena se sumerge
+    const WHALE_FLUKE_SPRITE = [
+      '.kkw........wkk.',
+      'dkkkk......kkkkd',
+      '.dkkkkk..kkkkkd.',
+      '...dkkkkkkkkd...',
+      '.....dkkkkd.....',
+      '......dkkd......',
+      '......dkkd......',
+      '.....dkkkkd.....',
+    ];
+
     function drawSeaAnimal(ctx, wx, wy, a, time) {
       const x = Math.round(wx), y = Math.round(wy);
       const dir = a.dirX < 0 ? -1 : 1;
@@ -2412,85 +2504,122 @@
         ctx.fillStyle = '#3d271a';
         ctx.fillRect(4, -7 + bob, 2, 2);
         ctx.fillRect(-6, -1, 2, 2);
-      } else if (a.kind === 'dolphin') {
-        // Delfín nariz de botella (Tonina de Punta Choros): nada y salta en arco fuera del agua
-        const cyc = (time * 0.55 + a.phase) % 2.4;
-        if (cyc < 1.0) {
-          // Salto parabólico fuera del agua
-          const p = cyc; // 0..1
-          const arcY = -Math.round(Math.sin(p * Math.PI) * 11);
-          const pitch = p < 0.38 ? -1 : p > 0.62 ? 1 : 0;
-          // Espuma en el agua al saltar
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-          ctx.fillRect(-6, 0, 12, 1);
-          if (p < 0.25 || p > 0.75) {
-            ctx.fillRect(-4, -2, 2, 2);
-            ctx.fillRect(3, -2, 2, 2);
+      } else if (a.kind === 'fish') {
+        // Cardumen de peces costeros (anchovetas / jureles) nadando en formación
+        if (dir < 0) ctx.scale(-1, 1);
+        const offsets = [
+          { dx: 0, dy: 0, ph: 0 },
+          { dx: -5, dy: -2, ph: 1.1 },
+          { dx: -4, dy: 2, ph: 2.3 },
+          { dx: -9, dy: 0, ph: 3.5 },
+          { dx: 4, dy: 1, ph: 4.7 },
+        ];
+        for (const f of offsets) {
+          const wag = Math.round(Math.sin(time * 9 + a.phase + f.ph) * 0.8);
+          const fx = f.dx, fy = f.dy + wag;
+          // Cola ahorquillada
+          ctx.fillStyle = '#25668c';
+          ctx.fillRect(fx - 2, fy - 1, 1, 1);
+          ctx.fillRect(fx - 2, fy + 1, 1, 1);
+          // Cuerpo fusiforme azul-plateado
+          ctx.fillStyle = '#3282ab';
+          ctx.fillRect(fx - 1, fy, 4, 1);
+          ctx.fillStyle = '#8ce4f5';
+          ctx.fillRect(fx, fy - 1, 2, 1);
+          // Destello plateado en el vientre
+          if (Math.sin(time * 5 + a.phase + f.ph) > 0.25) {
+            ctx.fillStyle = '#e8fcff';
+            ctx.fillRect(fx, fy, 2, 1);
           }
+        }
+      } else if (a.kind === 'dolphin') {
+        // Pareja de delfines (toninas de Punta Choros): nadan y saltan en arco con silueta curva pixel-art
+        const cyc = (time * 0.52 + a.phase) % 2.8;
+        if (cyc < 1.05) {
+          const p = cyc / 1.05; // 0..1
+          const arcY = -Math.round(Math.sin(p * Math.PI) * 10);
+          const spr = p < 0.34 ? DOLPHIN_SPRITES.up : p < 0.68 ? DOLPHIN_SPRITES.arch : DOLPHIN_SPRITES.down;
+
+          // Anillo de espuma blanca en la superficie del agua
+          ctx.fillStyle = 'rgba(240, 253, 255, 0.88)';
+          ctx.fillRect(-7, 0, 14, 1);
+          if (p < 0.26 || p > 0.74) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-5, -2, 2, 1);
+            ctx.fillRect(4, -2, 2, 1);
+            ctx.fillRect(0, -3, 1, 1);
+          }
+
           if (dir < 0) ctx.scale(-1, 1);
-          ctx.translate(0, arcY);
-          ctx.fillStyle = '#436987';
-          ctx.fillRect(-4, -2 - pitch, 8, 3);
-          ctx.fillStyle = '#73a0c2';
-          ctx.fillRect(-3, -3 - pitch, 6, 2);
-          // Aleta dorsal
-          ctx.fillStyle = '#345570';
-          ctx.fillRect(-1, -5, 2, 2);
-          // Cola y trompa
-          ctx.fillRect(-6, -1 + pitch, 2, 2);
-          ctx.fillStyle = '#8cb6d4';
-          ctx.fillRect(4, -1 + pitch, 2, 2);
-          ctx.fillStyle = '#e4f4fc';
-          ctx.fillRect(-2, 0, 5, 1);
+          drawPixelMatrix(ctx, spr, DOLPHIN_PAL, -7, arcY - 6);
         } else {
-          // Aleta dorsal cortando el agua con estela blanca
-          const ripple = Math.round(Math.sin(time * 4 + a.phase) * 1.5);
-          ctx.fillStyle = 'rgba(230, 250, 255, 0.8)';
-          ctx.fillRect(-5 + ripple, 0, 10, 1);
+          // Aleta dorsal curva cortando la superficie con estela en V
+          const sw = Math.round(Math.sin(time * 3.6 + a.phase) * 1.5);
+          ctx.fillStyle = 'rgba(195, 240, 252, 0.78)';
+          ctx.fillRect(-6 + sw, 0, 11, 1);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-3 + sw, 1, 6, 1);
           if (dir < 0) ctx.scale(-1, 1);
-          ctx.fillStyle = '#395c78';
-          ctx.fillRect(-1, -3, 3, 3);
-          ctx.fillStyle = '#6993b3';
-          ctx.fillRect(0, -2, 2, 2);
+          drawPixelMatrix(ctx, DOLPHIN_SPRITES.fin, DOLPHIN_PAL, -2, -3);
         }
       } else if (a.kind === 'whale') {
-        // Ballena en aguas profundas: emerge el lomo y lanza su chorro de vapor blanco
-        const cyc = (time * 0.28 + a.phase) % 3.2;
-        if (cyc < 2.2) {
-          const surf = Math.sin((cyc / 2.2) * Math.PI);
-          const lift = Math.round(surf * 3);
-          ctx.fillStyle = 'rgba(230, 252, 255, 0.85)';
-          ctx.fillRect(-12, 1, 24, 1);
-          ctx.fillRect(-9, 2, 18, 1);
-          if (dir < 0) ctx.scale(-1, 1);
-          // Gran lomo oscuro
-          ctx.fillStyle = '#1e344a';
-          ctx.fillRect(-9, -2 - lift, 18, 3 + lift);
-          ctx.fillStyle = '#335270';
-          ctx.fillRect(-7, -3 - lift, 14, 2);
-          ctx.fillStyle = '#4e7396';
-          ctx.fillRect(-5, -3 - lift, 9, 1);
-          // Aleta dorsal pequeña
-          ctx.fillStyle = '#1e344a';
-          ctx.fillRect(-5, -5 - lift, 3, 2);
+        // Ballena Jorobada en mar abierto: sombra submarina, emersión del lomo, soplo en abanico y aleta caudal al sumergirse
+        const cyc = (time * 0.24 + a.phase) % 3.6;
 
-          // Chorro de vapor (soplo de la ballena) cuando está en la cima
-          if (cyc > 0.55 && cyc < 1.55) {
-            const sp = (cyc - 0.55) / 1.0;
-            const hSpout = Math.round(6 + Math.sin(sp * Math.PI) * 9);
-            ctx.fillStyle = `rgba(240, 252, 255, ${(0.88 * (1 - sp * 0.5)).toFixed(2)})`;
-            ctx.fillRect(5, -3 - lift - hSpout, 2, hSpout);
-            ctx.fillRect(3, -4 - lift - hSpout, 6, 3);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(2, -5 - lift - hSpout, 2, 2);
-            ctx.fillRect(7, -5 - lift - hSpout, 2, 2);
+        // Sombra submarina suave siempre visible bajo la superficie
+        ctx.fillStyle = 'rgba(13, 44, 77, 0.42)';
+        ctx.fillRect(-13, 0, 26, 4);
+        ctx.fillRect(-10, -1, 20, 6);
+
+        if (cyc < 2.2) {
+          // Fase 1: Emerge el gran lomo arqueado con espuma alrededor
+          const p = cyc / 2.2;
+          const surf = Math.sin(p * Math.PI);
+          const visRows = Math.max(2, Math.min(WHALE_BODY_SPRITE.length, Math.round(2 + surf * 8)));
+
+          // Anillo elíptico de espuma blanca rodeando a la ballena en la línea de flotación
+          ctx.fillStyle = 'rgba(170, 234, 246, 0.78)';
+          ctx.fillRect(-15, 0, 30, 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+          ctx.fillRect(-13, 0, 26, 1);
+          ctx.fillRect(-10, 1, 20, 1);
+
+          ctx.save();
+          if (dir < 0) ctx.scale(-1, 1);
+          // Recorta en la línea de agua para que la ballena emerja y se sumerja con suavidad
+          drawPixelMatrix(ctx, WHALE_BODY_SPRITE.slice(0, visRows), WHALE_PAL, -14, -visRows + 1);
+
+          // Soplo de vapor en abanico (gotas finas dispersas, no un bloque cuadrado)
+          if (p > 0.24 && p < 0.68) {
+            const sp = (p - 0.24) / 0.44; // 0..1
+            const blowY = -visRows + 2;
+            const blowX = 7;
+            const alpha = (1 - sp * 0.65) * 0.92;
+            ctx.fillStyle = `rgba(240, 253, 255, ${alpha.toFixed(2)})`;
+            const maxH = Math.round(4 + sp * 10);
+            for (let h = 1; h <= maxH; h += 2) {
+              const spread = Math.floor(h * 0.42);
+              const windDrift = -Math.floor(h * 0.25 * sp);
+              ctx.fillRect(blowX + windDrift, blowY - h, 1, 1);
+              if (h > 3) {
+                ctx.fillRect(blowX - spread + windDrift, blowY - h + 1, 1, 1);
+                ctx.fillRect(blowX + spread + windDrift, blowY - h + 1, 1, 1);
+              }
+            }
           }
-          // Aleta caudal al sumergirse
-          if (cyc > 1.65) {
-            ctx.fillStyle = '#1e344a';
-            ctx.fillRect(-12, -6, 3, 5);
-            ctx.fillRect(-14, -7, 5, 2);
-          }
+          ctx.restore();
+        } else if (cyc < 3.05) {
+          // Fase 2: Al sumergirse levanta la aleta caudal bifurcada (fluke) sobre las olas
+          const fp = (cyc - 2.2) / 0.85; // 0..1
+          const fLift = Math.sin(fp * Math.PI);
+          const fRows = Math.max(2, Math.min(WHALE_FLUKE_SPRITE.length, Math.round(1 + fLift * WHALE_FLUKE_SPRITE.length)));
+          ctx.fillStyle = 'rgba(235, 252, 255, 0.88)';
+          ctx.fillRect(-8, 0, 16, 1);
+          ctx.fillRect(-5, 1, 10, 1);
+          ctx.save();
+          if (dir < 0) ctx.scale(-1, 1);
+          drawPixelMatrix(ctx, WHALE_FLUKE_SPRITE.slice(0, fRows), WHALE_PAL, -13, -fRows + 1);
+          ctx.restore();
         }
       }
       ctx.restore();
@@ -3458,13 +3587,14 @@
             }
           }
           for (const s of wl.sea) {
-            if (s.kind === 'dolphin' || s.kind === 'whale') {
+            if (s.kind === 'dolphin' || s.kind === 'whale' || s.kind === 'fish') {
               s.gx += s.dirX * s.speed * dt;
-              if (Math.abs(s.gx - s.homeGx) > (s.kind === 'whale' ? 9 : 5.5)) {
+              const maxSpan = s.kind === 'whale' ? 9 : s.kind === 'dolphin' ? 5.5 : 4.2;
+              if (Math.abs(s.gx - s.homeGx) > maxSpan) {
                 s.dirX = s.gx > s.homeGx ? -1 : 1;
               }
-              const minSeaGy = (getCY ? getCY(s.gx) : 36) + (s.kind === 'whale' ? 6.5 : 3.2);
-              s.gy = Math.max(minSeaGy, Math.min(this.map.mapH - 2, s.homeGy + Math.sin(this.time * 0.6 + s.phase) * 1.1));
+              const minSeaGy = (getCY ? getCY(s.gx) : 36) + (s.kind === 'whale' ? 6.5 : s.kind === 'dolphin' ? 3.2 : 1.8);
+              s.gy = Math.max(minSeaGy, Math.min(this.map.mapH - 2, s.homeGy + Math.sin(this.time * 0.6 + s.phase) * 0.9));
             }
           }
           for (const b of wl.sky) {
@@ -3982,23 +4112,8 @@
         if (terr) ctx.drawImage(terr, 0, 0);
         const { originX, originY } = this.map;
 
-        // Olas rompiendo en la orilla y crestas marinas
+        // Olas de espuma continuas siguiendo la costa (estilo GIF / ilustración)
         drawShoreWaves(ctx, this.map, this.time, inView, lod);
-        if (lod >= 1) {
-          ctx.fillStyle = 'rgba(220, 248, 255, 0.52)';
-          for (let i = 0; i < 36; i++) {
-            const gx = 6 + ((i * 7) % (this.map.mapW - 12)), gy = 33 + ((i * 5) % 20), t = this.map.tiles[gy]?.[gx];
-            if (!t || !t.isWater || t.fogAlpha > 0.65) continue;
-            const drift = ((this.time * 0.65 + i * 0.37) % 1) * 1.4;
-            const wp = isoToWorld(gx, gy - drift, 0, originX, originY);
-            if (!inView(wp.x, wp.y)) continue;
-            const ph = Math.sin(this.time * 2.2 + i * 1.7);
-            if (ph > 0.05) {
-              ctx.fillRect(Math.round(wp.x - 4), Math.round(wp.y + 3), 6, 1);
-              ctx.fillRect(Math.round(wp.x + 1), Math.round(wp.y + 1), 4, 1);
-            }
-          }
-        }
         if (this.map.wildlife?.sea) {
           for (const sa of this.map.wildlife.sea) {
             const wp = isoToWorld(sa.gx, sa.gy, sa.kind === 'seal' ? 0.8 : 0, originX, originY);
