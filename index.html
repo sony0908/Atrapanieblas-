@@ -485,15 +485,15 @@
             <div id="village-active-box">
               <div class="drawer-meta">Agua local: <strong id="v-water-val">28/120 L</strong> · Consumo: <strong id="v-drain-val">-1.1/s</strong></div>
               <div class="mesh-bar"><div id="v-water-bar"></div></div>
-              <div class="drawer-meta">Población: <strong id="v-pop-val">12 hab.</strong> · Huertos: <strong id="v-orch-val">0</strong></div>
+              <div class="drawer-meta">Población: <strong id="v-pop-val">12 hab.</strong> · Huertos: <strong id="v-orch-val">0</strong> · Transp.: <strong id="v-carriers-only">2/2</strong></div>
               <div class="drawer-meta" style="margin-top:6px;">Estanque: <strong id="storage-cur-name">Tambores Básicos</strong></div>
               <div id="storage-next-info" class="drawer-sub">Siguiente: Estanque Comunitario (320 L)</div>
               <button id="btn-upgrade" class="drawer-cta" type="button"><span id="upgrade-title">Mejorar estanque ($49)</span></button>
-              <div class="drawer-meta" style="margin-top:8px;">Trabajadores locales: <strong id="v-carriers-val">2/2 libres</strong></div>
-              <div id="v-carrier-sub" class="drawer-sub">Transportan bidones a esta caleta y caminan más rápido.</div>
-              <button id="btn-upgrade-carriers" class="drawer-cta" type="button"><span id="carrier-upgrade-title">+1 Transportista ($35)</span></button>
+              <div class="drawer-meta" style="margin-top:8px;">Técnicos de la caleta: <strong id="v-carriers-val">0/3 libres</strong></div>
+              <div id="v-carrier-sub" class="drawer-sub">Mantienen y reparan las mallas de esta caleta y aceleran sus cañerías.</div>
+              <button id="btn-upgrade-carriers" class="drawer-cta" type="button"><span id="carrier-upgrade-title">👷 Contratar técnico ($40)</span></button>
             </div>
-            <p class="drawer-tip">Toca cualquier <strong>pueblo en el mapa</strong> para ver sus mejoras de almacenamiento y trabajadores.</p>
+            <p class="drawer-tip">Toca cualquier <strong>pueblo en el mapa</strong> para mejorar su estanque y contratar sus propios técnicos.</p>
           </div>
 
           <div id="panel-mesh" class="drawer-panel hidden">
@@ -627,12 +627,12 @@
     // Cañerías por malla: cuestan según el largo del sendero (mallas más lejanas = cañería más cara).
     const PIPE_CFG = { baseCost: 28, perTile: 1.45 };
 
-    // ===== NIVEL 2: cuadrilla técnica, ráfagas de viento y salinidad =====
+    // ===== NIVEL 2: cuadrilla técnica por caleta, ráfagas de viento y salinidad =====
     const TECH_CFG = {
-      startCount: 2, max: 4, hireBaseCost: 48, hireStep: 22, speed: 7.4,
+      startCount: 1, maxPerVillage: 3, max: 9, hireBaseCost: 42, hireStep: 18, speed: 7.4,
       taskTimes: { roll: 2.6, unroll: 1.9, maintain: 3.2, repair: 4.4 },
       repairCost: 35,
-      upkeepPerTechSec: 0.42,
+      upkeepPerTechSec: 0.36,
       upkeepPerPipeSec: 0.08,
       labels: { roll: 'Enrollando', unroll: 'Desplegando', maintain: 'Mantención', repair: 'Reparando' },
     };
@@ -2092,31 +2092,60 @@
       }
       _createTechnician(villageId = 0) {
         const idx = this.technicians.length;
-        const unlocked = this.map.villages?.filter((v) => v.unlocked) || [];
-        const v = unlocked[idx % Math.max(1, unlocked.length)] || this.map.villages?.[villageId] || { hub: this.map.hub };
-        this.technicians.push({ id: idx, villageId: v.id ?? 0, gx: v.hub.gx + (idx % 2) * 0.4 - 0.2, gy: v.hub.gy + Math.floor(idx / 2) * 0.4, dirX: 1, state: 'idle', padId: null, task: null, path: [], pathIdx: 0, segProgress: 0, workLeft: 0 });
+        const v = this.map.villages?.[villageId] || this.map.villages?.[0] || { id: 0, hub: this.map.hub };
+        const localIdx = this.technicians.filter((t) => (t.villageId ?? 0) === (v.id ?? 0)).length;
+        this.technicians.push({ id: idx, localIdx: localIdx + 1, villageId: v.id ?? 0, gx: v.hub.gx + (localIdx % 2) * 0.45 - 0.2, gy: v.hub.gy + Math.floor(localIdx / 2) * 0.4, dirX: 1, state: 'idle', padId: null, task: null, path: [], pathIdx: 0, segProgress: 0, workLeft: 0 });
       }
-      getTechHireCost() { return TECH_CFG.hireBaseCost + this.techHireCount * TECH_CFG.hireStep; }
-      hireTechnician() {
-        if (!this.running || this.finished || this.level < 2) return false;
-        if (this.technicians.length >= TECH_CFG.max) { this.sound.playError(); this.callbacks.onToast?.('La cuadrilla está completa (máx. 4 técnicos)'); return false; }
-        const cost = this.getTechHireCost();
-        if (this.funds < cost) {
+      getVillageTechs(villageId = this.selectedVillageId ?? 0) {
+        return this.technicians.filter((t) => (t.villageId ?? 0) === villageId);
+      }
+      getTechHireCost(villageId = this.selectedVillageId ?? 0) {
+        const v = this.map.villages?.[villageId] || this.map.villages?.[0];
+        if (!v || !v.unlocked) return null;
+        const localCount = this.getVillageTechs(v.id).length;
+        if (localCount >= TECH_CFG.maxPerVillage) return null;
+        return Math.round((TECH_CFG.hireBaseCost + localCount * TECH_CFG.hireStep) * this.cfg.storageCostScale);
+      }
+      hireTechnician(villageId = this.selectedVillageId ?? 0) {
+        if (!this.running || this.finished) return false;
+        const v = this.map.villages?.[villageId] || this.map.villages?.[0];
+        if (!v || !v.unlocked) return false;
+        const localCount = this.getVillageTechs(v.id).length;
+        const wp = isoToWorld(v.hub.gx, v.hub.gy, v.hub.h, this.map.originX, this.map.originY);
+        if (localCount >= TECH_CFG.maxPerVillage) {
           this.sound.playError();
-          this.callbacks.onToast?.(`Faltan $${cost - Math.floor(this.funds)} para contratar un técnico`, 'warn');
+          this.callbacks.onToast?.(`Cuadrilla técnica completa en ${v.shortName} (máx. ${TECH_CFG.maxPerVillage})`);
           return false;
         }
-        this.funds -= cost; this.techHireCount += 1; this._createTechnician();
+        const cost = this.getTechHireCost(v.id);
+        if (cost === null || this.funds < cost) {
+          this.sound.playError();
+          if (cost !== null) {
+            this._addFloatingText(wp.x, wp.y - 24, `Faltan $${cost - Math.floor(this.funds)}`, '#f26d52');
+            this.callbacks.onToast?.(`Faltan $${cost - Math.floor(this.funds)} para contratar técnico en ${v.shortName}`, 'warn');
+          }
+          return false;
+        }
+        this.funds -= cost;
+        this.techHireCount += 1;
+        this._createTechnician(v.id);
         this.sound.playHire();
-        this.callbacks.onToast?.(`👷 Técnico contratado (${this.technicians.length}/${TECH_CFG.max})`);
-        this._emitHUD(true); return true;
+        this._spawnDust(wp.x, wp.y - 4, '#ffc46b', 12);
+        this._addFloatingText(wp.x, wp.y - 26, `+1 Técnico en ${v.shortName}`, '#ffe28a');
+        this.callbacks.onToast?.(`👷 Técnico contratado en ${v.shortName} (${localCount + 1}/${TECH_CFG.maxPerVillage})`);
+        this._emitHUD(true);
+        return true;
       }
 
       // ===== NIVEL 2 =====
       startLevelTwo(silent = false) {
         this.level = 2; this.levelUpPending = false; this.paused = false; this.running = true;
-        this.technicians = []; this.techHireCount = 0;
-        for (let i = 0; i < TECH_CFG.startCount; i++) this._createTechnician();
+        // Cada caleta conectada conserva los técnicos ya contratados y asegura al menos 1 técnico base en la caleta inicial
+        for (const v of (this.map.villages || [])) {
+          if (v.unlocked && this.getVillageTechs(v.id).length === 0) {
+            this._createTechnician(v.id);
+          }
+        }
         for (const pad of this.map.pads) {
           if (!pad.built) continue;
           pad.salt = 8 + Math.random() * 20; pad.condition = 100; pad.meshUp = true;
@@ -2125,7 +2154,7 @@
         this.wind = { phase: 'idle', timer: WIND_CFG.firstDelay, sector: [], strength: 1, label: '' };
         this.gustsSurvived = 0; this.tutorialStep = 2;
         if (!silent) this.sound.playLevelUp();
-        this.callbacks.onToast?.(silent ? '🧪 Modo Libre: prueba las ráfagas y la salinidad' : '🌬️ Nivel 2: ráfagas de viento y salinidad en las mallas');
+        this.callbacks.onToast?.(silent ? '🧪 Modo Libre: prueba las ráfagas y la salinidad' : '🌬️ Nivel 2: cada caleta usa sus propios técnicos para mantener sus mallas');
         this.callbacks.onLevel2?.(silent);
         this._emitHUD(true);
       }
@@ -2301,11 +2330,19 @@
           this._addFloatingText(pos.x, pos.y - 24, `Faltan $${TECH_CFG.repairCost - Math.floor(this.funds)}`, '#f26d52');
           return false;
         }
-        const idle = this.technicians.find((t) => t.state === 'idle');
-        if (idle) { if (!this._assignTech(idle, pad, kind)) return false; }
-        else {
+        const vId = pad.connectedVillageId ?? 0;
+        const v = this.map.villages?.[vId] || this.map.villages?.[0];
+        const localTechs = this.getVillageTechs(vId);
+        const idleLocal = localTechs.find((t) => t.state === 'idle');
+        if (idleLocal) {
+          if (!this._assignTech(idleLocal, pad, kind)) return false;
+        } else {
           pad.pendingTask = kind;
-          this.callbacks.onToast?.('Técnicos ocupados: la tarea quedó en cola');
+          if (localTechs.length === 0) {
+            this.callbacks.onToast?.(`⚠️ ${v ? v.shortName : 'Esta caleta'} no tiene técnicos: pincha el pueblo para contratar uno`, 'warn');
+          } else {
+            this.callbacks.onToast?.(`Técnicos de ${v ? v.shortName : 'la caleta'} ocupados: tarea en cola`);
+          }
         }
         this._emitHUD(true); return true;
       }
@@ -2314,11 +2351,16 @@
         if (kind === 'repair' && this.funds < TECH_CFG.repairCost) { pad.pendingTask = null; return false; }
         if (kind === 'repair') this.funds -= TECH_CFG.repairCost;
         tech.state = 'climbing'; tech.padId = pad.id; tech.task = kind;
+        const homeV = this.map.villages?.[tech.villageId ?? 0] || this.map.villages?.[0];
+        const homeHub = homeV ? homeV.hub : this.map.hub;
         if (fromPad && fromPad.id !== pad.id) {
           const p = findTrailPath(this.map, fromPad.gx, fromPad.gy, pad.gx, pad.gy);
           tech.path = p && p.length >= 2 ? p : [{ gx: fromPad.gx, gy: fromPad.gy }, { gx: pad.gx, gy: pad.gy }];
+        } else if ((pad.connectedVillageId ?? 0) === (tech.villageId ?? 0) && pad.trail && pad.trail.length >= 2) {
+          tech.path = pad.trail;
         } else {
-          tech.path = pad.trail && pad.trail.length ? pad.trail : [this.map.hub, { gx: pad.gx, gy: pad.gy }];
+          const p = findTrailPath(this.map, homeHub.gx, homeHub.gy, pad.gx, pad.gy);
+          tech.path = p && p.length >= 2 ? p : [homeHub, { gx: pad.gx, gy: pad.gy }];
         }
         tech.pathIdx = 0; tech.segProgress = 0; tech.workLeft = 0;
         pad.pendingTask = null;
@@ -2356,17 +2398,16 @@
           }
           pad.techTask = null;
         }
-        // Encadenar con la siguiente tarea pendiente sin volver a la caleta
-        const next = pad ? this.map.pads.find((p) => p.built && p.pendingTask && !p.techTask && p.id !== pad.id) : null;
-        if (next) {
-          const kind2 = next.pendingTask; next.pendingTask = null;
-          if (this._assignTech(tech, next, kind2, pad)) { this._emitHUD(true); return; }
-          next.pendingTask = kind2;
+        // Encadenar con la siguiente tarea pendiente de SU propia caleta sin volver abajo
+        const nextLocal = pad ? this.map.pads.find((p) => p.built && p.pendingTask && !p.techTask && p.id !== pad.id && (p.connectedVillageId ?? 0) === (tech.villageId ?? 0)) : null;
+        if (nextLocal) {
+          const kind2 = nextLocal.pendingTask; nextLocal.pendingTask = null;
+          if (this._assignTech(tech, nextLocal, kind2, pad)) { this._emitHUD(true); return; }
+          nextLocal.pendingTask = kind2;
         }
-        // Volver a la caleta más cercana desde la última malla atendida
-        const v = pad ? getBestVillageForPad(this.map, pad) : (this.map.villages?.[tech.villageId] || this.map.villages?.[0]);
+        // Volver siempre a su propia caleta de origen
+        const v = this.map.villages?.[tech.villageId ?? 0] || this.map.villages?.[0];
         const hub = v ? v.hub : this.map.hub;
-        if (v) tech.villageId = v.id;
         if (pad) {
           const back = findTrailPath(this.map, pad.gx, pad.gy, hub.gx, hub.gy).reverse();
           tech.path = back.length >= 2 ? back : [{ gx: hub.gx, gy: hub.gy }, { gx: pad.gx, gy: pad.gy }];
@@ -2382,10 +2423,13 @@
         if (!this.technicians.length) return;
         for (const tech of this.technicians) {
           if (tech.state === 'idle') {
-            const pendingPad = this.map.pads.find((p) => p.built && p.pendingTask && !p.techTask);
+            // Cada técnico atiende primero las mallas conectadas a su propia caleta
+            const pendingPad = this.map.pads.find((p) => p.built && p.pendingTask && !p.techTask && (p.connectedVillageId ?? 0) === (tech.villageId ?? 0));
             if (!pendingPad) {
               const v = this.map.villages?.[tech.villageId] || this.map.villages?.[0] || { hub: this.map.hub };
-              tech.gx = v.hub.gx; tech.gy = v.hub.gy; continue;
+              tech.gx = v.hub.gx + ((tech.localIdx || 1) % 2) * 0.45 - 0.2;
+              tech.gy = v.hub.gy + Math.floor(((tech.localIdx || 1) - 1) / 2) * 0.4;
+              continue;
             }
             const kind = pendingPad.pendingTask; pendingPad.pendingTask = null;
             if (!this._assignTech(tech, pendingPad, kind)) continue;
@@ -2644,6 +2688,9 @@
         for (let i = 0; i < (v.baseCarriers || 1); i++) {
           this._createCarrier(this.carriers.length, v.id);
           this.maxCarriers = this.carriers.length;
+        }
+        if (this.level >= 2 && this.getVillageTechs(v.id).length === 0) {
+          this._createTechnician(v.id);
         }
         // Reconectar mallas cercanas a esta nueva caleta si les queda más cerca
         for (const pad of this.map.pads) {
@@ -2934,7 +2981,8 @@
           if (!pad.built) continue;
           if (pad.buildAnim > 0) pad.buildAnim = Math.max(0, pad.buildAnim - dt * 2.4);
           if (pad.pipeState === 'laying') {
-            const dur = Math.max(1.8, (pad.trail ? pad.trail.length : 20) * 0.075);
+            const localTechs = this.getVillageTechs(pad.connectedVillageId ?? 0).length;
+            const dur = Math.max(1.0, ((pad.trail ? pad.trail.length : 20) * 0.075) / (1 + localTechs * 0.35));
             pad.pipeProgress = Math.min(1, pad.pipeProgress + dt / dur);
             if (pad.pipeProgress >= 1) {
               pad.pipeState = 'active'; this.sound.playUpgrade();
@@ -3028,8 +3076,8 @@
           this._updateSalinity(dt);
           this._updateRemoteSignals(dt);
           this._updateWind(dt);
-          this._updateTechnicians(dt);
         }
+        this._updateTechnicians(dt);
         this._checkLevelProgress();
         this._emitHUD(false);
       }
@@ -3184,8 +3232,9 @@
           const vCost = Math.round((v.cost || 0) * this.cfg.storageCostScale);
           const vCap = STORAGE_TIERS[v.storageTier || 0].capacity;
           const vStCost = this.getStorageUpgradeCost(v.id);
-          const vCarCost = this.getCarrierUpgradeCost(v.id);
           const vCarriers = this.carriers.filter((c) => (c.villageId ?? 0) === v.id);
+          const vTechs = this.getVillageTechs(v.id);
+          const vTechCost = this.getTechHireCost(v.id);
           return {
             id: v.id, name: v.name, shortName: v.shortName, unlocked: v.unlocked,
             cost: vCost, canUnlock: !v.unlocked && this.funds >= vCost,
@@ -3201,13 +3250,15 @@
             canUpgradeStorage: Boolean(v.unlocked && vStCost !== null && this.funds >= vStCost),
             carriersIdle: vCarriers.filter((c) => c.state === 'idle').length,
             carriersTotal: vCarriers.length,
-            carrierLevels: v.carrierLevels || 0,
-            carrierUpgradeCost: vCarCost,
-            canUpgradeCarriers: Boolean(v.unlocked && vCarCost !== null && this.funds >= vCarCost),
+            techsIdle: vTechs.filter((t) => t.state === 'idle').length,
+            techsTotal: vTechs.length,
+            techMaxLocal: TECH_CFG.maxPerVillage,
+            techHireCost: vTechCost,
+            canHireTech: Boolean(v.unlocked && vTechCost !== null && this.funds >= vTechCost),
           };
         });
         const selVillage = villageItems.find((v) => v.id === selVid) || villageItems[0];
-        const canUnlockAnyVillage = villageItems.some((v) => v.canUnlock || v.canUpgradeStorage || v.canUpgradeCarriers);
+        const canUnlockAnyVillage = villageItems.some((v) => v.canUnlock || v.canUpgradeStorage || v.canHireTech);
         const pads = this.map.pads, builtPads = pads.filter((p) => p.built);
         const padNum = new Map(); builtPads.forEach((p, i) => padNum.set(p.id, i + 1));
         const selPad = this.selectedPadId != null ? pads.find((p) => p.id === this.selectedPadId && p.built) : null;
@@ -3235,6 +3286,7 @@
         const techTasks = techs.map((t) => {
           const pad = t.padId != null ? pads.find((p) => p.id === t.padId) : null;
           const num = pad ? padNum.get(pad.id) : null;
+          const vName = this.map.villages?.[t.villageId ?? 0]?.shortName || 'Chungungo';
           let label;
           if (t.state === 'idle') label = 'Ocioso';
           else if (t.state === 'returning') label = 'Volviendo';
@@ -3242,7 +3294,7 @@
             const pct = t.state === 'working' ? Math.round(Math.max(0, Math.min(1, 1 - t.workLeft / (TECH_CFG.taskTimes[t.task] || 3))) * 100) : null;
             label = `${TECH_CFG.labels[t.task] || 'Tarea'}${num ? ` #${num}` : ''}${pct !== null ? ` · ${pct}%` : ''}`;
           }
-          return { id: t.id, state: t.state, task: t.task, padNum: num, label };
+          return { id: t.id, localIdx: t.localIdx || (t.id + 1), villageName: vName, state: t.state, task: t.task, padNum: num, label };
         });
         const allVillagesFull = (this.map.villages || []).filter((v) => v.unlocked).every((v) => v.water >= STORAGE_TIERS[v.storageTier || 0].capacity - 0.5);
         this.callbacks.onHUD?.({
@@ -3267,8 +3319,9 @@
           level: this.level, levelBuilt: builtPads.length, levelTotal: pads.length,
           levelComplete: builtPads.length >= pads.length, gustsSurvived: this.gustsSurvived,
           techsTotal: techs.length, techsIdle: techs.filter((t) => t.state === 'idle').length,
-          techMax: TECH_CFG.max, techHireCost: this.getTechHireCost(),
-          techCanHire: this.level >= 2 && techs.length < TECH_CFG.max && this.funds >= this.getTechHireCost(),
+          techMax: (this.map.villages || []).filter((v) => v.unlocked).length * TECH_CFG.maxPerVillage,
+          techHireCost: this.getTechHireCost(selVid),
+          techCanHire: Boolean(selVillage && selVillage.canHireTech),
           techTasks, pendingTech,
           rolledCount: builtPads.filter((p) => !p.meshUp).length,
           windPhase: this.wind ? this.wind.phase : 'idle',
@@ -5262,10 +5315,10 @@
           $('level-bar').style.width = `${Math.round((s.levelBuilt / Math.max(1, s.levelTotal)) * 100)}%`;
         }
 
-        $('tech-chip').classList.toggle('hidden', s.level < 2);
-        $('tech-sep').classList.toggle('hidden', s.level < 2);
+        $('tech-chip').classList.toggle('hidden', s.level < 2 && s.techsTotal === 0);
+        $('tech-sep').classList.toggle('hidden', s.level < 2 && s.techsTotal === 0);
         $('techs-val').textContent = `${s.techsIdle}/${s.techsTotal}`;
-        $('dock-tech').style.display = s.level >= 2 ? 'grid' : 'none';
+        $('dock-tech').style.display = (s.level >= 2 || s.techsTotal > 0) ? 'grid' : 'none';
         if (s.level >= 2 && s.pendingTech > 0) { $('tech-badge').classList.remove('hidden'); $('tech-badge').textContent = String(s.pendingTech); }
         else { $('tech-badge').classList.add('hidden'); }
 
@@ -5287,12 +5340,15 @@
         $('tech-count').textContent = `${s.techsTotal}/${s.techMax}`;
         $('tech-idle').textContent = `${s.techsIdle}`;
         const techHtml = s.techTasks.length
-          ? s.techTasks.map((t) => `<div class="tech-row"><span class="tech-dot${t.state === 'idle' ? '' : ' busy'}"></span><b>Técnico ${t.id + 1}</b><span class="tech-task-line">${t.label}</span></div>`).join('')
-          : '<div class="tech-empty">Sin técnicos contratados.</div>';
+          ? s.techTasks.map((t) => `<div class="tech-row"><span class="tech-dot${t.state === 'idle' ? '' : ' busy'}"></span><b>Técnico ${t.localIdx} (${t.villageName})</b><span class="tech-task-line">${t.label}</span></div>`).join('')
+          : '<div class="tech-empty">Sin técnicos contratados. Pincha una caleta para contratar sus técnicos.</div>';
         const techList = $('tech-list');
         if (techList.dataset.sig !== techHtml) { techList.innerHTML = techHtml; techList.dataset.sig = techHtml; }
+        const svForTech = s.selVillage || (s.villages && s.villages[0]);
         $('btn-hire-tech').disabled = !s.techCanHire;
-        $('btn-hire-tech').textContent = s.techsTotal >= s.techMax ? 'Cuadrilla completa' : (s.techCanHire ? `Contratar técnico ($${s.techHireCost})` : `Requiere $${s.techHireCost}`);
+        $('btn-hire-tech').textContent = (svForTech && svForTech.techHireCost === null)
+          ? `Cuadrilla de ${svForTech.shortName} completa`
+          : (s.techCanHire ? `👷 Contratar técnico en ${svForTech ? svForTech.shortName : 'caleta'} ($${s.techHireCost})` : `Requiere $${s.techHireCost} (${svForTech ? svForTech.shortName : 'caleta'})`);
         $('btn-roll-all').disabled = !(s.level >= 2);
         if (s.windPhase === 'warn' && s.windCount > 0) {
           $('btn-roll-all').textContent = `📡 Señal: enrollar en riesgo (${s.windCount})`;
@@ -5336,6 +5392,7 @@
               $('v-water-bar').style.width = `${Math.min(100, Math.round((sv.water / Math.max(1, sv.capacity)) * 100))}%`;
               $('v-pop-val').textContent = `${sv.pop} hab.`;
               $('v-orch-val').textContent = `${sv.orchards}`;
+              if ($('v-carriers-only')) $('v-carriers-only').textContent = `${sv.carriersIdle}/${sv.carriersTotal}`;
               $('storage-cur-name').textContent = `${sv.storageName} (${sv.capacity} L)`;
               if (sv.nextStorageName) {
                 $('btn-upgrade').disabled = !sv.canUpgradeStorage;
@@ -5346,16 +5403,18 @@
                 $('storage-next-info').textContent = 'Almacenamiento de esta caleta al máximo.';
                 $('upgrade-title').textContent = 'Estanque al máximo';
               }
-              $('v-carriers-val').textContent = `${sv.carriersIdle}/${sv.carriersTotal} libres`;
-              $('v-carrier-sub').textContent = `Nivel de cuadrilla local: +${sv.carrierLevels}/3 (más trabajadores y velocidad para ${sv.shortName}).`;
-              if (sv.carrierUpgradeCost !== null) {
-                $('btn-upgrade-carriers').disabled = !sv.canUpgradeCarriers;
-                $('carrier-upgrade-title').textContent = sv.canUpgradeCarriers
-                  ? `+1 Trabajador en ${sv.shortName} ($${sv.carrierUpgradeCost})`
-                  : `Requiere $${sv.carrierUpgradeCost}`;
+              $('v-carriers-val').textContent = `${sv.techsIdle}/${sv.techsTotal} libres (máx. ${sv.techMaxLocal})`;
+              $('v-carrier-sub').textContent = s.level >= 2
+                ? `Limpian la salinidad y reparan las mallas conectadas a ${sv.shortName}.`
+                : `Aceleran la instalación de cañerías (+35% c/u) y mantienen las mallas de ${sv.shortName} en el Nivel 2.`;
+              if (sv.techHireCost !== null) {
+                $('btn-upgrade-carriers').disabled = !sv.canHireTech;
+                $('carrier-upgrade-title').textContent = sv.canHireTech
+                  ? `👷 Contratar técnico en ${sv.shortName} ($${sv.techHireCost})`
+                  : `Requiere $${sv.techHireCost}`;
               } else {
                 $('btn-upgrade-carriers').disabled = true;
-                $('carrier-upgrade-title').textContent = 'Trabajadores al máximo';
+                $('carrier-upgrade-title').textContent = `Cuadrilla completa (${sv.techsTotal}/${sv.techMaxLocal})`;
               }
             }
           }
@@ -5507,7 +5566,7 @@
     $('btn-menu').addEventListener('click', () => { setDrawer(null); startCampaign(true); });
     $('btn-mute').addEventListener('click', () => { const m = sound.toggleMute(); $('mute-ico').textContent = m ? '🔇' : '🔊'; $('mute-lbl').textContent = m ? 'Sonido silenciado' : 'Sonido activado'; });
     $('btn-upgrade').addEventListener('click', () => { game.upgradeStorage(game.selectedVillageId ?? 0); });
-    $('btn-upgrade-carriers').addEventListener('click', () => { game.upgradeVillageCarriers(game.selectedVillageId ?? 0); });
+    $('btn-upgrade-carriers').addEventListener('click', () => { game.hireTechnician(game.selectedVillageId ?? 0); });
     $('btn-unlock-village').addEventListener('click', () => { game.unlockVillage(game.selectedVillageId ?? 0); });
     $('village-tabs').addEventListener('click', (e) => {
       const tabBtn = e.target.closest('[data-select-village]');
