@@ -215,11 +215,18 @@
 
     .money-card {
       pointer-events: auto; position: relative; min-width: 150px; padding: 8px 13px 9px;
-      border-radius: 14px; color: #ffffff; overflow: hidden;
+      border-radius: 14px; color: #ffffff; overflow: hidden; cursor: pointer; user-select: none;
       background: linear-gradient(150deg, rgba(30, 56, 80, 0.97), rgba(12, 30, 47, 0.96));
       border: 1.5px solid rgba(255, 206, 92, 0.62);
       box-shadow: 0 9px 24px rgba(15, 35, 54, 0.36), inset 0 1px 0 rgba(255, 235, 170, 0.18);
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.14s ease;
+    }
+    .money-card:hover { border-color: #ffe380; transform: translateY(-1px); box-shadow: 0 11px 28px rgba(15, 35, 54, 0.45), 0 0 0 2px rgba(255, 215, 94, 0.25); }
+    .money-card:active { transform: translateY(0); }
+    .money-help {
+      display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%;
+      background: rgba(255, 215, 94, 0.2); border: 1px solid rgba(255, 215, 94, 0.55);
+      color: #ffe694; font-family: var(--font-mono); font-size: 9px; font-weight: 800; line-height: 1;
     }
     .money-card::before {
       content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -378,9 +385,20 @@
       border-radius: 99px; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(4px);
     }
     .cine-skip:hover { background: rgba(30, 60, 80, 0.82); }
-    .cine-dots { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
-    .cine-dots i { width: 18px; height: 3px; border-radius: 99px; background: rgba(255, 255, 255, 0.2); transition: background 0.2s ease; }
-    .cine-dots i.on { background: #ffd75e; }
+    .cine-dots { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 2; pointer-events: auto; }
+    .cine-dots i { position: relative; width: 28px; height: 4px; border-radius: 99px; background: rgba(255, 255, 255, 0.22); overflow: hidden; cursor: pointer; }
+    .cine-dots i > b { display: block; height: 100%; width: 0%; border-radius: 99px; background: #ffd75e; }
+    .cine-dots i.done > b { width: 100%; }
+    .cine-nav-btn {
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+      width: 36px; height: 54px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(8, 16, 24, 0.42); color: rgba(234, 246, 255, 0.85);
+      font-family: var(--font-mono); font-size: 18px; font-weight: 800; cursor: pointer;
+      display: grid; place-items: center; backdrop-filter: blur(4px); transition: background 0.16s ease, opacity 0.16s ease;
+    }
+    .cine-nav-btn:hover { background: rgba(26, 54, 74, 0.78); color: #ffffff; }
+    .cine-nav-btn.prev { left: 12px; }
+    .cine-nav-btn.next { right: 12px; }
     .cine-hint {
       position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; pointer-events: none;
       font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; color: #8fa3b1;
@@ -411,8 +429,8 @@
       <div class="hud-top">
         <div class="hud-top-left">
           <div class="hud-status-row">
-            <div id="money-card" class="money-card" role="status" title="Caja de la caleta: paga mallas, cañerías y técnicos">
-              <div class="money-head"><span class="money-label">CAJA</span><span id="funds-trend" class="money-trend">+0/s</span></div>
+            <div id="money-card" class="money-card" role="button" tabindex="0" title="Toca para ver cómo generar dinero y qué priorizar">
+              <div class="money-head"><span class="money-label">CAJA</span><span id="funds-trend" class="money-trend">$0.40/L</span><span class="money-help" title="Ver guía animada de economía">?</span></div>
               <div class="money-body"><span class="money-ico" aria-hidden="true"><i class="coin">$</i></span><span id="funds-val" class="money-val">$60</span></div>
             </div>
             <div class="stats-mini" role="status">
@@ -543,6 +561,8 @@
     <div id="cine-overlay" class="cine-overlay">
       <canvas id="cine" width="640" height="360"></canvas>
       <div id="cine-dots" class="cine-dots"></div>
+      <button id="cine-prev" class="cine-nav-btn prev" type="button" aria-label="Escena anterior" title="Escena anterior (←)">‹</button>
+      <button id="cine-next" class="cine-nav-btn next" type="button" aria-label="Siguiente escena" title="Siguiente escena (→)">›</button>
       <button id="cine-skip" class="cine-skip" type="button">Saltar intro ›</button>
       <div id="cine-caption" class="cine-caption">
         <div class="cine-index" id="cine-index">01 / 06</div>
@@ -557,7 +577,7 @@
         <div class="cine-tc-title" id="cine-tc-title">Atrapanieblas</div>
         <div class="cine-tc-sub" id="cine-tc-sub">…</div>
       </div>
-      <div class="cine-hint">Cualquier tecla o toque para avanzar · <b>Esc</b> para saltar</div>
+      <div class="cine-hint">Toca <b>izquierda ‹</b> para retroceder · <b>derecha ›</b> para avanzar · <b>Esc</b> para cerrar</div>
     </div>
 
   </div>
@@ -587,13 +607,15 @@
     ];
 
     // Cañerías por malla: cuestan según el largo del sendero (mallas más lejanas = cañería más cara).
-    const PIPE_CFG = { baseCost: 24, perTile: 1.15 };
+    const PIPE_CFG = { baseCost: 28, perTile: 1.45 };
 
     // ===== NIVEL 2: cuadrilla técnica, ráfagas de viento y salinidad =====
     const TECH_CFG = {
-      startCount: 2, max: 4, hireBaseCost: 40, hireStep: 18, speed: 7.4,
+      startCount: 2, max: 4, hireBaseCost: 48, hireStep: 22, speed: 7.4,
       taskTimes: { roll: 2.6, unroll: 1.9, maintain: 3.2, repair: 4.4 },
-      repairCost: 22,
+      repairCost: 35,
+      upkeepPerTechSec: 0.42,
+      upkeepPerPipeSec: 0.08,
       labels: { roll: 'Enrollando', unroll: 'Desplegando', maintain: 'Mantención', repair: 'Reparando' },
     };
     const WIND_CFG = {
@@ -613,8 +635,8 @@
     ];
 
     const MODE_CONFIG = {
-      // Campaña única: sin reloj, economía pensada para completar el Nivel 1 (toda la red de mallas).
-      campaign: { id: 'campaign', cycleDuration: 58, startFunds: 110, startWater: 30, startCarriers: 2, meshBaseCost: 28, meshCostStep: 6, fillSpeedMult: 1.5, carrierSpeedBase: 5.8, waterPerDrum: 30, fundsPerDelivery: 22, passiveFundsPerOrchard: 1.3, milestoneScale: 0.9, storageCostScale: 0.9, waterDrainPerPop: 0.075, droughtTickSeconds: 4.4, recoveryWaterMin: 18 },
+      // Campaña única: economía por litro efectivamente almacenado (rebalse = $0).
+      campaign: { id: 'campaign', cycleDuration: 58, startFunds: 85, startWater: 28, startCarriers: 2, meshBaseCost: 30, meshCostStep: 8, fillSpeedMult: 1.45, carrierSpeedBase: 5.8, waterPerDrum: 30, fundsPerLiter: 0.40, pipeLiterDiscount: 0.65, orchardLiterBonus: 0.03, orchardWaterDrain: 0.035, milestoneScale: 0.9, storageCostScale: 0.95, waterDrainPerPop: 0.078, droughtTickSeconds: 4.4, recoveryWaterMin: 18 },
     };
 
 
@@ -2474,10 +2496,17 @@
         this._lastCycleId = cyc.id;
 
         const activeOrchards = this.orchards.filter((o) => !o.dried).length;
-        if (activeOrchards > 0) this.funds += activeOrchards * this.cfg.passiveFundsPerOrchard * dt;
 
-        // Consumo continuo de agua de la caleta
-        this.waterDrainRate = this.population > 0 ? this.population * this.cfg.waterDrainPerPop : 0;
+        // En Nivel 2 la red completa y la cuadrilla tienen un costo continuo de mantención
+        this.upkeepRate = 0;
+        if (this.level >= 2) {
+          const pipedCount = this.map.pads.filter((p) => p.pipeState === 'active').length;
+          this.upkeepRate = this.technicians.length * TECH_CFG.upkeepPerTechSec + pipedCount * TECH_CFG.upkeepPerPipeSec;
+          if (this.upkeepRate > 0) this.funds = Math.max(0, this.funds - this.upkeepRate * dt);
+        }
+
+        // Consumo continuo de agua de la caleta + riego de huertos activos
+        this.waterDrainRate = (this.population > 0 ? this.population * this.cfg.waterDrainPerPop : 0) + activeOrchards * this.cfg.orchardWaterDrain;
         if (this.waterDrainRate > 0) this.water = Math.max(0, this.water - this.waterDrainRate * dt);
 
         if (this.water <= 0.05 && this.population > 0) {
@@ -2643,11 +2672,23 @@
         this._emitHUD(true);
       }
 
-      _onWaterDelivered(viaPipe = false) {
+      getLiterPrice(viaPipe = false) {
         const activeOrchards = this.orchards.filter((o) => !o.dried).length;
-        const tier = this.getStorageTierObj(), liters = Math.round(this.cfg.waterPerDrum * tier.waterBonusMult), earned = Math.round((this.cfg.fundsPerDelivery + activeOrchards * 2.5) * (viaPipe ? 0.8 : 1));
-        const wasFull = this.water >= tier.capacity;
-        this.water = Math.min(tier.capacity, this.water + liters); this.totalWaterHarvested += liters; this.funds += earned;
+        const base = (this.cfg.fundsPerLiter || 0.40) + activeOrchards * (this.cfg.orchardLiterBonus || 0.03);
+        return base * (viaPipe ? (this.cfg.pipeLiterDiscount || 0.65) : 1);
+      }
+
+      _onWaterDelivered(viaPipe = false) {
+        const tier = this.getStorageTierObj(), rawLiters = Math.round(this.cfg.waterPerDrum * tier.waterBonusMult);
+        const room = Math.max(0, tier.capacity - this.water);
+        const storedLiters = Math.min(rawLiters, room);
+        const overflowed = storedLiters < rawLiters * 0.15;
+        const earned = Math.round(storedLiters * this.getLiterPrice(viaPipe) * 10) / 10;
+
+        this.water = Math.min(tier.capacity, this.water + storedLiters);
+        this.totalWaterHarvested += storedLiters;
+        this.funds += earned;
+
         if (this.droughtActive && this.water > 0.5) {
           this.droughtActive = false;
           this.droughtTimer = 0;
@@ -2656,8 +2697,17 @@
         if (!viaPipe) this.sound.playDeliver();
         const sp = this.storageTier >= 1 ? this.map.storagePos.tank : this.map.storagePos.drums;
         const wp = isoToWorld(sp.gx, sp.gy, sp.h, this.map.originX, this.map.originY);
-        this._spawnDust(wp.x, wp.y - 6, '#57baff', viaPipe ? 3 : 9);
-        this._addFloatingText(wp.x, wp.y - 20, wasFull && this.getNextStorageTier() ? `+$${earned} · Estanque lleno` : (viaPipe ? `+${liters}L` : `+${liters}L · +$${earned}`), wasFull ? '#ffe169' : '#74d4ff');
+        this._spawnDust(wp.x, wp.y - 6, overflowed ? '#ffd470' : '#57baff', viaPipe ? 3 : 9);
+
+        const earnedWhole = Math.round(earned);
+        if (overflowed) {
+          if (!viaPipe || !this._lastOverflowTextAt || (this.time - this._lastOverflowTextAt > 3.5)) {
+            this._lastOverflowTextAt = this.time;
+            this._addFloatingText(wp.x, wp.y - 20, this.getNextStorageTier() ? '¡Estanque lleno! Rebalse ($0)' : 'Estanque al máximo ($0)', '#ff9d66');
+          }
+        } else {
+          this._addFloatingText(wp.x, wp.y - 20, `+${Math.round(storedLiters)}L · +$${earnedWhole}`, '#74d4ff');
+        }
 
         while (this.milestoneIndex < GROWTH_MILESTONES.length) {
           const m = GROWTH_MILESTONES[this.milestoneIndex];
@@ -2724,7 +2774,9 @@
         this.callbacks.onHUD?.({
           running: this.running, finished: this.finished, mode: this.mode,
           water: Math.floor(this.water), capacity: tier.capacity, funds: Math.floor(this.funds),
-          fundsRate: activeOrchards * this.cfg.passiveFundsPerOrchard,
+          literPrice: this.getLiterPrice(false),
+          upkeepRate: this.upkeepRate || 0,
+          storageFull: this.water >= tier.capacity - 0.5,
           waterDrainRate: this.waterDrainRate, droughtActive: this.droughtActive,
           waterLow: this.water <= Math.max(10, tier.capacity * 0.16),
           abandonedHouses: this.houses.filter((h) => h.abandoned).length,
@@ -4069,6 +4121,223 @@
     rectA(c, 0, 0, W, H, '#fff0bc', 0.05);
   }
 
+  // ================= GUÍA DE CAJA · ECONOMÍA ($) =================
+  function pixelCoin(c, cx, cy, r = 5) {
+    disc(c, cx + 1, cy + 1, r, 'rgba(12, 20, 28, 0.38)');
+    disc(c, cx, cy, r, '#c98818');
+    disc(c, cx, cy, Math.max(2, r - 1), '#ffd75e');
+    rect(c, cx - 1, cy - r + 1, 2, 1, '#fff6c9');
+    if (r >= 5) {
+      rect(c, cx - 1, cy - 2, 3, 1, '#9e630c');
+      rect(c, cx - 1, cy - 1, 1, 1, '#9e630c');
+      rect(c, cx - 1, cy, 3, 1, '#9e630c');
+      rect(c, cx + 1, cy + 1, 1, 1, '#9e630c');
+      rect(c, cx - 1, cy + 2, 3, 1, '#9e630c');
+    } else {
+      rect(c, cx, cy - 1, 1, 3, '#9e630c');
+    }
+  }
+
+  function pixelBadge(c, x, y, w, h, bg, border, textCol, text) {
+    rectA(c, x + 2, y + 2, w, h, '#050a0f', 0.42);
+    rect(c, x, y, w, h, border);
+    rect(c, x + 1, y + 1, w - 2, h - 2, bg);
+    c.save();
+    c.font = 'bold 9px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillStyle = 'rgba(0,0,0,0.45)';
+    c.fillText(text, x + w / 2 + 0.5, y + h / 2 + 1);
+    c.fillStyle = textCol;
+    c.fillText(text, x + w / 2, y + h / 2 + 0.5);
+    c.restore();
+  }
+
+  function storageTankBig(c, x, y, w, h, fillRatio, overflow = false, t = 0) {
+    rectA(c, x - 4, y + h, w + 8, 4, '#241a12', 0.25);
+    rect(c, x - 3, y + h - 2, w + 6, 4, '#6b5a44');
+    rect(c, x, y, w, h, '#3d4c57');
+    rect(c, x + 2, y + 2, w - 4, h - 4, '#1b2b38');
+    const innerH = h - 4, innerW = w - 4;
+    const fh = Math.round(innerH * clamp(fillRatio, 0, 1));
+    if (fh > 0) {
+      const wy = y + 2 + innerH - fh;
+      rect(c, x + 2, wy, innerW, fh, '#2278d4');
+      rect(c, x + 4, wy, Math.max(2, Math.round(innerW * 0.3)), fh, '#3794f0');
+      rect(c, x + 2, wy, innerW, 2, '#92e3ff');
+    }
+    for (let i = 1; i <= 3; i++) {
+      const my = Math.round(y + 2 + (innerH / 4) * i);
+      rectA(c, x + 2, my, innerW, 1, '#d7eef7', 0.22);
+      rect(c, x + w - 6, my, 4, 1, '#9bb4c2');
+    }
+    rect(c, x - 2, y - 2, w + 4, 3, '#8d99a1');
+    rect(c, x - 2, y - 2, w + 4, 1, '#c7d3db');
+
+    if (overflow) {
+      const pulse = Math.sin(t * 9) * 1.5;
+      rect(c, x - 4, y, 3, h + 1, '#4eb8ff');
+      rect(c, x + w + 1, y, 3, h + 1, '#4eb8ff');
+      for (let i = 0; i < 8; i++) {
+        const ph = (t * 2.4 + i * 0.19) % 1;
+        rect(c, x - 5 - (i % 3) * 2, y + ph * h, 2, 3, '#a6e8ff');
+        rect(c, x + w + 2 + (i % 3) * 2, y + ph * h, 2, 3, '#a6e8ff');
+      }
+      rectA(c, x - 18 - pulse, y + h + 1, w + 36 + pulse * 2, 4, '#2b86e3', 0.65);
+      rectA(c, x - 12, y + h + 2, w + 24, 2, '#9be7ff', 0.75);
+    }
+  }
+
+  function shotEcoLitro(c, t, p) {
+    drawSky(c, SKY_DAY, t);
+    drawSun(c, 535, 84, 13, '#fff5cc', '#ffe399', 0.9);
+    drawRidge(c, 224, 34, 14, mixHex(P.terra2, P.fog2, 0.35), P.terra1, 25);
+    drawRidge(c, 268, 42, 29, P.sand4, P.sand2, 60);
+    rect(c, 0, 268, W, H - 268, P.sand2);
+    dune(c, 320, 296, 340, 28, P.sand3, P.sand1);
+    sandTexture(c, 272, t, 0.9);
+
+    house(c, 108, 272, 1.45, { wall: '#d8c39b', roof: '#2d4f82', lit: true, tank: true });
+    house(c, 166, 278, 1.2, { wall: '#c7c3bc', roof: '#8c3b2c', lit: true });
+
+    const fill = clamp(0.18 + p * 0.72, 0, 0.94);
+    const tx = 310, ty = 198, tw = 64, th = 78;
+    storageTankBig(c, tx, ty, tw, th, fill, false, t);
+
+    rect(c, tx - 38, ty + th - 14, 36, 14, '#7a5f42');
+    rect(c, tx - 38, ty + th - 16, 36, 3, '#a98b60');
+    person(c, tx - 20, ty + th - 16, 1.45, { shirt: '#2c73c9', arm: t * 6 });
+    rect(c, tx - 9, ty - 14, 11, 8, '#155099');
+    rect(c, tx - 8, ty - 13, 9, 6, '#257ee0');
+    for (let i = 0; i < 7; i++) {
+      const ph = (t * 2.5 + i * 0.14) % 1;
+      rect(c, tx + 6 + (i % 2) * 2, ty - 8 + ph * 16, 3, 4, i % 2 ? '#59c6ff' : '#c4f1ff');
+    }
+
+    const bx = 445, by = 144;
+    pixelBadge(c, bx, by, 144, 46, '#102230', '#ffd75e', '#ffe885', `CAJA: $${Math.round(45 + p * 75)}`);
+    pixelBadge(c, bx + 12, by + 54, 120, 22, '#143328', '#48c774', '#a8ff9e', '+$0.40 POR LITRO');
+
+    for (let i = 0; i < 6; i++) {
+      const ph = (t * 0.75 + i / 6) % 1;
+      const cx = lerp(tx + tw / 2, bx + 36, ease(ph));
+      const cy = lerp(ty + 10, by + 22, ease(ph)) - Math.sin(ph * Math.PI) * 26;
+      pixelCoin(c, cx, cy, 5);
+    }
+
+    const liters = Math.round(fill * 320);
+    pixelBadge(c, tx - 10, ty - 34, 84, 20, '#0f2336', '#59c6ff', '#bfefff', `${liters} / 320 L`);
+  }
+
+  function shotEcoRebalse(c, t, p) {
+    drawSky(c, SKY_DUSK, t);
+    drawRidge(c, 228, 32, 19, mixHex(P.terra3, P.fog2, 0.3), P.terra2, 20);
+    rect(c, 0, 258, W, H - 258, P.sand3);
+    sandTexture(c, 262, t, 0.85);
+
+    rectA(c, W / 2 - 1, 54, 2, 236, '#ffffff', 0.18);
+
+    const lx = 132, ly = 192;
+    pixelBadge(c, lx - 48, 128, 144, 22, '#3b1714', '#e05244', '#ffb8b0', '120/120 L · ¡REBALSE!');
+    storageTankBig(c, lx, ly, 48, 68, 1.0, true, t);
+    rect(c, lx - 18, ly - 14, 28, 4, '#295780');
+    rect(c, lx + 6, ly - 14, 4, 12, '#295780');
+    for (let i = 0; i < 5; i++) {
+      const ph = (t * 2.6 + i * 0.2) % 1;
+      rect(c, lx + 7, ly - 2 + ph * 8, 2, 3, '#7fd8ff');
+    }
+    const blink = Math.sin(t * 8) > 0 ? '#ff6b57' : '#ffb8ad';
+    pixelBadge(c, lx - 22, ly + 80, 92, 22, '#2b110f', '#ff6b57', blink, '+$0 (SE PIERDE)');
+
+    const rx = 438, ry = 172;
+    const rFill = clamp(0.42 + p * 0.44, 0, 0.92);
+    pixelBadge(c, rx - 38, 128, 152, 22, '#112b3c', '#59c6ff', '#bfefff', `ESTANQUE (${Math.round(rFill * 320)}/320 L)`);
+    storageTankBig(c, rx, ry, 76, 88, rFill, false, t);
+    rect(c, rx - 18, ry - 14, 34, 4, '#295780');
+    rect(c, rx + 12, ry - 14, 4, 12, '#295780');
+    for (let i = 0; i < 6; i++) {
+      const ph = (t * 2.6 + i * 0.17) % 1;
+      rect(c, rx + 13, ry - 2 + ph * 10, 2, 3, '#9be7ff');
+    }
+    for (let i = 0; i < 4; i++) {
+      const ph = (t * 0.9 + i * 0.25) % 1;
+      pixelCoin(c, rx + 38 + Math.sin(ph * 5 + i) * 10, ry + 10 - ph * 34, 5);
+    }
+    pixelBadge(c, rx - 14, ry + 98, 104, 22, '#133326', '#48c774', '#a8ff9e', '+$12 · 100% ÚTIL');
+  }
+
+  function shotEcoCaneriaHuertos(c, t, p) {
+    drawSky(c, SKY_DAY, t);
+    drawSun(c, 520, 82, 12, '#fff5cc', '#ffe399', 0.85);
+    drawRidge(c, 206, 32, 11, mixHex(P.terra2, P.fog2, 0.35), P.terra1, 15);
+
+    for (let x = 0; x < W; x += 2) {
+      const y = 166 + (1 - x / W) * 108 + Math.sin(x * 0.02) * 3;
+      rect(c, x, y, 2, H - y, mixHex(P.sand3, P.sand4, x / W));
+      rect(c, x, y, 2, 2, P.sand1);
+    }
+    sandTexture(c, 196, t, 0.75);
+
+    meshTerrace(c, 456, 204, 1.45);
+    drawMesh(c, 456, 204, 1.45, { t, drops: 1, pipe: false, fill: 0.85 });
+    meshTerrace(c, 558, 184, 1.55);
+    drawMesh(c, 558, 184, 1.55, { t, drops: 1, pipe: true });
+
+    const cx = lerp(430, 235, (p * 1.15) % 1);
+    const cy = 166 + (1 - cx / W) * 108;
+    person(c, cx, cy, 1.3, { shirt: '#2c73c9', walk: t * 10 });
+    rect(c, cx - 7, cy - 16, 5, 7, '#155099');
+    rect(c, cx - 6, cy - 15, 3, 5, '#47b8ff');
+    pixelBadge(c, 332, 116, 138, 22, '#102436', '#ffd75e', '#ffe885', 'BIDÓN: 100% $/L');
+
+    const pts = [[572, 184], [510, 206], [440, 224], [360, 244], [280, 260], [218, 266]];
+    pipeLine(c, pts, t, 1);
+    pixelBadge(c, 476, 86, 146, 22, '#102a38', '#68c9ff', '#c2efff', 'CAÑERÍA: 65% $/L CONTINUO');
+
+    storageTankBig(c, 172, 226, 46, 52, 0.72, false, t);
+    house(c, 92, 268, 1.35, { wall: '#d8c39b', roof: '#2d6654', lit: true });
+
+    for (let i = 0; i < 4; i++) {
+      const gx = 236 + i * 32, gy = 278 + (i % 2) * 6;
+      rect(c, gx, gy, 24, 8, P.green1);
+      rect(c, gx + 2, gy - 3, 20, 3, P.green3);
+      rect(c, gx + 6, gy + 2, 4, 2, P.green2);
+      if (Math.sin(t * 4 + i) > 0.2) pixelCoin(c, gx + 12, gy - 10 - ((t * 14 + i * 5) % 14), 4);
+    }
+    pixelBadge(c, 232, 296, 178, 20, '#133326', '#48c774', '#a8ff9e', 'HUERTOS VERDES: +VALOR $/L');
+  }
+
+  function shotEcoNivel2(c, t, p) {
+    drawSky(c, SKY_FOG, t);
+    drawRidge(c, 234, 36, 23, mixHex(P.terra2, P.fog2, 0.4), P.terra1, 30);
+    drawRidge(c, 288, 44, 41, P.terra2, P.terra1, 75);
+    sandTexture(c, 292, t, 0.65);
+
+    const cleanP = clamp((p - 0.18) / 0.65, 0, 1);
+    const salt = clamp(0.88 * (1 - cleanP), 0, 1);
+    const flow = 0.25 + cleanP * 0.75;
+
+    meshTerrace(c, 230, 282, 2.7);
+    drawMesh(c, 230, 282, 2.7, { t, drops: flow, salt, pipe: true });
+
+    ladder(c, 166, 282, 92, 1.1);
+    person(c, 176, 220, 1.4, { shirt: '#e8892b', helmet: true, brush: true, arm: t * 7 });
+
+    const pts = [[258, 272], [316, 274], [374, 270], [422, 262]];
+    pipeLine(c, pts, t, flow);
+
+    storageTankBig(c, 424, 204, 62, 72, 0.35 + cleanP * 0.48, false, t);
+
+    pixelBadge(c, 376, 98, 224, 24, '#102230', '#ffd75e', '#ffe885', cleanP > 0.5 ? 'MALLA LIMPIA: +CAUDAL +$$$' : 'MALLA CON SAL: POCO CAUDAL');
+    pixelBadge(c, 376, 128, 224, 22, '#1f2833', '#8fa3b1', '#ffd0a8', 'GASTOS NV.2: CUADRILLA Y REPARACIÓN');
+
+    const coinCount = cleanP > 0.45 ? 5 : 1;
+    for (let i = 0; i < coinCount; i++) {
+      const ph = (t * (0.5 + cleanP * 0.45) + i / coinCount) % 1;
+      pixelCoin(c, 455 + Math.sin(ph * 6 + i) * 14, 198 - ph * 38, 5);
+    }
+  }
+
   // ================= Films =================
   const FILMS = {
     intro1: {
@@ -4095,9 +4364,19 @@
         { title: 'Desplegar y revisar', kicker: 'NIVEL 2', headline: 'Desplegar, revisar, seguir', caption: 'Después del viento se revisa la malla y la caleta vuelve a cosechar agua.', dur: 7, card: 'top', draw: shotFinal2 },
       ],
     },
+    economia: {
+      id: 'economia', title: 'Cómo funciona la Caja ($)', total: 30,
+      tc: { kicker: 'Atrapanieblas · Guía de Economía', title: 'Agua es Valor', sub: 'Cada litro almacenado sostiene a la caleta' },
+      shots: [
+        { title: 'Pago por litro almacenado', kicker: '1 · PAGO POR LITRO', headline: 'Cada litro que entra al estanque paga $', caption: 'No ganas por viaje fijo: la Caja recibe dinero por cada litro real que se almacena en la caleta.', dur: 7.5, card: 'top', draw: shotEcoLitro },
+        { title: 'Rebalse = $0 de ganancia', kicker: '2 · EVITA EL REBALSE', headline: 'Si el estanque se llena, el agua se pierde', caption: 'El agua que rebalsa un estanque lleno da $0. Prioriza mejorar Tambores → Estanque → Copa de Agua.', dur: 7.5, draw: shotEcoRebalse },
+        { title: 'Transportistas, cañerías y huertos', kicker: '3 · RED Y HUERTOS', headline: 'Bidón al 100% · Cañería continua · Huertos', caption: 'El transportista paga el 100% por litro; la cañería da 65% continuo sin alertas. Los huertos verdes suben el $/L.', dur: 7.5, draw: shotEcoCaneriaHuertos },
+        { title: 'Nivel 2: Caudal y gastos', kicker: '4 · MANTENCIÓN NV. 2', headline: 'Mallas limpias financian a la cuadrilla', caption: 'La sal y roturas bajan los litros y tus ingresos. Mantén las mallas limpias para costear técnicos y reparaciones.', dur: 7.5, draw: shotEcoNivel2 },
+      ],
+    },
   };
 
-  let overlayEl = null, capEl = null, titleEl = null, dotsEl = null, skipBtn = null;
+  let overlayEl = null, capEl = null, titleEl = null, dotsEl = null, skipBtn = null, prevBtn = null, nextBtn = null;
   let film = null, scene = 0, t = 0, playing = false, raf = 0, lastTs = 0, doneCb = null;
   const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -4107,11 +4386,34 @@
     titleEl = document.getElementById('cine-titlecard');
     dotsEl = document.getElementById('cine-dots');
     skipBtn = document.getElementById('cine-skip');
+    prevBtn = document.getElementById('cine-prev');
+    nextBtn = document.getElementById('cine-next');
   }
 
   function buildDots(count) {
     dotsEl.innerHTML = '';
-    for (let i = 0; i < count; i++) dotsEl.appendChild(document.createElement('i'));
+    for (let i = 0; i < count; i++) {
+      const dot = document.createElement('i');
+      const fill = document.createElement('b');
+      dot.appendChild(fill);
+      dot.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        if (!playing) return;
+        scene = i; t = 0; showScene(); renderScene();
+      });
+      dotsEl.appendChild(dot);
+    }
+  }
+
+  function updateDotsProgress() {
+    const shot = film.shots[scene];
+    const p = shot ? Math.max(0, Math.min(1, t / shot.dur)) : 0;
+    Array.from(dotsEl.children).forEach((d, i) => {
+      d.classList.toggle('done', i < scene);
+      d.classList.toggle('on', i === scene);
+      const b = d.firstElementChild;
+      if (b) b.style.width = i < scene ? '100%' : i === scene ? `${(p * 100).toFixed(1)}%` : '0%';
+    });
   }
 
   function showScene() {
@@ -4125,7 +4427,7 @@
     capEl.classList.remove('show');
     void capEl.offsetWidth;
     capEl.classList.add('show');
-    Array.from(dotsEl.children).forEach((d, i) => d.classList.toggle('on', i === scene));
+    updateDotsProgress();
   }
 
   function renderScene() {
@@ -4133,6 +4435,7 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, W, H);
     shot.draw(ctx, t, Math.min(1, t / shot.dur));
+    updateDotsProgress();
     const fade = Math.min(clamp(t / 0.22, 0, 1), clamp((shot.dur - t) / 0.22, 0, 1));
     if (fade < 1) {
       ctx.fillStyle = `rgba(3, 6, 10, ${((1 - fade) * 0.92).toFixed(3)})`;
@@ -4151,6 +4454,15 @@
     capEl.classList.toggle('show', !atEnd);
   }
 
+  function prevScene() {
+    if (!playing) return;
+    if (scene > 0) {
+      scene -= 1; t = 0; showScene(); renderScene();
+    } else {
+      t = 0; showScene(); renderScene();
+    }
+  }
+
   function nextScene() {
     if (!playing) return;
     if (scene >= film.shots.length - 1) { finish(); return; }
@@ -4165,12 +4477,31 @@
     e.stopImmediatePropagation();
     if (e.code === 'Escape') { finish(); return; }
     if (e.repeat) return;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.code === 'Backspace') { prevScene(); return; }
     nextScene();
   }
 
   function onPointer(e) {
     if (!playing) return;
     if (skipBtn && (e.target === skipBtn || skipBtn.contains(e.target))) return;
+    if (prevBtn && (e.target === prevBtn || prevBtn.contains(e.target))) return;
+    if (nextBtn && (e.target === nextBtn || nextBtn.contains(e.target))) return;
+    if (dotsEl && (e.target === dotsEl || dotsEl.contains(e.target))) return;
+    const rect = overlayEl.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / Math.max(1, rect.width);
+    if (relX < 0.34) prevScene();
+    else nextScene();
+  }
+
+  function onPrev(e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    prevScene();
+  }
+
+  function onNext(e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
     nextScene();
   }
 
@@ -4188,6 +4519,8 @@
     window.removeEventListener('keydown', onKey, true);
     overlayEl.removeEventListener('pointerup', onPointer);
     skipBtn.removeEventListener('click', onSkip);
+    if (prevBtn) prevBtn.removeEventListener('click', onPrev);
+    if (nextBtn) nextBtn.removeEventListener('click', onNext);
     capEl.classList.remove('show');
     titleEl.classList.remove('show');
     const cb = doneCb; doneCb = null;
@@ -4219,12 +4552,15 @@
     doneCb = cb || null;
     scene = 0; t = 0; playing = true; lastTs = 0;
     overlayEl.classList.remove('hidden');
+    if (skipBtn) skipBtn.textContent = id === 'economia' ? 'Volver al juego ›' : 'Saltar intro ›';
     buildDots(film.shots.length);
     titleEl.classList.remove('show');
     showScene(); renderScene();
     window.addEventListener('keydown', onKey, true);
     overlayEl.addEventListener('pointerup', onPointer);
     skipBtn.addEventListener('click', onSkip);
+    if (prevBtn) prevBtn.addEventListener('click', onPrev);
+    if (nextBtn) nextBtn.addEventListener('click', onNext);
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(loop);
   }
@@ -4272,7 +4608,13 @@
         $('pop-chip').classList.toggle('danger', s.droughtActive || s.abandonedHouses > 0);
         const moneyCard = $('money-card');
         $('funds-val').textContent = `$${s.funds}`;
-        $('funds-trend').textContent = s.fundsRate > 0.05 ? `+${s.fundsRate.toFixed(1)}/s` : '—';
+        if (s.storageFull) {
+          $('funds-trend').textContent = 'REBALSE $0';
+          $('funds-trend').style.color = '#ff886b';
+        } else {
+          $('funds-trend').textContent = `$${(s.literPrice || 0.4).toFixed(2)}/L`;
+          $('funds-trend').style.color = '';
+        }
         if (lastFunds !== null && s.funds !== lastFunds) {
           const delta = s.funds - lastFunds;
           if (delta <= -1 || delta >= 6) {
@@ -4468,6 +4810,24 @@
       });
     };
     startCampaign(false);
+
+    const openEconomyGuide = () => {
+      if (game.cinematicActive) return;
+      sound.unlock();
+      setDrawer(null);
+      const wasPaused = game.paused;
+      game.paused = true;
+      game.cinematicActive = true;
+      $('hud').classList.add('hidden');
+      Cinematics.play('economia', () => {
+        game.cinematicActive = false;
+        game.paused = wasPaused;
+        $('hud').classList.remove('hidden');
+        game._emitHUD(true);
+      });
+    };
+    $('money-card').addEventListener('click', (e) => { e.stopPropagation(); openEconomyGuide(); });
+    $('money-card').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEconomyGuide(); } });
 
     $('btn-hire-tech').addEventListener('click', () => game.hireTechnician());
     $('btn-roll-all').addEventListener('click', () => game.orderAllTech('roll'));
