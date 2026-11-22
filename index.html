@@ -954,15 +954,18 @@
           storagePos: { drums: { gx: 18.2, gy: 31.8 }, tank: { gx: 19.2, gy: 33.0 }, tower: { gx: 20.6, gy: 31.1 } },
         },
       ];
-      const villages = rawVillages.map((v) => ({
-        ...v,
-        hub: snapToLand(v.hub, 2.6),
-        storagePos: {
-          drums: snapToLand(v.storagePos.drums, 2.2),
-          tank: snapToLand(v.storagePos.tank, 1.9),
-          tower: snapToLand(v.storagePos.tower, 2.8),
-        },
-      }));
+      const villages = rawVillages.map((v) => {
+        const snappedHub = snapToLand(v.hub, 2.8);
+        return {
+          ...v,
+          hub: { ...snappedHub, gx: Math.round(snappedHub.gx), gy: Math.round(snappedHub.gy) },
+          storagePos: {
+            drums: snapToLand(v.storagePos.drums, 2.2),
+            tank: snapToLand(v.storagePos.tank, 1.9),
+            tower: snapToLand(v.storagePos.tower, 2.8),
+          },
+        };
+      });
 
       const props = [];
       for (let gy = 4; gy < mapH - 4; gy++) for (let gx = 4; gx < mapW - 4; gx++) {
@@ -1049,8 +1052,14 @@
       return { seed, size, mapW, mapH, tiles, pads, props, villages, hub, storagePos, houseSlots, orchardSlots, treeSlots, northVillage, pierAnchor, piers, boats, fogClouds, canvasW, canvasH, originX, originY, sampleTerrain };
     }
 
-    function findTrailPath(map, sx, sy, gx, gy) {
-      const { mapW, mapH, tiles } = map, stride = mapW, key = (x, y) => y * stride + x, sK = key(sx, sy), gK = key(gx, gy);
+    function findTrailPath(map, rawSx, rawSy, rawGx, rawGy) {
+      const { mapW, mapH, tiles } = map, stride = mapW, key = (x, y) => y * stride + x;
+      let sx = Math.max(1, Math.min(mapW - 2, Math.round(rawSx)));
+      let sy = Math.max(1, Math.min(mapH - 2, Math.round(rawSy)));
+      const gx = Math.max(1, Math.min(mapW - 2, Math.round(rawGx)));
+      const gy = Math.max(1, Math.min(mapH - 2, Math.round(rawGy)));
+      while (sy > 2 && tiles[sy]?.[sx]?.isWater) sy -= 1;
+      const sK = key(sx, sy), gK = key(gx, gy);
       const open = [sK], openSet = new Set([sK]), came = new Map(), gS = new Map([[sK, 0]]), fS = new Map([[sK, Math.abs(gx - sx) + Math.abs(gy - sy)]]);
       let bestNode = sK, bestD = Infinity;
       while (open.length) {
@@ -1073,7 +1082,9 @@
           if (tg < (gS.get(nk) ?? Infinity)) { came.set(nk, cur); gS.set(nk, tg); fS.set(nk, tg + (Math.abs(gx - nx) + Math.abs(gy - ny)) * 0.95); if (!openSet.has(nk)) { open.push(nk); openSet.add(nk); } }
         }
       }
-      return recPath(came, bestNode, stride);
+      const path = recPath(came, bestNode, stride);
+      if (!path.length || path[path.length - 1].gx !== gx || path[path.length - 1].gy !== gy) path.push({ gx, gy });
+      return path;
     }
     function recPath(came, cur, stride) { const p = []; while (cur !== undefined) { p.push({ gx: cur % stride, gy: Math.floor(cur / stride) }); cur = came.get(cur); } return p.reverse(); }
 
