@@ -638,7 +638,7 @@
     };
     const WIND_CFG = {
       firstDelay: 22, warnSeconds: 17, hitSeconds: 1.5,
-      cooldownMin: 26, cooldownMax: 44, sectorMax: 3, damageBase: 30,
+      cooldownMin: 26, cooldownMax: 44, sectorMax: 8, damageBase: 30,
     };
     const SALT_CFG = { warnAt: 60, penaltyFrom: 50, decayAt: 90, decayPerSec: 0.85, rateBase: 0.5, rateFog: 0.5 };
 
@@ -655,7 +655,7 @@
 
     const MODE_CONFIG = {
       // Campaña única: economía por litro efectivamente almacenado (rebalse = $0) y múltiples caletas costeras.
-      campaign: { id: 'campaign', cycleDuration: 58, startFunds: 85, startWater: 28, startCarriers: 2, meshBaseCost: 30, meshCostStep: 7, fillSpeedMult: 1.45, carrierSpeedBase: 6.0, waterPerDrum: 30, fundsPerLiter: 0.40, pipeLiterDiscount: 0.65, orchardLiterBonus: 0.03, orchardWaterDrain: 0.055, milestoneScale: 0.9, storageCostScale: 0.95, waterDrainPerPop: 0.095, droughtTickSeconds: 4.4, recoveryWaterMin: 18 },
+      campaign: { id: 'campaign', cycleDuration: 58, startFunds: 85, startWater: 28, startCarriers: 2, meshBaseCost: 30, meshCostStep: 7, fillSpeedMult: 1.45, carrierSpeedBase: 6.0, waterPerDrum: 30, fundsPerLiter: 0.40, pipeLiterDiscount: 0.65, orchardLiterBonus: 0.03, orchardWaterDrain: 0.42, milestoneScale: 0.9, storageCostScale: 0.95, waterDrainPerPop: 0.14, droughtTickSeconds: 4.4, recoveryWaterMin: 18 },
     };
 
 
@@ -1385,7 +1385,7 @@
         ctx.fillStyle = '#68a9d9'; ctx.fillRect(xL + 1, yL - 2, 16, 1);
         ctx.fillStyle = '#c9402a'; ctx.fillRect(xL + 4, yL - 6, 3, 4);
         ctx.fillStyle = '#ff9b83'; ctx.fillRect(xL + 4, yL - 6, 1, 1);
-        if (pad.pipeState === 'active') { const ft = Math.floor((time * 14 + pad.dripPhase * 5) % 15); ctx.fillStyle = '#b8ebff'; ctx.fillRect(xL + 1 + ft, yL - 2, 2, 1); }
+        if (pad.pipeState === 'active' && up && !torn && !(pad.remote && pad.remote.kind === 'roll')) { const ft = Math.floor((time * 14 + pad.dripPhase * 5) % 15); ctx.fillStyle = '#b8ebff'; ctx.fillRect(xL + 1 + ft, yL - 2, 2, 1); }
       }
 
       if (pad.techTask) {
@@ -1750,7 +1750,8 @@
       for (const pad of map.pads) {
         if (!pad.built || pad.pipeState === 'none') continue;
         const pts = padPipePoints(map, pad), total = pad._pipeLen;
-        const limit = pad.pipeState === 'active' ? total + 1 : total * pad.pipeProgress, flowing = pad.pipeState === 'active';
+        const limit = pad.pipeState === 'active' ? total + 1 : total * pad.pipeProgress;
+        const flowing = pad.pipeState === 'active' && pad.meshUp !== false && !pad.torn && !(pad.remote && pad.remote.kind === 'roll');
         for (let i = 0; i < pts.length - 1; i++) { if (pts[i].d > limit) break; drawPipeSegment(ctx, pts[i], pts[i + 1], limit, time, flowing); }
         if (pad.pipeState === 'laying') {
           // Frente de obra: punto brillante que avanza desde la malla hacia la caleta
@@ -2161,14 +2162,31 @@
         return pts;
       }
 
+      _clearPadWaterOnRoll(pad) {
+        if (!pad) return;
+        pad.fill = 0;
+        pad.pipeAcc = 0;
+        pad.alertActive = false;
+        pad.queued = false;
+        pad.dispatched = false;
+        this.dispatchQueue = this.dispatchQueue.filter((id) => id !== pad.id);
+        for (const c of this.carriers) {
+          if (c.padId === pad.id && c.state === 'climbing') {
+            c.carryingWater = false;
+            c.state = 'descending';
+          }
+        }
+      }
+
       sendMeshSignal(pad, kind) {
         if (!this.running || this.finished || this.level < 2 || !pad || !pad.built) return false;
         if (pad.remote) { this.callbacks.onToast?.('Ya hay una señal en camino a esa malla'); return false; }
         if (kind === 'roll' && !pad.meshUp) return false;
         if (kind === 'unroll' && pad.meshUp) return false;
+        if (kind === 'roll') this._clearPadWaterOnRoll(pad);
         const pts = this._signalPath(pad);
         const total = pts[pts.length - 1].d;
-        pad.remote = { kind, t: 0, dur: Math.max(0.7, Math.min(3.6, 0.45 + total / 300)), pts };
+        pad.remote = { kind, t: 0, dur: Math.max(0.45, Math.min(1.65, 0.35 + total / 650)), pts };
         pad.pendingTask = null;
         this.sound.playSignal();
         this._emitHUD(true);
@@ -2182,12 +2200,27 @@
 
       rollAllAtRiskRemote() {
         let n = 0;
+        const hasRisk = this.map.pads.some((p) => p.built && p.windRisk && p.meshUp);
+        if (hasRisk) {
+          for (const pad of this.map.pads) {
+            if (!pad.windRisk || !pad.meshUp || pad.remote || pad.techTask) continue;
+            if (this.sendMeshSignal(pad, 'roll')) n += 1;
+          }
+          if (n > 0) this.callbacks.onToast?.(`📡 Señal de enrollado enviada a ${n} malla(s) del sector`, 'warn');
+          return n;
+        }
+        // Si no hay ráfaga activa, alterna: si hay mallas enrolladas las despliega; si están todas desplegadas, las enrolla
+        const rolledPads = this.map.pads.filter((p) => p.built && !p.meshUp && !p.remote && !p.techTask);
+        if (rolledPads.length > 0) {
+          for (const pad of rolledPads) if (this.sendMeshSignal(pad, 'unroll')) n += 1;
+          if (n > 0) this.callbacks.onToast?.(`📡 Desplegando ${n} malla(s) enrollada(s)`);
+          return n;
+        }
         for (const pad of this.map.pads) {
-          if (!pad.windRisk || !pad.meshUp || pad.remote || pad.techTask) continue;
+          if (!pad.built || !pad.meshUp || pad.remote || pad.techTask) continue;
           if (this.sendMeshSignal(pad, 'roll')) n += 1;
         }
-        if (n > 0) this.callbacks.onToast?.(`📡 Señal de enrollado enviada a ${n} malla(s) del sector`, 'warn');
-        else this.callbacks.onToast?.('No hay mallas en riesgo ahora mismo');
+        if (n > 0) this.callbacks.onToast?.(`📡 Enrollando ${n} malla(s) · Captura detenida`, 'warn');
         return n;
       }
 
@@ -2200,13 +2233,13 @@
           pad.remote = null; pad.signalFlash = 0.75;
           const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
           if (kind === 'roll') {
-            pad.meshUp = false; pad.alertActive = false; pad.queued = false; pad.dispatched = false; pad.fill = 0;
-            this.dispatchQueue = this.dispatchQueue.filter((id) => id !== pad.id);
+            pad.meshUp = false;
+            this._clearPadWaterOnRoll(pad);
             this._spawnDust(pos.x, pos.y - 8, '#f0d9a8', 9);
-            this._addFloatingText(pos.x, pos.y - 38, 'Malla enrollada', '#ffe6a6');
+            this._addFloatingText(pos.x, pos.y - 38, 'Malla enrollada (0 L/s)', '#ffe6a6');
             this.sound.playRoll();
           } else {
-            pad.meshUp = true; pad.fill = 0;
+            pad.meshUp = true; pad.fill = 0; pad.pipeAcc = 0;
             this._spawnDust(pos.x, pos.y - 8, '#b9e7ff', 8);
             this._addFloatingText(pos.x, pos.y - 38, 'Malla desplegada', '#9df0b6');
             this.sound.playTechDone();
@@ -2288,14 +2321,14 @@
         if (pad) {
           const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
           if (kind === 'roll') {
-            pad.meshUp = false; pad.alertActive = false; pad.queued = false; pad.dispatched = false; pad.fill = 0;
-            this.dispatchQueue = this.dispatchQueue.filter((id) => id !== pad.id);
+            pad.meshUp = false;
+            this._clearPadWaterOnRoll(pad);
             this._spawnDust(pos.x, pos.y - 8, '#f0d9a8', 8);
-            this._addFloatingText(pos.x, pos.y - 40, 'Malla enrollada', '#ffe6a6');
+            this._addFloatingText(pos.x, pos.y - 40, 'Malla enrollada (0 L/s)', '#ffe6a6');
             this.sound.playRoll();
             if (this.wind && this.wind.phase === 'warn' && this.wind.sector.includes(pad.id)) this.callbacks.onToast?.('🛡️ ¡Malla a resguardo!');
           } else if (kind === 'unroll') {
-            pad.meshUp = true; pad.fill = 0;
+            pad.meshUp = true; pad.fill = 0; pad.pipeAcc = 0;
             this._spawnDust(pos.x, pos.y - 8, '#b9e7ff', 7);
             this._addFloatingText(pos.x, pos.y - 40, 'Malla desplegada', '#9df0b6');
             this.sound.playTechDone();
@@ -2388,10 +2421,10 @@
         const w = this.wind;
         if (!built.length) { w.timer = 12; return; }
         const seed = built[Math.floor(Math.random() * built.length)];
-        const near = built
-          .filter((p) => p !== seed && Math.hypot(p.gx - seed.gx, p.gy - seed.gy) <= 9)
+        const sameZone = built
+          .filter((p) => p !== seed && ((p.connectedVillageId ?? 0) === (seed.connectedVillageId ?? 0) || Math.hypot(p.gx - seed.gx, p.gy - seed.gy) <= 18))
           .sort((a, b) => Math.hypot(a.gx - seed.gx, a.gy - seed.gy) - Math.hypot(b.gx - seed.gx, b.gy - seed.gy));
-        const sector = [seed, ...near.slice(0, WIND_CFG.sectorMax - 1)];
+        const sector = [seed, ...sameZone.slice(0, WIND_CFG.sectorMax - 1)];
         w.phase = 'warn'; w.timer = WIND_CFG.warnSeconds;
         w.sector = sector.map((p) => p.id);
         w.strength = 0.7 + Math.random() * 0.6;
@@ -2469,10 +2502,12 @@
         }
       }
 
-      // Rendimiento de una malla: 1 = perfecta. Baja por daño, salinidad o estar enrollada.
+      // Rendimiento de una malla: 1 = perfecta. Baja por daño, salinidad o estar enrollada (o enrollándose).
       getMeshEfficiency(pad) {
-        if (!pad.built) return 0;
+        if (!pad || !pad.built) return 0;
         if (!pad.meshUp || pad.torn) return 0;
+        if (pad.remote && pad.remote.kind === 'roll') return 0;
+        if (pad.techTask && pad.techTask.kind === 'roll') return 0;
         if (this.level < 2) return 1;
         const condMult = 0.45 + 0.55 * (Math.max(0, Math.min(100, pad.condition)) / 100);
         const saltMult = pad.salt <= SALT_CFG.penaltyFrom ? 1 : 1 - ((pad.salt - SALT_CFG.penaltyFrom) / (100 - SALT_CFG.penaltyFrom)) * 0.55;
@@ -2629,7 +2664,12 @@
         this._emitHUD(true);
       }
       getPipeCost(pad) { const len = pad && pad.trail ? pad.trail.length : 20; return Math.round((PIPE_CFG.baseCost + len * PIPE_CFG.perTile) * this.cfg.storageCostScale); }
-      _padFillPerSec(pad, cyc) { return 8.2 * pad.fogYield * this.cfg.fillSpeedMult * cyc.fogMult * this.getMeshEfficiency(pad); }
+      _padFillPerSec(pad, cyc) {
+        const eff = this.getMeshEfficiency(pad);
+        if (eff <= 0) return 0;
+        const scale = this.meshesBuilt <= 3 ? 1.0 : Math.max(0.32, 1.12 / Math.sqrt(this.meshesBuilt));
+        return 8.0 * pad.fogYield * this.cfg.fillSpeedMult * cyc.fogMult * eff * scale;
+      }
       getPipeFlowLps(pad) {
         const vId = pad ? (pad.connectedVillageId ?? 0) : 0;
         return (this._padFillPerSec(pad, this.getCycleState()) / 100) * this.cfg.waterPerDrum * this.getStorageTierObj(vId).waterBonusMult;
@@ -2833,7 +2873,8 @@
         for (const v of (this.map.villages || [])) {
           if (!v.unlocked) continue;
           const vOrch = this.orchards.filter((o) => (o.villageId ?? 0) === v.id && !o.dried).length;
-          const vDrain = (v.pop > 0 ? v.pop * this.cfg.waterDrainPerPop : 0) + vOrch * this.cfg.orchardWaterDrain;
+          const tierMult = 1 + (v.storageTier || 0) * 0.25 + (this.level >= 2 ? 0.35 : 0);
+          const vDrain = ((v.pop > 0 ? v.pop * this.cfg.waterDrainPerPop : 0) + vOrch * this.cfg.orchardWaterDrain) * tierMult;
           v.drainRate = vDrain;
           totalDrain += vDrain;
           if (vDrain > 0) v.water = Math.max(0, v.water - vDrain * dt);
@@ -2894,8 +2935,15 @@
             }
             continue;
           }
+          // Si la malla está enrollada (o enrollándose) o rota, NO captura ni envía agua por cañería ni bidón
+          if (!pad.meshUp || pad.torn || (pad.remote && pad.remote.kind === 'roll') || (pad.techTask && pad.techTask.kind === 'roll')) {
+            pad.fill = 0;
+            pad.pipeAcc = 0;
+            pad.alertActive = false;
+            continue;
+          }
           if (pad.pipeState === 'active') {
-            // El agua llega sola por la cañería: sin bidón, sin alerta (!), sin transportista.
+            // El agua llega sola por la cañería solo mientras la malla esté desplegada y operativa.
             pad.pipeAcc += (this._padFillPerSec(pad, cyc) / 100) * dt;
             while (pad.pipeAcc >= 1) { pad.pipeAcc -= 1; this._onWaterDelivered(true, pad.connectedVillageId ?? 0); }
             continue;
@@ -2921,7 +2969,7 @@
               if (qIdx === -1) qIdx = 0;
               const targetId = this.dispatchQueue.splice(qIdx, 1)[0];
               const target = this.map.pads.find((p) => p.id === targetId);
-              if (target && target.alertActive && !target.dispatched) this._assignCarrier(c, target);
+              if (target && target.alertActive && !target.dispatched && target.meshUp !== false && !target.torn) this._assignCarrier(c, target);
             }
             continue;
           }
@@ -2931,8 +2979,16 @@
             while (c.segProgress >= 1 && c.pathIdx < path.length - 1) { c.segProgress -= 1; c.pathIdx += 1; }
             if (c.pathIdx >= path.length - 1) {
               const pad = this.map.pads.find((p) => p.id === c.padId);
-              if (pad) { pad.fill = 0; pad.alertActive = false; pad.dispatched = false; pad.queued = false; const wp = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY); this._spawnDust(wp.x, wp.y - 8, '#5ebeff', 7); }
-              c.carryingWater = true; c.state = 'descending'; c.pathIdx = path.length - 1; c.segProgress = 0;
+              if (pad && pad.meshUp !== false && !pad.torn && !(pad.remote && pad.remote.kind === 'roll')) {
+                pad.fill = 0; pad.alertActive = false; pad.dispatched = false; pad.queued = false;
+                const wp = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
+                this._spawnDust(wp.x, wp.y - 8, '#5ebeff', 7);
+                c.carryingWater = true;
+              } else {
+                if (pad) { pad.dispatched = false; pad.queued = false; }
+                c.carryingWater = false;
+              }
+              c.state = 'descending'; c.pathIdx = path.length - 1; c.segProgress = 0;
             } else {
               const a = path[c.pathIdx], b = path[c.pathIdx + 1];
               const screenDx = (b.gx - a.gx) - (b.gy - a.gy);
@@ -2942,7 +2998,13 @@
           } else {
             c.segProgress += speed * 1.08 * dt;
             while (c.segProgress >= 1 && c.pathIdx > 0) { c.segProgress -= 1; c.pathIdx -= 1; }
-            if (c.pathIdx <= 0) { c.gx = path[0].gx; c.gy = path[0].gy; c.carryingWater = false; c.state = 'idle'; const vid = c.villageId ?? 0; c.padId = null; this._onWaterDelivered(false, vid); }
+            if (c.pathIdx <= 0) {
+              c.gx = path[0].gx; c.gy = path[0].gy;
+              const hadWater = c.carryingWater;
+              c.carryingWater = false; c.state = 'idle';
+              const vid = c.villageId ?? 0; c.padId = null;
+              if (hadWater) this._onWaterDelivered(false, vid);
+            }
             else {
               const a = path[c.pathIdx], b = path[c.pathIdx - 1];
               const screenDx = (b.gx - a.gx) - (b.gy - a.gy);
@@ -3197,6 +3259,7 @@
           techMax: TECH_CFG.max, techHireCost: this.getTechHireCost(),
           techCanHire: this.level >= 2 && techs.length < TECH_CFG.max && this.funds >= this.getTechHireCost(),
           techTasks, pendingTech,
+          rolledCount: builtPads.filter((p) => !p.meshUp).length,
           windPhase: this.wind ? this.wind.phase : 'idle',
           windSeconds: this.wind ? Math.max(0, this.wind.timer) : 0,
           windCount: this.wind ? this.wind.sector.length : 0,
@@ -5219,7 +5282,14 @@
         if (techList.dataset.sig !== techHtml) { techList.innerHTML = techHtml; techList.dataset.sig = techHtml; }
         $('btn-hire-tech').disabled = !s.techCanHire;
         $('btn-hire-tech').textContent = s.techsTotal >= s.techMax ? 'Cuadrilla completa' : (s.techCanHire ? `Contratar técnico ($${s.techHireCost})` : `Requiere $${s.techHireCost}`);
-        $('btn-roll-all').disabled = !(s.level >= 2 && s.windPhase === 'warn' && s.windCount > 0);
+        $('btn-roll-all').disabled = !(s.level >= 2);
+        if (s.windPhase === 'warn' && s.windCount > 0) {
+          $('btn-roll-all').textContent = `📡 Señal: enrollar en riesgo (${s.windCount})`;
+        } else if (s.rolledCount > 0) {
+          $('btn-roll-all').textContent = `📡 Señal: desplegar enrolladas (${s.rolledCount})`;
+        } else {
+          $('btn-roll-all').textContent = '📡 Señal: enrollar todas';
+        }
         $('btn-maintain-all').disabled = !(s.level >= 2);
 
         if (s.pendingAlerts > 0) { $('dock-alert').classList.remove('hidden'); $('alert-badge').textContent = String(s.pendingAlerts); }
