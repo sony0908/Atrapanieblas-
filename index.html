@@ -288,6 +288,15 @@
     @keyframes windPulse { from { transform: scale(1); } to { transform: scale(1.03); } }
 
     /* ===== Cuadrilla técnica ===== */
+    .village-list { display: flex; flex-direction: column; gap: 5px; margin: 7px 0 6px; }
+    .village-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 10.5px; background: rgba(255, 255, 255, 0.72); border: 1px solid rgba(21, 43, 63, 0.12); border-radius: 8px; padding: 5px 7px; }
+    .village-row.active { border-color: rgba(45, 142, 232, 0.42); background: rgba(232, 246, 255, 0.75); }
+    .village-row .v-info { display: flex; flex-direction: column; line-height: 1.2; cursor: pointer; }
+    .village-row .v-name { font-weight: 800; color: var(--ink); font-size: 10.5px; }
+    .village-row .v-sub { font-family: var(--font-mono); font-size: 9px; color: var(--ink-soft); }
+    .village-row .v-btn { font-family: var(--font-ui); font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; border: none; background: linear-gradient(135deg, #1b6dc4, #2894db); color: #fff; cursor: pointer; white-space: nowrap; }
+    .village-row .v-btn:disabled { background: rgba(21, 43, 63, 0.14); color: var(--ink-soft); cursor: default; }
+    .village-row .v-tag { font-family: var(--font-mono); font-size: 9px; font-weight: 800; color: #1f7a4c; background: rgba(47, 158, 99, 0.14); padding: 2px 6px; border-radius: 99px; white-space: nowrap; }
     .tech-list { display: flex; flex-direction: column; gap: 4px; margin: 7px 0 8px; }
     .tech-row { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--ink-soft); background: rgba(255, 255, 255, 0.68); border-radius: 7px; padding: 4px 6px; }
     .tech-row b { color: var(--ink); font-weight: 700; }
@@ -471,11 +480,13 @@
       <div id="dock-shell" class="dock-shell">
         <div id="dock-drawer" class="dock-drawer hidden">
           <div id="panel-storage" class="drawer-panel hidden">
-            <div class="drawer-head"><span class="drawer-title">Infraestructura</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
+            <div class="drawer-head"><span class="drawer-title">Red Hídrica Costera</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
             <div class="drawer-meta">Almacenamiento: <strong id="storage-cur-name">Tambores Básicos</strong></div>
             <div id="storage-next-info" class="drawer-sub">Siguiente: Estanque Comunitario (320 L)</div>
             <button id="btn-upgrade" class="drawer-cta" type="button"><span id="upgrade-title">Mejorar ($49)</span></button>
-            <p class="drawer-tip">Toca una <strong>malla</strong> para comprarle su cañería.</p>
+            <div class="drawer-meta" style="margin-top:9px;">Pueblos en la costa: <strong id="villages-count">1/3</strong></div>
+            <div id="village-list" class="village-list"></div>
+            <p class="drawer-tip">Conecta nuevas <strong>caletas costeras</strong> para sumar población, capacidad de agua, huertos y transportistas.</p>
           </div>
 
           <div id="panel-mesh" class="drawer-panel hidden">
@@ -584,7 +595,7 @@
 
   <script>
   (() => {
-    const TILE_W = 24, TILE_H = 12, ELEV_H = 5, MAP_SIZE = 60;
+    const TILE_W = 24, TILE_H = 12, ELEV_H = 5, MAP_W = 88, MAP_H = 56, MAP_SIZE = 88;
     const PALETTE = {
       fogBg: '#dfe8ec',
       oceanDeep: ['#16529a', '#1b5eab', '#216cb8'],
@@ -625,18 +636,19 @@
     const SALT_CFG = { warnAt: 60, penaltyFrom: 50, decayAt: 90, decayPerSec: 0.85, rateBase: 0.5, rateFog: 0.5 };
 
     const GROWTH_MILESTONES = [
-      { water: 30,  popAdd: 4, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Primer huerto comunitario!' },
-      { water: 70,  popAdd: 5, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Nuevas familias llegan!' },
-      { water: 120, popAdd: 6, houses: 2, orchards: 1, trees: 3, carriersAdd: 1, label: '¡La caleta florece!' },
-      { water: 190, popAdd: 7, houses: 2, orchards: 2, trees: 3, carriersAdd: 1, label: '¡Cosecha verde en el desierto!' },
-      { water: 280, popAdd: 8, houses: 2, orchards: 2, trees: 3, carriersAdd: 1, label: '¡Caleta modelo nortina!' },
-      { water: 400, popAdd: 10, houses: 2, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Comunidad autosustentable!' },
-      { water: 560, popAdd: 12, houses: 2, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Oasis costero consolidado!' },
+      { water: 30,  popAdd: 5, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Primer huerto comunitario!' },
+      { water: 70,  popAdd: 6, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Nuevas familias llegan!' },
+      { water: 120, popAdd: 7, houses: 2, orchards: 1, trees: 3, carriersAdd: 1, label: '¡La caleta florece!' },
+      { water: 190, popAdd: 8, houses: 2, orchards: 2, trees: 3, carriersAdd: 1, label: '¡Cosecha verde en el desierto!' },
+      { water: 280, popAdd: 9, houses: 2, orchards: 2, trees: 3, carriersAdd: 1, label: '¡Caleta modelo nortina!' },
+      { water: 400, popAdd: 11, houses: 2, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Comunidad autosustentable!' },
+      { water: 560, popAdd: 13, houses: 3, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Oasis costero consolidado!' },
+      { water: 760, popAdd: 15, houses: 3, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Corredor hídrico del desierto!' },
     ];
 
     const MODE_CONFIG = {
-      // Campaña única: economía por litro efectivamente almacenado (rebalse = $0).
-      campaign: { id: 'campaign', cycleDuration: 58, startFunds: 85, startWater: 28, startCarriers: 2, meshBaseCost: 30, meshCostStep: 8, fillSpeedMult: 1.45, carrierSpeedBase: 5.8, waterPerDrum: 30, fundsPerLiter: 0.40, pipeLiterDiscount: 0.65, orchardLiterBonus: 0.03, orchardWaterDrain: 0.035, milestoneScale: 0.9, storageCostScale: 0.95, waterDrainPerPop: 0.078, droughtTickSeconds: 4.4, recoveryWaterMin: 18 },
+      // Campaña única: economía por litro efectivamente almacenado (rebalse = $0) y múltiples caletas costeras.
+      campaign: { id: 'campaign', cycleDuration: 58, startFunds: 85, startWater: 28, startCarriers: 2, meshBaseCost: 30, meshCostStep: 7, fillSpeedMult: 1.45, carrierSpeedBase: 6.0, waterPerDrum: 30, fundsPerLiter: 0.40, pipeLiterDiscount: 0.65, orchardLiterBonus: 0.03, orchardWaterDrain: 0.055, milestoneScale: 0.9, storageCostScale: 0.95, waterDrainPerPop: 0.095, droughtTickSeconds: 4.4, recoveryWaterMin: 18 },
     };
 
 
@@ -750,108 +762,135 @@
     ];
 
     function generateCoastalMap(seed = 2027) {
-      const rand = mulberry32(seed), size = MAP_SIZE;
-      const canvasW = size * TILE_W + 180, canvasH = size * TILE_H + 22 * ELEV_H + 180;
-      const originX = Math.floor(canvasW / 2), originY = 140;
-      const tiles = Array.from({ length: size }, () => new Array(size));
+      const rand = mulberry32(seed), mapW = MAP_W, mapH = MAP_H, size = mapW;
+      const canvasW = (mapW + mapH) * (TILE_W / 2) + 220;
+      const canvasH = (mapW + mapH) * (TILE_H / 2) + 24 * ELEV_H + 220;
+      const originX = Math.floor(mapH * (TILE_W / 2)) + 110;
+      const originY = 155;
+      const tiles = Array.from({ length: mapH }, () => new Array(mapW));
 
+      // Costa alargada de Norte (gx bajo) a Sur (gx alto) con 3 bahías para las 3 caletas
       const getCoastY = (gx) => {
-        let cy = 35.5 + (gx - 12) * 0.24;
-        cy -= 4.2 * Math.exp(-Math.pow((gx - 14) / 5.5, 2));
-        cy -= 5.0 * Math.exp(-Math.pow((gx - 31) / 5.8, 2));
-        cy += 7.2 * Math.exp(-Math.pow((gx - 43.5) / 6.8, 2));
-        cy += (smoothNoise(gx * 0.17, 1.5, seed + 11) - 0.5) * 3.0;
-        cy += (smoothNoise(gx * 0.52, 4.1, seed + 37) - 0.5) * 1.15;
+        let cy = 32.0 + (gx - 10) * 0.14;
+        // Bahía Caleta Norte (Patache, gx ~ 18)
+        cy += 4.2 * Math.exp(-Math.pow((gx - 18) / 6.2, 2));
+        // Morro / Cabo rocoso norte-centro (gx ~ 31)
+        cy -= 4.8 * Math.exp(-Math.pow((gx - 31) / 5.5, 2));
+        // Bahía Caleta Centro (Punta Choros, gx ~ 44)
+        cy += 5.0 * Math.exp(-Math.pow((gx - 44) / 6.8, 2));
+        // Farellón / Cabo centro-sur (gx ~ 57)
+        cy -= 4.6 * Math.exp(-Math.pow((gx - 57) / 5.5, 2));
+        // Bahía Caleta Sur Principal (Chungungo, gx ~ 70)
+        cy += 6.2 * Math.exp(-Math.pow((gx - 70) / 7.2, 2));
+        cy += (smoothNoise(gx * 0.16, 1.5, seed + 11) - 0.5) * 2.6;
+        cy += (smoothNoise(gx * 0.48, 4.1, seed + 37) - 0.5) * 1.05;
         return cy;
       };
 
       const sampleRawTerrain = (gx, gy) => {
-        const nx = (gx - size * 0.5) / (size * 0.48), ny = (gy - size * 0.5) / (size * 0.48);
-        const distEdge = Math.hypot(nx * 0.96, ny * 0.98) + (fbm(gx * 0.11, gy * 0.11, seed + 501) - 0.5) * 0.34;
-        const fogAlpha = Math.max(0, Math.min(1, (distEdge - 0.72) / 0.28));
+        const nx = (gx - mapW * 0.5) / (mapW * 0.49), ny = (gy - mapH * 0.5) / (mapH * 0.48);
+        const distEdge = Math.hypot(nx * 0.94, ny * 0.98) + (fbm(gx * 0.09, gy * 0.09, seed + 501) - 0.5) * 0.30;
+        const fogAlpha = Math.max(0, Math.min(1, (distEdge - 0.76) / 0.24));
         const inland = getCoastY(gx) - gy;
         if (inland <= 0) {
           return { h: 0, isWater: true, waterDepth: Math.min(1, -inland / 11.5), inland, fogAlpha, biome: 'ocean' };
         }
 
-        // Morro/acantilado costero en el cabo central (gx ~ 22..35) cayendo directo al Pacífico
-        const headland = Math.exp(-Math.pow((gx - 28.5) / 6.5, 2));
+        // Dos morros/acantilados costeros cayendo directo al Pacífico entre las 3 caletas
+        const headland1 = Math.exp(-Math.pow((gx - 31) / 5.8, 2));
+        const headland2 = Math.exp(-Math.pow((gx - 57) / 5.8, 2));
+        const headland = Math.max(headland1, headland2);
         const shoreRamp = Math.min(1, inland / (headland > 0.35 ? 1.15 : 2.1));
         let elev = 0.28 + shoreRamp * (1.45 + headland * 2.4);
 
-        // Farellón Costero de Atacama: escarpe marcado detrás de la franja costera
+        // Farellón Costero de Atacama a lo largo de toda la franja
         const cliffWall = 1 / (1 + Math.exp(-(inland - (5.2 - headland * 2.2)) * 0.72));
-        elev += cliffWall * 4.4;
-        if (inland > 3.2) elev += Math.pow((inland - 3.2) * 0.24, 1.06);
+        elev += cliffWall * 4.5;
+        if (inland > 3.2) elev += Math.pow((inland - 3.2) * 0.25, 1.06);
 
-        // Cordones montañosos principales
-        elev += 6.2 * Math.exp(-(Math.pow((gx - 18) / 11.5, 2) + Math.pow((gy - 10) / 8.0, 2)));
-        elev += 5.4 * Math.exp(-(Math.pow((gx - 47) / 8.0, 2) + Math.pow((gy - 27) / 7.0, 2)));
-        elev += 5.0 * Math.exp(-(Math.pow((gx - 35) / 7.5, 2) + Math.pow((gy - 21) / 6.5, 2)));
-        elev += 4.5 * Math.exp(-(Math.pow((gx - 22) / 7.5, 2) + Math.pow((gy - 20) / 6.0, 2)));
+        // Cordones montañosos a lo largo del corredor costero (Norte, Centro y Sur)
+        elev += 6.4 * Math.exp(-(Math.pow((gx - 18) / 11.0, 2) + Math.pow((gy - 11) / 7.5, 2)));
+        elev += 5.8 * Math.exp(-(Math.pow((gx - 36) / 10.0, 2) + Math.pow((gy - 14) / 7.5, 2)));
+        elev += 6.0 * Math.exp(-(Math.pow((gx - 54) / 10.5, 2) + Math.pow((gy - 17) / 7.5, 2)));
+        elev += 5.6 * Math.exp(-(Math.pow((gx - 72) / 9.5, 2) + Math.pow((gy - 24) / 7.5, 2)));
 
         // Quebradas profundas y filos agudos (domain-warped ridged noise estilo Atacama)
         const wx = gx + (fbm(gx * 0.08, gy * 0.08, seed + 31) - 0.5) * 4.2;
         const wy = gy + (fbm(gx * 0.08, gy * 0.08, seed + 53) - 0.5) * 4.2;
-        const ridge1 = Math.pow(Math.max(0, 1 - Math.abs(fbm(wx * 0.125, wy * 0.125, seed + 89) * 2 - 1)), 1.65);
+        const ridge1 = Math.pow(Math.max(0, 1 - Math.abs(fbm(wx * 0.12, wy * 0.12, seed + 89) * 2 - 1)), 1.65);
         const ridge2 = Math.pow(Math.max(0, 1 - Math.abs(fbm(gx * 0.24, gy * 0.24, seed + 149) * 2 - 1)), 1.5);
         const canyon = Math.pow(Math.abs(fbm(wx * 0.11, wy * 0.11, seed + 223) * 2 - 1), 0.75);
         const inlandMask = Math.min(1, Math.max(0, (inland - 1.2) / 3.2));
         elev += ((ridge1 - 0.42) * 5.2 + (ridge2 - 0.45) * 2.1 - (1 - canyon) * 2.4) * inlandMask;
 
-        // Terrazas geológicas sutiles (estratos costeros sin parecer cubos)
         if (inland > 3.5) elev += Math.sin(elev * 1.05) * 0.28 * inlandMask;
 
-        // Explanada suave de la caleta principal (acurrucada bajo el farellón)
-        const cd = Math.hypot((gx - 42.5) / 6.5, (gy - 43.2) / 5.4);
-        if (cd < 1.28) {
-          const t = Math.max(0, Math.min(1, (cd - 0.72) / 0.56));
-          const b = t * t * (3 - 2 * t);
-          const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
-          elev = targetH * (1 - b) + elev * b;
-        }
-        // Caleta norte
-        const nd = Math.hypot((gx - 15) / 3.6, (gy - 31) / 2.8);
-        if (nd < 1.22) {
-          const t = Math.max(0, Math.min(1, (nd - 0.65) / 0.57));
-          const b = t * t * (3 - 2 * t);
-          const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
-          elev = targetH * (1 - b) + elev * b;
+        // Explanadas costeras suaves para las 3 caletas (Sur, Centro y Norte)
+        const coves = [
+          { gx: 68.5, gy: 43.0, rx: 6.8, ry: 5.4 }, // Caleta Sur (Chungungo)
+          { gx: 44.0, gy: 39.2, rx: 5.8, ry: 4.6 }, // Caleta Centro (Punta Choros)
+          { gx: 18.5, gy: 34.5, rx: 5.4, ry: 4.4 }, // Caleta Norte (Alto Patache)
+        ];
+        for (const cv of coves) {
+          const cd = Math.hypot((gx - cv.gx) / cv.rx, (gy - cv.gy) / cv.ry);
+          if (cd < 1.26) {
+            const t = Math.max(0, Math.min(1, (cd - 0.70) / 0.56));
+            const b = t * t * (3 - 2 * t);
+            const targetH = Math.min(2.0, 0.35 + shoreRamp * 1.65);
+            elev = targetH * (1 - b) + elev * b;
+          }
         }
         const h = Math.max(0.25, Math.min(24.0, elev));
         const biome = h <= 2.3 || (h <= 3.1 && inland < 5.5) ? 'sand' : h <= 7.0 ? 'foothill' : h <= 12.2 ? 'terracotta' : h <= 16.5 ? 'ridge' : 'peak';
         return { h, isWater: false, waterDepth: 0, inland, fogAlpha, biome };
       };
 
-      for (let gy = 0; gy < size; gy++) {
-        for (let gx = 0; gx < size; gx++) {
+      for (let gy = 0; gy < mapH; gy++) {
+        for (let gx = 0; gx < mapW; gx++) {
           const s = sampleRawTerrain(gx, gy);
           tiles[gy][gx] = { gx, gy, h: s.h, isWater: s.isWater, waterDepth: s.waterDepth, biome: s.biome, fogAlpha: s.fogAlpha, isPath: false, isPad: false, padId: null, speck: hash2D(gx, gy, seed + 303) };
         }
       }
 
+      // 24 plataformas distribuidas a lo largo de los 3 sectores del corredor costero
       const rawPads = [
-        { gx: 46, gy: 32, starter: true, zone: 'Lomo Camanchaca' }, { gx: 49, gy: 36, zone: 'Cima Sur' },
-        { gx: 42, gy: 32, zone: 'Mirador Caleta' }, { gx: 51, gy: 30, zone: 'Alto del Viento' },
-        { gx: 45, gy: 26, zone: 'Cresta Niebla' }, { gx: 51, gy: 24, zone: 'Farallón Este' },
-        { gx: 38, gy: 34, zone: 'Loma Ocre' }, { gx: 36, gy: 28, zone: 'Cerro Rojo' },
-        { gx: 40, gy: 23, zone: 'Cumbre Alta' }, { gx: 32, gy: 24, zone: 'Portezuelo' },
-        { gx: 31, gy: 31, zone: 'Loma del Sol' }, { gx: 34, gy: 18, zone: 'Cordón Alto' },
-        { gx: 45, gy: 19, zone: 'Mirador Este' }, { gx: 26, gy: 28, zone: 'Cerro Cabo' },
-        { gx: 26, gy: 21, zone: 'Cresta Norte' }, { gx: 21, gy: 26, zone: 'Loma Cardón' },
-        { gx: 20, gy: 19, zone: 'Alto Patache' }, { gx: 15, gy: 23, zone: 'Cerro Norte' },
-        { gx: 28, gy: 15, zone: 'Cumbre Camanchaca' }, { gx: 39, gy: 15, zone: 'Cumbre Niebla' },
+        // Sector Sur (Caleta Chungungo)
+        { gx: 71, gy: 32, starter: true, zone: 'Lomo Chungungo', villageId: 0 },
+        { gx: 75, gy: 36, zone: 'Cima Sur', villageId: 0 },
+        { gx: 66, gy: 32, zone: 'Mirador Caleta', villageId: 0 },
+        { gx: 76, gy: 29, zone: 'Alto del Viento', villageId: 0 },
+        { gx: 69, gy: 25, zone: 'Cresta Niebla', villageId: 0 },
+        { gx: 61, gy: 33, zone: 'Loma Ocre', villageId: 0 },
+        { gx: 62, gy: 26, zone: 'Cerro Rojo', villageId: 0 },
+        { gx: 74, gy: 21, zone: 'Farallón Sur', villageId: 0 },
+        // Sector Centro (Caleta Punta Choros)
+        { gx: 54, gy: 29, zone: 'Morro del Sol', villageId: 1 },
+        { gx: 48, gy: 28, zone: 'Mirador Choros', villageId: 1 },
+        { gx: 42, gy: 29, zone: 'Loma Costera', villageId: 1 },
+        { gx: 53, gy: 22, zone: 'Portezuelo Central', villageId: 1 },
+        { gx: 45, gy: 22, zone: 'Cumbre Choros', villageId: 1 },
+        { gx: 37, gy: 26, zone: 'Cabo Viento', villageId: 1 },
+        { gx: 49, gy: 16, zone: 'Cordón Central', villageId: 1 },
+        { gx: 39, gy: 18, zone: 'Cresta Alta', villageId: 1 },
+        // Sector Norte (Caleta Alto Patache)
+        { gx: 30, gy: 25, zone: 'Farellón Patache', villageId: 2 },
+        { gx: 24, gy: 26, zone: 'Loma Cardón', villageId: 2 },
+        { gx: 18, gy: 25, zone: 'Mirador Patache', villageId: 2 },
+        { gx: 29, gy: 18, zone: 'Alto Camanchaca', villageId: 2 },
+        { gx: 22, gy: 18, zone: 'Cumbre Patache', villageId: 2 },
+        { gx: 14, gy: 20, zone: 'Cerro Norte', villageId: 2 },
+        { gx: 26, gy: 12, zone: 'Cumbre Niebla', villageId: 2 },
+        { gx: 17, gy: 13, zone: 'Cima del Pacífico', villageId: 2 },
       ];
       const pads = [];
       rawPads.forEach((cfg, idx) => {
         const t = tiles[cfg.gy]?.[cfg.gx];
-        if (!t || t.isWater || t.fogAlpha > 0.55) return;
+        if (!t || t.isWater || t.fogAlpha > 0.62) return;
         const padH = Math.max(4.5, Math.min(20.0, t.h));
         t.h = padH; t.isPad = true; t.padId = idx;
-        pads.push({ id: idx, gx: cfg.gx, gy: cfg.gy, h: padH, zone: cfg.zone, fogYield: padH >= 13 ? 1.55 : padH >= 9.5 ? 1.28 : 1.0, fogLabel: padH >= 13 ? 'Intensa' : padH >= 9.5 ? 'Alta' : 'Media', starter: Boolean(cfg.starter), built: false, fill: 0, alertActive: false, dispatched: false, queued: false, trail: null, pipeState: 'none', pipeProgress: 0, pipeAcc: 0, buildAnim: 0, dripPhase: rand() * Math.PI * 2, meshUp: true, condition: 100, salt: 0, techTask: null, pendingTask: null, torn: false, windRisk: false, techAnim: 0, remote: null, signalFlash: 0 });
+        pads.push({ id: idx, gx: cfg.gx, gy: cfg.gy, h: padH, zone: cfg.zone, villageId: cfg.villageId ?? 0, fogYield: padH >= 13 ? 1.55 : padH >= 9.5 ? 1.28 : 1.0, fogLabel: padH >= 13 ? 'Intensa' : padH >= 9.5 ? 'Alta' : 'Media', starter: Boolean(cfg.starter), built: false, fill: 0, alertActive: false, dispatched: false, queued: false, trail: null, pipeState: 'none', pipeProgress: 0, pipeAcc: 0, buildAnim: 0, dripPhase: rand() * Math.PI * 2, meshUp: true, condition: 100, salt: 0, techTask: null, pendingTask: null, torn: false, windRisk: false, techAnim: 0, remote: null, signalFlash: 0 });
       });
 
-      // Muestreo continuo final (pequeña terraza natural bajo cada plataforma)
       const sampleTerrain = (gx, gy) => {
         const s = sampleRawTerrain(gx, gy);
         if (s.isWater) return s;
@@ -869,59 +908,127 @@
         return s;
       };
 
+      // Definición de las 3 Caletas Costeras (Sur = inicial, Centro y Norte = desbloqueables)
+      const villages = [
+        {
+          id: 0, name: 'Caleta Chungungo (Sur)', shortName: 'Chungungo', unlocked: true, cost: 0,
+          popAdd: 12, capBonus: 0, carriersAdd: 0,
+          hub: { gx: 68, gy: 42, h: tiles[42][68].h },
+          storagePos: { drums: { gx: 67.2, gy: 42.5, h: 2 }, tank: { gx: 67.8, gy: 44.2, h: 2 }, tower: { gx: 69.5, gy: 41.8, h: 2 } },
+        },
+        {
+          id: 1, name: 'Caleta Punta Choros (Centro)', shortName: 'Punta Choros', unlocked: false, cost: 95,
+          popAdd: 10, capBonus: 180, carriersAdd: 1,
+          hub: { gx: 44, gy: 38, h: tiles[38][44].h },
+          storagePos: { drums: { gx: 43.2, gy: 38.6, h: 2 }, tank: { gx: 44.2, gy: 40.1, h: 2 }, tower: { gx: 45.6, gy: 37.9, h: 2 } },
+        },
+        {
+          id: 2, name: 'Caleta Alto Patache (Norte)', shortName: 'Alto Patache', unlocked: false, cost: 165,
+          popAdd: 14, capBonus: 260, carriersAdd: 2,
+          hub: { gx: 19, gy: 33, h: tiles[33][19].h },
+          storagePos: { drums: { gx: 18.2, gy: 33.8, h: 2 }, tank: { gx: 19.2, gy: 35.1, h: 2 }, tower: { gx: 20.6, gy: 33.1, h: 2 } },
+        },
+      ];
+
       const props = [];
-      for (let gy = 5; gy < size - 5; gy++) for (let gx = 5; gx < size - 5; gx++) {
+      for (let gy = 4; gy < mapH - 4; gy++) for (let gx = 4; gx < mapW - 4; gx++) {
         const t = tiles[gy][gx];
-        if (t.isWater || t.isPad || t.fogAlpha > 0.65 || Math.hypot(gx - 42.5, gy - 43.2) < 6.8 || Math.hypot(gx - 15, gy - 31) < 3.5) continue;
+        if (t.isWater || t.isPad || t.fogAlpha > 0.65) continue;
+        if (villages.some((v) => Math.hypot(gx - v.hub.gx, gy - v.hub.gy) < 6.4)) continue;
         const r = rand();
-        if ((t.biome === 'foothill' || (t.biome === 'sand' && t.h >= 2)) && r < 0.048) props.push({ type: 'cactus', gx, gy, h: t.h, variant: Math.floor(rand() * 3) });
-        else if ((t.biome === 'terracotta' || t.biome === 'ridge') && r < 0.045) props.push({ type: 'rock', gx, gy, h: t.h, variant: Math.floor(rand() * 2) });
+        if ((t.biome === 'foothill' || (t.biome === 'sand' && t.h >= 2)) && r < 0.046) props.push({ type: 'cactus', gx, gy, h: t.h, variant: Math.floor(rand() * 3) });
+        else if ((t.biome === 'terracotta' || t.biome === 'ridge') && r < 0.044) props.push({ type: 'rock', gx, gy, h: t.h, variant: Math.floor(rand() * 2) });
       }
 
-      const hub = { gx: 43, gy: 42, h: tiles[42][43].h };
-      const storagePos = { drums: { gx: 42.0, gy: 42.6, h: 2 }, tank: { gx: 42.6, gy: 44.3, h: 2 }, tower: { gx: 44.3, gy: 41.9, h: 2 } };
+      const hub = villages[0].hub;
+      const storagePos = villages[0].storagePos;
       const houseSlots = [
-        { gx: 39.2, gy: 43.5, style: 'gable', roof: '#2d4f82', wall: '#d6bf97', starter: true },
-        { gx: 40.3, gy: 42.1, style: 'flat',  roof: '#b3b0aa', wall: '#c7c3bc', starter: true },
-        { gx: 41.3, gy: 43.2, style: 'gable', roof: '#2d6654', wall: '#89a7b2', starter: true },
-        { gx: 39.0, gy: 41.8, style: 'gable', roof: '#9a6530', wall: '#d5bd94' },
-        { gx: 40.8, gy: 40.9, style: 'gable', roof: '#8c3b2c', wall: '#c58d70' },
-        { gx: 42.0, gy: 41.4, style: 'gable', roof: '#2d6352', wall: '#8aaab5' },
-        { gx: 40.2, gy: 44.6, style: 'gable', roof: '#2b5d4e', wall: '#8daab2' },
-        { gx: 41.4, gy: 42.0, style: 'flat',  roof: '#a6654d', wall: '#ba7a61' },
-        { gx: 43.1, gy: 40.7, style: 'gable', roof: '#4b5560', wall: '#d4d0c7' },
-        { gx: 42.0, gy: 43.7, style: 'flat',  roof: '#c09c6d', wall: '#c9a677' },
-        { gx: 38.4, gy: 42.9, style: 'gable', roof: '#8e3d2d', wall: '#d8c29b' },
-        { gx: 44.5, gy: 40.3, style: 'gable', roof: '#2d4f82', wall: '#cfd3d6' },
-        { gx: 45.4, gy: 41.2, style: 'flat',  roof: '#b88c63', wall: '#cca47a' },
-        { gx: 39.6, gy: 45.6, style: 'gable', roof: '#996432', wall: '#d9c39b' },
+        // Caleta 0 (Sur - Chungungo)
+        { gx: 64.4, gy: 43.4, style: 'gable', roof: '#2d4f82', wall: '#d6bf97', starter: true, villageId: 0 },
+        { gx: 65.5, gy: 42.0, style: 'flat',  roof: '#b3b0aa', wall: '#c7c3bc', starter: true, villageId: 0 },
+        { gx: 66.5, gy: 43.1, style: 'gable', roof: '#2d6654', wall: '#89a7b2', starter: true, villageId: 0 },
+        { gx: 64.2, gy: 41.7, style: 'gable', roof: '#9a6530', wall: '#d5bd94', villageId: 0 },
+        { gx: 66.0, gy: 40.8, style: 'gable', roof: '#8c3b2c', wall: '#c58d70', villageId: 0 },
+        { gx: 67.2, gy: 41.3, style: 'gable', roof: '#2d6352', wall: '#8aaab5', villageId: 0 },
+        { gx: 65.4, gy: 44.5, style: 'gable', roof: '#2b5d4e', wall: '#8daab2', villageId: 0 },
+        { gx: 68.3, gy: 40.6, style: 'gable', roof: '#4b5560', wall: '#d4d0c7', villageId: 0 },
+        { gx: 69.7, gy: 40.3, style: 'gable', roof: '#2d4f82', wall: '#cfd3d6', villageId: 0 },
+        { gx: 70.6, gy: 41.2, style: 'flat',  roof: '#b88c63', wall: '#cca47a', villageId: 0 },
+        // Caleta 1 (Centro - Punta Choros)
+        { gx: 40.8, gy: 39.2, style: 'gable', roof: '#8c3b2c', wall: '#d4be98', villageStarter: true, villageId: 1 },
+        { gx: 42.0, gy: 38.2, style: 'flat',  roof: '#b3b0aa', wall: '#c7c3bc', villageStarter: true, villageId: 1 },
+        { gx: 43.1, gy: 39.4, style: 'gable', roof: '#2d4f82', wall: '#d6bf97', villageStarter: true, villageId: 1 },
+        { gx: 41.5, gy: 37.0, style: 'gable', roof: '#2d6654', wall: '#89a7b2', villageId: 1 },
+        { gx: 44.8, gy: 37.2, style: 'flat',  roof: '#a6654d', wall: '#ba7a61', villageId: 1 },
+        { gx: 46.2, gy: 38.8, style: 'gable', roof: '#9a6530', wall: '#d5bd94', villageId: 1 },
+        // Caleta 2 (Norte - Alto Patache)
+        { gx: 15.8, gy: 34.4, style: 'gable', roof: '#2d4f82', wall: '#d6bf97', villageStarter: true, villageId: 2 },
+        { gx: 17.0, gy: 33.4, style: 'flat',  roof: '#b3b0aa', wall: '#c7c3bc', villageStarter: true, villageId: 2 },
+        { gx: 18.1, gy: 34.6, style: 'gable', roof: '#8c3b2c', wall: '#d4be98', villageStarter: true, villageId: 2 },
+        { gx: 16.5, gy: 32.2, style: 'gable', roof: '#2d6352', wall: '#8aaab5', villageId: 2 },
+        { gx: 19.8, gy: 32.4, style: 'flat',  roof: '#c09c6d', wall: '#c9a677', villageId: 2 },
+        { gx: 21.2, gy: 34.0, style: 'gable', roof: '#996432', wall: '#d9c39b', villageId: 2 },
       ];
-      const orchardSlots = [{ gx: 41.6, gy: 46.2 }, { gx: 43.2, gy: 46.6 }, { gx: 44.2, gy: 45.2 }, { gx: 45.2, gy: 43.9 }, { gx: 46.1, gy: 42.6 }, { gx: 40.5, gy: 46.8 }, { gx: 44.8, gy: 46.5 }, { gx: 46.0, gy: 44.9 }, { gx: 46.8, gy: 43.5 }];
-      const treeSlots = [{ gx: 40.4, gy: 45.3 }, { gx: 41.0, gy: 45.6 }, { gx: 43.9, gy: 40.7 }, { gx: 44.3, gy: 41.1 }, { gx: 40.6, gy: 46.3 }, { gx: 41.3, gy: 46.6 }, { gx: 42.6, gy: 46.9 }, { gx: 43.9, gy: 47.0 }, { gx: 44.8, gy: 45.8 }, { gx: 45.9, gy: 44.3 }, { gx: 46.7, gy: 43.1 }, { gx: 42.3, gy: 42.9 }, { gx: 39.6, gy: 44.1 }, { gx: 45.5, gy: 42.0 }, { gx: 43.6, gy: 43.1 }, { gx: 42.2, gy: 45.5 }, { gx: 46.9, gy: 44.2 }, { gx: 45.2, gy: 47.1 }, { gx: 38.8, gy: 44.8 }, { gx: 41.6, gy: 47.3 }];
-      const northVillage = [{ gx: 14.3, gy: 30.6, style: 'gable', roof: '#8c3b2c', wall: '#d4be98' }, { gx: 15.6, gy: 30.3, style: 'flat', roof: '#b3b0aa', wall: '#c7c3bc' }, { gx: 16.8, gy: 31.2, style: 'gable', roof: '#2d4f82', wall: '#d6bf97' }];
-      let pierAnchor = { gx: 38, gy: 45 };
-      for (let gx = 40; gx >= 34; gx--) if (tiles[45]?.[gx]?.isWater) { pierAnchor = { gx: gx + 1, gy: 45 }; break; }
-      const boats = [{ gx: pierAnchor.gx - 2.6, gy: pierAnchor.gy + 2.2, phase: 0.2 }, { gx: pierAnchor.gx - 4.4, gy: pierAnchor.gy + 0.5, phase: 2.1 }, { gx: pierAnchor.gx - 1.2, gy: pierAnchor.gy + 4.3, phase: 4.0 }, { gx: 13.5, gy: 34.8, phase: 1.4 }, { gx: 15.6, gy: 35.6, phase: 3.3 }];
-      const fogClouds = Array.from({ length: 24 }, () => ({ x: originX + (rand() - 0.5) * 1150, y: originY + 80 + rand() * 560, rx: 42 + rand() * 75, ry: 16 + rand() * 26, speed: 5 + rand() * 9, alpha: 0.14 + rand() * 0.18, phase: rand() * Math.PI * 2 }));
-      return { seed, size, tiles, pads, props, hub, storagePos, houseSlots, orchardSlots, treeSlots, northVillage, pierAnchor, boats, fogClouds, canvasW, canvasH, originX, originY, sampleTerrain };
+      const orchardSlots = [
+        // Sur
+        { gx: 66.8, gy: 46.0, villageId: 0 }, { gx: 68.4, gy: 46.4, villageId: 0 }, { gx: 69.4, gy: 45.0, villageId: 0 }, { gx: 70.4, gy: 43.7, villageId: 0 }, { gx: 71.3, gy: 42.4, villageId: 0 },
+        // Centro
+        { gx: 42.6, gy: 41.2, villageId: 1 }, { gx: 44.4, gy: 41.5, villageId: 1 }, { gx: 45.8, gy: 40.3, villageId: 1 }, { gx: 47.0, gy: 39.2, villageId: 1 },
+        // Norte
+        { gx: 17.4, gy: 36.4, villageId: 2 }, { gx: 19.2, gy: 36.7, villageId: 2 }, { gx: 20.6, gy: 35.5, villageId: 2 }, { gx: 21.8, gy: 34.5, villageId: 2 },
+      ];
+      const treeSlots = [
+        { gx: 65.6, gy: 45.1 }, { gx: 66.2, gy: 45.4 }, { gx: 69.1, gy: 40.6 }, { gx: 69.5, gy: 41.0 },
+        { gx: 41.2, gy: 40.4 }, { gx: 45.4, gy: 40.8 }, { gx: 46.6, gy: 38.0 },
+        { gx: 16.2, gy: 35.6 }, { gx: 20.4, gy: 36.0 }, { gx: 21.5, gy: 33.2 },
+        { gx: 67.8, gy: 46.7 }, { gx: 69.1, gy: 46.8 }, { gx: 70.0, gy: 45.6 }, { gx: 71.1, gy: 44.1 },
+        { gx: 43.5, gy: 42.0 }, { gx: 18.5, gy: 37.2 },
+      ];
+      const northVillage = [];
+
+      // Muelles y botes en las 3 bahías costeras
+      const findPier = (targetGx, targetGy) => {
+        for (let gx = targetGx; gx >= targetGx - 8; gx--) {
+          if (tiles[targetGy]?.[gx]?.isWater) return { gx: gx + 1, gy: targetGy };
+        }
+        return { gx: targetGx - 3, gy: targetGy };
+      };
+      const piers = [
+        findPier(65, 45),
+        findPier(41, 41),
+        findPier(16, 36),
+      ];
+      const pierAnchor = piers[0];
+      const boats = [
+        { gx: piers[0].gx - 2.6, gy: piers[0].gy + 2.2, phase: 0.2 },
+        { gx: piers[0].gx - 4.4, gy: piers[0].gy + 0.5, phase: 2.1 },
+        { gx: piers[0].gx - 1.2, gy: piers[0].gy + 4.3, phase: 4.0 },
+        { gx: piers[1].gx - 2.8, gy: piers[1].gy + 2.0, phase: 1.1 },
+        { gx: piers[1].gx - 4.2, gy: piers[1].gy + 0.8, phase: 3.0 },
+        { gx: piers[2].gx - 2.6, gy: piers[2].gy + 2.2, phase: 1.7 },
+        { gx: piers[2].gx - 4.0, gy: piers[2].gy + 0.9, phase: 3.6 },
+      ];
+      const fogClouds = Array.from({ length: 34 }, () => ({ x: originX + (rand() - 0.5) * 1650, y: originY + 80 + rand() * 720, rx: 42 + rand() * 75, ry: 16 + rand() * 26, speed: 5 + rand() * 9, alpha: 0.14 + rand() * 0.18, phase: rand() * Math.PI * 2 }));
+      return { seed, size, mapW, mapH, tiles, pads, props, villages, hub, storagePos, houseSlots, orchardSlots, treeSlots, northVillage, pierAnchor, piers, boats, fogClouds, canvasW, canvasH, originX, originY, sampleTerrain };
     }
 
     function findTrailPath(map, sx, sy, gx, gy) {
-      const { size, tiles } = map, key = (x, y) => y * size + x, sK = key(sx, sy), gK = key(gx, gy);
+      const { mapW, mapH, tiles } = map, stride = mapW, key = (x, y) => y * stride + x, sK = key(sx, sy), gK = key(gx, gy);
       const open = [sK], openSet = new Set([sK]), came = new Map(), gS = new Map([[sK, 0]]), fS = new Map([[sK, Math.abs(gx - sx) + Math.abs(gy - sy)]]);
       let bestNode = sK, bestD = Infinity;
       while (open.length) {
         let bi = 0, lf = fS.get(open[0]) ?? Infinity;
         for (let i = 1; i < open.length; i++) { const f = fS.get(open[i]) ?? Infinity; if (f < lf) { lf = f; bi = i; } }
         const cur = open.splice(bi, 1)[0]; openSet.delete(cur);
-        if (cur === gK) return recPath(came, cur, size);
-        const cx = cur % size, cy = Math.floor(cur / size), d = Math.abs(gx - cx) + Math.abs(gy - cy);
+        if (cur === gK) return recPath(came, cur, stride);
+        const cx = cur % stride, cy = Math.floor(cur / stride), d = Math.abs(gx - cx) + Math.abs(gy - cy);
         if (d < bestD) { bestD = d; bestNode = cur; }
-        const ct = tiles[cy][cx], cg = gS.get(cur) ?? Infinity;
+        const ct = tiles[cy]?.[cx], cg = gS.get(cur) ?? Infinity;
+        if (!ct) continue;
         for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
           const nx = cx + dx, ny = cy + dy;
-          if (nx < 1 || ny < 1 || nx >= size - 1 || ny >= size - 1) continue;
-          const nt = tiles[ny][nx]; if (nt.isWater) continue;
+          if (nx < 1 || ny < 1 || nx >= mapW - 1 || ny >= mapH - 1) continue;
+          const nt = tiles[ny]?.[nx]; if (!nt || nt.isWater) continue;
           let sc = 1 + Math.pow(Math.abs(nt.h - ct.h), 2) * 0.95;
           if (nt.isPath) sc *= 0.42;
           if (nt.isPad && key(nx, ny) !== gK) sc += 6;
@@ -929,9 +1036,20 @@
           if (tg < (gS.get(nk) ?? Infinity)) { came.set(nk, cur); gS.set(nk, tg); fS.set(nk, tg + (Math.abs(gx - nx) + Math.abs(gy - ny)) * 0.95); if (!openSet.has(nk)) { open.push(nk); openSet.add(nk); } }
         }
       }
-      return recPath(came, bestNode, size);
+      return recPath(came, bestNode, stride);
     }
-    function recPath(came, cur, size) { const p = []; while (cur !== undefined) { p.push({ gx: cur % size, gy: Math.floor(cur / size) }); cur = came.get(cur); } return p.reverse(); }
+    function recPath(came, cur, stride) { const p = []; while (cur !== undefined) { p.push({ gx: cur % stride, gy: Math.floor(cur / stride) }); cur = came.get(cur); } return p.reverse(); }
+
+    // Encuentra la caleta desbloqueada más cercana para conectar una malla
+    function getBestVillageForPad(map, pad) {
+      const unlocked = map.villages.filter((v) => v.unlocked);
+      let best = unlocked[0] || map.villages[0], bestDist = Infinity;
+      for (const v of unlocked) {
+        const d = Math.hypot(pad.gx - v.hub.gx, pad.gy - v.hub.gy) - (pad.villageId === v.id ? 6 : 0);
+        if (d < bestDist) { bestDist = d; best = v; }
+      }
+      return best;
+    }
 
     function fillIsoDiamond(ctx, cx, cy, color) {
       ctx.fillStyle = color; const x0 = Math.round(cx), y0 = Math.round(cy);
@@ -954,7 +1072,7 @@
       return `rgb(${Math.max(0,Math.min(255,((n>>16)&255)+p))},${Math.max(0,Math.min(255,((n>>8)&255)+p))},${Math.max(0,Math.min(255,(n&255)+p))})`;
     }
 
-    function bakeTerrainCanvas(map) {
+    function bakeTerrainCanvas(map, sub = 4) {
       const canvas = document.createElement('canvas'); canvas.width = map.canvasW; canvas.height = map.canvasH;
       const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
       const W = canvas.width, H = canvas.height;
@@ -963,19 +1081,19 @@
         data[i] = FOG_RGB[0]; data[i + 1] = FOG_RGB[1]; data[i + 2] = FOG_RGB[2]; data[i + 3] = 255;
       }
 
-      const SUB = 4, N = map.size * SUB;
+      const SUB = sub, NX = map.mapW * SUB, NY = map.mapH * SUB;
       const { originX, originY, sampleTerrain, seed } = map;
 
-      const hGrid = new Float32Array(N * N);
-      const wGrid = new Uint8Array(N * N);
-      const dGrid = new Float32Array(N * N);
-      const inGrid = new Float32Array(N * N);
-      const fGrid = new Float32Array(N * N);
+      const hGrid = new Float32Array(NX * NY);
+      const wGrid = new Uint8Array(NX * NY);
+      const dGrid = new Float32Array(NX * NY);
+      const inGrid = new Float32Array(NX * NY);
+      const fGrid = new Float32Array(NX * NY);
 
-      for (let sy = 0; sy < N; sy++) {
+      for (let sy = 0; sy < NY; sy++) {
         const gy = sy / SUB;
-        for (let sx = 0; sx < N; sx++) {
-          const idx = sy * N + sx, gx = sx / SUB;
+        for (let sx = 0; sx < NX; sx++) {
+          const idx = sy * NX + sx, gx = sx / SUB;
           const s = sampleTerrain(gx, gy);
           hGrid[idx] = s.h;
           wGrid[idx] = s.isWater ? 1 : 0;
@@ -985,7 +1103,7 @@
         }
       }
 
-      const pathGrid = new Uint8Array(N * N);
+      const pathGrid = new Uint8Array(NX * NY);
       const stampTrail = (trail) => {
         if (!trail || trail.length < 2) return;
         for (let i = 0; i < trail.length - 1; i++) {
@@ -997,9 +1115,9 @@
             for (let oy = -1; oy <= 1; oy++) {
               for (let ox = -1; ox <= 1; ox++) {
                 const nsx = csx + ox, nsy = csy + oy;
-                if (nsx < 0 || nsy < 0 || nsx >= N || nsy >= N) continue;
+                if (nsx < 0 || nsy < 0 || nsx >= NX || nsy >= NY) continue;
                 const dist = Math.hypot(ox, oy);
-                if (dist <= 1.15) pathGrid[nsy * N + nsx] = dist < 0.6 ? 2 : Math.max(pathGrid[nsy * N + nsx], 1);
+                if (dist <= 1.15) pathGrid[nsy * NX + nsx] = dist < 0.6 ? 2 : Math.max(pathGrid[nsy * NX + nsx], 1);
               }
             }
           }
@@ -1033,11 +1151,14 @@
         data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
       };
 
-      for (let d = 0; d <= (N - 1) * 2; d++) {
-        for (let sx = 0; sx < N; sx++) {
+      const stampHalfW = SUB === 2 ? 6 : 3;
+      const stampRows = SUB === 2 ? 6 : 4;
+
+      for (let d = 0; d <= (NX - 1) + (NY - 1); d++) {
+        for (let sx = 0; sx < NX; sx++) {
           const sy = d - sx;
-          if (sy < 0 || sy >= N) continue;
-          const idx = sy * N + sx;
+          if (sy < 0 || sy >= NY) continue;
+          const idx = sy * NX + sx;
           const fog = fGrid[idx];
           if (fog >= 0.99) continue;
 
@@ -1052,28 +1173,25 @@
             const shoreDist = -inGrid[idx];
             const isFoam = shoreDist < 0.42 || (shoreDist < 0.92 && hash2D(sx, sy, seed + 909) > 0.65);
             const col = isFoam ? [230, 250, 252] : pickRamp(OCEAN_RAMP, 1 - depth + wave, cx, cy);
-            for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy, col[0], col[1], col[2], fog);
-            for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 1, col[0], col[1], col[2], fog);
-            for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 2, col[0], col[1], col[2], fog);
-            for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy + 3, col[0], col[1], col[2], fog);
+            for (let dy = 0; dy < stampRows; dy++) {
+              const span = (dy === 0 || dy === stampRows - 1) ? Math.max(1, stampHalfW - 2) : stampHalfW;
+              for (let rx = -span; rx <= span; rx++) setPx(cx + rx, cy + dy, col[0], col[1], col[2], fog);
+            }
             continue;
           }
 
-          // Relieve esculpido: gradiente + curvatura (filos iluminados y quebradas con oclusión ambiental)
           const hL = sx > 0 ? hGrid[idx - 1] : h;
-          const hR = sx < N - 1 ? hGrid[idx + 1] : h;
-          const hU = sy > 0 ? hGrid[idx - N] : h;
-          const hD = sy < N - 1 ? hGrid[idx + N] : h;
+          const hR = sx < NX - 1 ? hGrid[idx + 1] : h;
+          const hU = sy > 0 ? hGrid[idx - NX] : h;
+          const hD = sy < NY - 1 ? hGrid[idx + NX] : h;
           const dhdx = (hR - hL) * (SUB * 0.5);
           const dhdy = (hD - hU) * (SUB * 0.5);
           const slope = Math.hypot(dhdx, dhdy);
-          // Curvatura local: positivo en filos/crestas, negativo en fondo de quebradas
           const curv = (h - (hL + hR + hU + hD) * 0.25) * 2.8;
-          // Sol lateral rasante desde el oeste-noroeste: resalta dramáticamente filos y acantilados
           const gxN = dhdx * 1.7, gyN = dhdy * 1.7;
           const invLen = 1 / Math.hypot(gxN, gyN, 1.0);
           const ndotl = (-gxN * -0.78 - gyN * 0.30 + 1.0 * 0.56) * invLen;
-          const microTex = (hash2D(sx, sy, seed + 613) - 0.5) * 0.10;
+          const microTex = SUB === 4 ? (hash2D(sx, sy, seed + 613) - 0.5) * 0.11 : 0;
           const shade = Math.max(0.02, Math.min(0.99, ndotl * 0.96 + curv * 0.32 + microTex));
 
           const inland = inGrid[idx];
@@ -1092,42 +1210,49 @@
 
           const topCol = pickRamp(ramp, pathVal === 1 ? Math.max(0.08, shade - 0.16) : shade, cx, cy);
 
-          // Superficie superior del micro-rombo (6x4 px)
-          for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy, topCol[0], topCol[1], topCol[2], fog);
-          for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 1, topCol[0], topCol[1], topCol[2], fog);
-          for (let rx = -3; rx <= 3; rx++) setPx(cx + rx, cy + 2, topCol[0], topCol[1], topCol[2], fog);
-          for (let rx = -1; rx <= 1; rx++) setPx(cx + rx, cy + 3, topCol[0], topCol[1], topCol[2], fog);
+          for (let dy = 0; dy < stampRows; dy++) {
+            const span = (dy === 0 || dy === stampRows - 1) ? Math.max(1, stampHalfW - 2) : stampHalfW;
+            for (let rx = -span; rx <= span; rx++) setPx(cx + rx, cy + dy, topCol[0], topCol[1], topCol[2], fog);
+          }
 
-          // Acantilados y farellones costeros con estratos rocosos marcados y sombra lateral
           const minFrontH = Math.min(hR, hD);
-          const dropPx = Math.max(2, Math.min(36, Math.ceil((h - minFrontH) * ELEV_H) + 2));
+          const dropPx = Math.max(2, Math.min(36, Math.ceil((h - minFrontH) * ELEV_H) + (SUB === 2 ? 4 : 2)));
           const isCliff = dropPx >= 6 || slope > 1.55;
           const wallRamp = isCliff ? TERRAIN_RAMPS.cliff : ramp;
-          for (let dy = 3; dy < 3 + dropPx; dy++) {
+          for (let dy = stampRows - 1; dy < stampRows - 1 + dropPx; dy++) {
             const py = cy + dy;
             const elevAtPx = h * ELEV_H - dy;
             const band = Math.floor(elevAtPx * 0.42);
             const strata = (band & 3) === 0 ? -0.18 : (band & 3) === 2 ? 0.08 : -0.02;
-            const crevice = (hash2D(sx, band, seed + 777) > 0.84) ? -0.14 : 0;
+            const crevice = (SUB === 4 && hash2D(sx, band, seed + 777) > 0.84) ? -0.14 : 0;
             const leftShade = Math.max(0.04, Math.min(0.95, shade * 0.68 + strata + crevice));
             const rightShade = Math.max(0.01, Math.min(0.85, shade * 0.36 + strata + crevice));
             const leftCol = pickRamp(wallRamp, leftShade, cx - 2, py);
             const rightCol = pickRamp(wallRamp, rightShade, cx + 2, py);
-            for (let rx = -3; rx < 0; rx++) setPx(cx + rx, py, leftCol[0], leftCol[1], leftCol[2], fog);
-            for (let rx = 0; rx <= 3; rx++) setPx(cx + rx, py, rightCol[0], rightCol[1], rightCol[2], fog);
+            for (let rx = -stampHalfW; rx < 0; rx++) setPx(cx + rx, py, leftCol[0], leftCol[1], leftCol[2], fog);
+            for (let rx = 0; rx <= stampHalfW; rx++) setPx(cx + rx, py, rightCol[0], rightCol[1], rightCol[2], fog);
           }
         }
       }
 
       ctx.putImageData(img, 0, 0);
 
-      // Muelle artesanal de madera de la caleta
-      for (let step = 0; step < 5; step++) {
-        const p = isoToWorld(map.pierAnchor.gx - step * 0.45, map.pierAnchor.gy + step * 0.45, 0.75, originX, originY), x = Math.round(p.x), y = Math.round(p.y);
-        ctx.fillStyle = '#3d281b'; ctx.fillRect(x - 4, y + 3, 2, 6); ctx.fillRect(x + 3, y + 5, 2, 6);
-        ctx.fillStyle = '#754e32'; ctx.fillRect(x - 6, y, 12, 4); ctx.fillStyle = '#966844'; ctx.fillRect(x - 5, y, 10, 2); ctx.fillStyle = '#4e3320'; ctx.fillRect(x - 6, y + 3, 12, 1);
+      // Muelles artesanales de madera en cada bahía costera
+      for (const pier of (map.piers || [map.pierAnchor])) {
+        for (let step = 0; step < 5; step++) {
+          const p = isoToWorld(pier.gx - step * 0.45, pier.gy + step * 0.45, 0.75, originX, originY), x = Math.round(p.x), y = Math.round(p.y);
+          ctx.fillStyle = '#3d281b'; ctx.fillRect(x - 4, y + 3, 2, 6); ctx.fillRect(x + 3, y + 5, 2, 6);
+          ctx.fillStyle = '#754e32'; ctx.fillRect(x - 6, y, 12, 4); ctx.fillStyle = '#966844'; ctx.fillRect(x - 5, y, 10, 2); ctx.fillStyle = '#4e3320'; ctx.fillRect(x - 6, y + 3, 12, 1);
+        }
       }
       return canvas;
+    }
+
+    function bakeTerrainLOD(map) {
+      return {
+        hi: bakeTerrainCanvas(map, 4),
+        lo: bakeTerrainCanvas(map, 2),
+      };
     }
 
     function drawBuildPad(ctx, wx, wy, pad, time, hovered, canAfford) {
@@ -1549,19 +1674,22 @@
       ctx.restore();
     }
 
-    // Puntos de la cañería de una malla: va DESDE la malla, siguiendo el sendero cuesta abajo, HASTA el almacenamiento de la caleta.
+    // Puntos de la cañería de una malla: va DESDE la malla, siguiendo el sendero cuesta abajo, HASTA el almacenamiento de su caleta.
     function padPipePoints(map, pad, storageTier) {
-      if (pad._pipePts && pad._pipeTier === storageTier) return pad._pipePts;
+      const vId = pad.connectedVillageId ?? 0;
+      if (pad._pipePts && pad._pipeTier === storageTier && pad._pipeVid === vId) return pad._pipePts;
       const { originX, originY } = map, tr = pad.trail && pad.trail.length ? pad.trail : [map.hub, pad], pts = [];
       for (let i = tr.length - 1; i >= 0; i--) {
         const t = tr[i], h = map.sampleTerrain ? map.sampleTerrain(t.gx, t.gy).h : (map.tiles[t.gy]?.[t.gx]?.h ?? 2);
         const w = isoToWorld(t.gx, t.gy, h, originX, originY); pts.push({ x: w.x + 3, y: w.y + 3 });
       }
-      const src = storageTier >= 2 ? map.storagePos.tower : storageTier >= 1 ? map.storagePos.tank : map.storagePos.drums;
+      const v = map.villages?.[vId] || map.villages?.[0] || { storagePos: map.storagePos };
+      const sp = v.storagePos || map.storagePos;
+      const src = storageTier >= 2 ? sp.tower : storageTier >= 1 ? sp.tank : sp.drums;
       const sw = isoToWorld(src.gx, src.gy, src.h, originX, originY); pts.push({ x: sw.x, y: sw.y + 3 });
       let acc = 0; pts[0].d = 0;
       for (let i = 1; i < pts.length; i++) { acc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); pts[i].d = acc; }
-      pad._pipePts = pts; pad._pipeTier = storageTier; pad._pipeLen = acc;
+      pad._pipePts = pts; pad._pipeTier = storageTier; pad._pipeVid = vId; pad._pipeLen = acc;
       return pts;
     }
 
@@ -1893,20 +2021,28 @@
         this.waterDrainRate = this.population * this.cfg.waterDrainPerPop;
         this.houses = this.map.houseSlots.filter((s) => s.starter).map((s) => ({ ...s, anim: 1, abandoned: false }));
         this.orchards = []; this.trees = this.map.treeSlots.slice(0, 2).map((s) => ({ ...s, anim: 1 }));
-        this.carriers = []; for (let i = 0; i < this.maxCarriers; i++) this._createCarrier(i);
+        this.carriers = []; for (let i = 0; i < this.maxCarriers; i++) this._createCarrier(i, 0);
         this.dispatchQueue = []; this.particles = []; this.floatingTexts = [];
         const starter = this.map.pads.find((p) => p.starter) || this.map.pads[0];
         if (starter) { this._installMeshOnPad(starter, true); starter.fill = 84; }
-        this.terrainCanvas = bakeTerrainCanvas(this.map);
+        this._bakeTerrain();
         this.centerOnCaleta(true); this._emitHUD(true);
       }
 
-      _createCarrier(idx) {
-        this.carriers.push({ id: idx, gx: this.map.hub.gx + (idx % 3) * 0.35 - 0.35, gy: this.map.hub.gy + Math.floor(idx / 3) * 0.35, dirX: 1, shirt: SHIRTS[idx % SHIRTS.length], state: 'idle', padId: null, path: [], pathIdx: 0, segProgress: 0, carryingWater: false });
+      _bakeTerrain() {
+        this.terrainLOD = bakeTerrainLOD(this.map);
+        this.terrainCanvas = this.terrainLOD.hi;
       }
-      _createTechnician() {
+
+      _createCarrier(idx, villageId = 0) {
+        const v = this.map.villages?.[villageId] || this.map.villages?.[0] || { hub: this.map.hub };
+        this.carriers.push({ id: idx, villageId: v.id ?? 0, gx: v.hub.gx + (idx % 3) * 0.35 - 0.35, gy: v.hub.gy + Math.floor(idx / 3) * 0.35, dirX: 1, shirt: SHIRTS[idx % SHIRTS.length], state: 'idle', padId: null, path: [], pathIdx: 0, segProgress: 0, carryingWater: false });
+      }
+      _createTechnician(villageId = 0) {
         const idx = this.technicians.length;
-        this.technicians.push({ id: idx, gx: this.map.hub.gx + (idx % 2) * 0.4 - 0.2, gy: this.map.hub.gy + Math.floor(idx / 2) * 0.4, dirX: 1, state: 'idle', padId: null, task: null, path: [], pathIdx: 0, segProgress: 0, workLeft: 0 });
+        const unlocked = this.map.villages?.filter((v) => v.unlocked) || [];
+        const v = unlocked[idx % Math.max(1, unlocked.length)] || this.map.villages?.[villageId] || { hub: this.map.hub };
+        this.technicians.push({ id: idx, villageId: v.id ?? 0, gx: v.hub.gx + (idx % 2) * 0.4 - 0.2, gy: v.hub.gy + Math.floor(idx / 2) * 0.4, dirX: 1, state: 'idle', padId: null, task: null, path: [], pathIdx: 0, segProgress: 0, workLeft: 0 });
       }
       getTechHireCost() { return TECH_CFG.hireBaseCost + this.techHireCount * TECH_CFG.hireStep; }
       hireTechnician() {
@@ -2143,12 +2279,15 @@
           if (this._assignTech(tech, next, kind2, pad)) { this._emitHUD(true); return; }
           next.pendingTask = kind2;
         }
-        // Volver a la caleta por el camino más corto desde la última malla atendida
+        // Volver a la caleta más cercana desde la última malla atendida
+        const v = pad ? getBestVillageForPad(this.map, pad) : (this.map.villages?.[tech.villageId] || this.map.villages?.[0]);
+        const hub = v ? v.hub : this.map.hub;
+        if (v) tech.villageId = v.id;
         if (pad) {
-          const back = findTrailPath(this.map, pad.gx, pad.gy, this.map.hub.gx, this.map.hub.gy).reverse();
-          tech.path = back.length >= 2 ? back : [{ gx: this.map.hub.gx, gy: this.map.hub.gy }, { gx: pad.gx, gy: pad.gy }];
+          const back = findTrailPath(this.map, pad.gx, pad.gy, hub.gx, hub.gy).reverse();
+          tech.path = back.length >= 2 ? back : [{ gx: hub.gx, gy: hub.gy }, { gx: pad.gx, gy: pad.gy }];
         } else {
-          tech.path = [{ gx: this.map.hub.gx, gy: this.map.hub.gy }];
+          tech.path = [{ gx: hub.gx, gy: hub.gy }];
         }
         tech.state = 'returning'; tech.workLeft = 0;
         tech.pathIdx = tech.path.length - 1; tech.segProgress = 0;
@@ -2160,7 +2299,10 @@
         for (const tech of this.technicians) {
           if (tech.state === 'idle') {
             const pendingPad = this.map.pads.find((p) => p.built && p.pendingTask && !p.techTask);
-            if (!pendingPad) { tech.gx = this.map.hub.gx; tech.gy = this.map.hub.gy; continue; }
+            if (!pendingPad) {
+              const v = this.map.villages?.[tech.villageId] || this.map.villages?.[0] || { hub: this.map.hub };
+              tech.gx = v.hub.gx; tech.gy = v.hub.gy; continue;
+            }
             const kind = pendingPad.pendingTask; pendingPad.pendingTask = null;
             if (!this._assignTech(tech, pendingPad, kind)) continue;
           }
@@ -2327,6 +2469,63 @@
       getStorageTierObj() { return STORAGE_TIERS[this.storageTier]; }
       getNextStorageTier() { return STORAGE_TIERS[this.storageTier + 1] || null; }
       getStorageUpgradeCost() { const n = this.getNextStorageTier(); return n ? Math.round(n.cost * this.cfg.storageCostScale) : null; }
+      getTotalCapacity() {
+        const base = this.getStorageTierObj().capacity;
+        const bonus = (this.map.villages || []).reduce((acc, v) => acc + (v.unlocked ? (v.capBonus || 0) : 0), 0);
+        return base + bonus;
+      }
+      unlockVillage(villageId) {
+        if (!this.running || this.finished) return false;
+        const v = this.map.villages?.find((x) => x.id === villageId);
+        if (!v || v.unlocked) return false;
+        const cost = Math.round(v.cost * this.cfg.storageCostScale);
+        const wp = isoToWorld(v.hub.gx, v.hub.gy, v.hub.h, this.map.originX, this.map.originY);
+        if (this.funds < cost) {
+          this.sound.playError();
+          this._addFloatingText(wp.x, wp.y - 24, `Faltan $${cost - Math.floor(this.funds)}`, '#f26d52');
+          this.callbacks.onToast?.(`Faltan $${cost - Math.floor(this.funds)} para conectar ${v.shortName}`, 'warn');
+          return false;
+        }
+        this.funds -= cost;
+        v.unlocked = true;
+        this.population += v.popAdd;
+        for (const s of this.map.houseSlots) {
+          if (s.villageId === v.id && s.villageStarter) {
+            this.houses.push({ ...s, anim: 0, abandoned: false });
+          }
+        }
+        const oSlot = this.map.orchardSlots.find((o) => o.villageId === v.id && !this.orchards.some((eo) => eo.gx === o.gx && eo.gy === o.gy));
+        if (oSlot) this.orchards.push({ ...oSlot, anim: 0, dried: false });
+        for (let i = 0; i < (v.carriersAdd || 1); i++) {
+          this._createCarrier(this.carriers.length, v.id);
+          this.maxCarriers = this.carriers.length;
+        }
+        // Reconectar mallas cercanas a esta nueva caleta si les queda más cerca
+        for (const pad of this.map.pads) {
+          if (!pad.built) continue;
+          const bestV = getBestVillageForPad(this.map, pad);
+          if (bestV.id === v.id && pad.connectedVillageId !== v.id) {
+            pad.connectedVillageId = v.id;
+            const tr = findTrailPath(this.map, v.hub.gx, v.hub.gy, pad.gx, pad.gy);
+            pad.trail = tr; pad._pipePts = null; pad._signalPts = null;
+            for (const s of tr) { const t = this.map.tiles[s.gy]?.[s.gx]; if (t && !t.isWater && !t.isPad) t.isPath = true; }
+          }
+        }
+        this._bakeTerrain();
+        this.sound.playGrowth();
+        this._spawnDust(wp.x, wp.y - 6, '#90f2a8', 16);
+        this._addFloatingText(wp.x, wp.y - 28, `¡${v.shortName} conectada! +${v.capBonus}L`, '#a8ff9e');
+        this.callbacks.onToast?.(`🏘️ ¡${v.name} se unió a la red! +${v.popAdd} hab. · +${v.capBonus}L cap.`);
+        this.panToWorld(wp.x, wp.y - 10, Math.max(this.cam.zoom, 1.55));
+        this._emitHUD(true);
+        return true;
+      }
+      focusVillage(villageId) {
+        const v = this.map.villages?.find((x) => x.id === villageId) || this.map.villages?.[0];
+        if (!v) return;
+        const p = isoToWorld(v.hub.gx, v.hub.gy - 1.5, 3, this.map.originX, this.map.originY);
+        this.panToWorld(p.x, p.y, this.viewW < 760 ? 1.3 : 1.75);
+      }
       getPipeCost(pad) { const len = pad && pad.trail ? pad.trail.length : 20; return Math.round((PIPE_CFG.baseCost + len * PIPE_CFG.perTile) * this.cfg.storageCostScale); }
       _padFillPerSec(pad, cyc) { return 8.2 * pad.fogYield * this.cfg.fillSpeedMult * cyc.fogMult * this.getMeshEfficiency(pad); }
       getPipeFlowLps(pad) { return (this._padFillPerSec(pad, this.getCycleState()) / 100) * this.cfg.waterPerDrum * this.getStorageTierObj().waterBonusMult; }
@@ -2342,11 +2541,13 @@
           return false;
         }
         this.funds -= cost; pad.built = true; pad.fill = isFree ? 84 : 14; pad.buildAnim = 1.0; this.meshesBuilt += 1;
-        const trail = findTrailPath(this.map, this.map.hub.gx, this.map.hub.gy, pad.gx, pad.gy);
-        pad.trail = trail;
+        const bestV = getBestVillageForPad(this.map, pad);
+        pad.connectedVillageId = bestV.id;
+        const trail = findTrailPath(this.map, bestV.hub.gx, bestV.hub.gy, pad.gx, pad.gy);
+        pad.trail = trail; pad._pipePts = null; pad._signalPts = null;
         for (const s of trail) { const t = this.map.tiles[s.gy]?.[s.gx]; if (t && !t.isWater && !t.isPad) t.isPath = true; }
         if (!isFree) {
-          this.terrainCanvas = bakeTerrainCanvas(this.map); this.sound.playBuild();
+          this._bakeTerrain(); this.sound.playBuild();
           const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
           this._spawnDust(pos.x, pos.y, '#f5e4bc', 10);
           this._addFloatingText(pos.x, pos.y - 22, `+Malla (${pad.fogLabel})`, '#ffffff');
@@ -2359,14 +2560,23 @@
       dispatchToPad(pad) {
         if (!pad || !pad.built || !pad.alertActive || pad.dispatched || pad.queued) return false;
         const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
-        const idle = this.carriers.find((c) => c.state === 'idle');
-        if (idle) { this._assignCarrier(idle, pad); this.sound.playDispatch(); this._addFloatingText(pos.x, pos.y - 34, 'En camino', '#bfe8ff'); }
+        const idleList = this.carriers.filter((c) => c.state === 'idle');
+        if (idleList.length > 0) {
+          idleList.sort((a, b) => Math.hypot(a.gx - pad.gx, a.gy - pad.gy) - Math.hypot(b.gx - pad.gx, b.gy - pad.gy));
+          this._assignCarrier(idleList[0], pad);
+          this.sound.playDispatch();
+          this._addFloatingText(pos.x, pos.y - 34, 'En camino', '#bfe8ff');
+        }
         else { pad.queued = true; this.dispatchQueue.push(pad.id); this.sound.playDispatch(); this._addFloatingText(pos.x, pos.y - 34, 'En cola', '#ffe8a3'); }
         if (this.tutorialStep === 0) this.tutorialStep = 1;
         this._emitHUD(true); return true;
       }
 
-      _assignCarrier(c, pad) { pad.dispatched = true; pad.queued = false; c.state = 'climbing'; c.padId = pad.id; c.path = pad.trail || [this.map.hub, pad]; c.pathIdx = 0; c.segProgress = 0; c.carryingWater = false; }
+      _assignCarrier(c, pad) {
+        pad.dispatched = true; pad.queued = false; c.state = 'climbing'; c.padId = pad.id;
+        c.villageId = pad.connectedVillageId ?? c.villageId ?? 0;
+        c.path = pad.trail || [this.map.hub, pad]; c.pathIdx = 0; c.segProgress = 0; c.carryingWater = false;
+      }
 
       upgradeStorage() {
         if (!this.running || this.finished) return false;
@@ -2408,16 +2618,17 @@
         this._spawnDust(pos.x, pos.y - 2, '#7fd6ff', 10);
         this._addFloatingText(pos.x, pos.y - 30, 'Instalando cañería', '#9be5ff');
         this.callbacks.onToast?.('Cañería en obra: el agua bajará sola hasta la caleta');
-        if (hadFullDrum) this._onWaterDelivered(true);
+        if (hadFullDrum) this._onWaterDelivered(true, pad.connectedVillageId ?? 0);
         this._emitHUD(true); return true;
       }
 
       centerOnCaleta(instant = false) {
-        const p = isoToWorld(43.5, 39.5, 3, this.map.originX, this.map.originY), z = this.viewW < 760 ? 1.3 : 1.85;
+        const h0 = this.map.villages?.[0]?.hub || this.map.hub;
+        const p = isoToWorld(h0.gx + 0.5, h0.gy - 2.5, 3, this.map.originX, this.map.originY), z = this.viewW < 760 ? 1.3 : 1.78;
         if (instant) { this.cam.x = this.cam.targetX = p.x; this.cam.y = this.cam.targetY = p.y; this.cam.zoom = this.cam.targetZoom = z; this.cam.smoothActive = false; }
         else this.panToWorld(p.x, p.y, z);
       }
-      showFullMap() { const p = isoToWorld(30, 30, 4, this.map.originX, this.map.originY); this.panToWorld(p.x, p.y, Math.max(this.cam.minZoom, Math.min(1.05, Math.min(this.viewW / 1380, this.viewH / 820)))); }
+      showFullMap() { const p = isoToWorld(this.map.mapW * 0.52, this.map.mapH * 0.52, 4, this.map.originX, this.map.originY); this.panToWorld(p.x, p.y, Math.max(this.cam.minZoom, Math.min(0.95, Math.min(this.viewW / 1880, this.viewH / 980)))); }
       focusNextAlert() { const a = this.getPendingAlerts(); if (!a.length) return false; const p = isoToWorld(a[0].gx, a[0].gy, a[0].h, this.map.originX, this.map.originY); this.panToWorld(p.x, p.y - 16, Math.max(this.cam.zoom, 2.05)); return true; }
       zoomBy(f) { this.cam.targetZoom = Math.max(this.cam.minZoom, Math.min(this.cam.maxZoom, this.cam.targetZoom * f)); this.cam.targetX = this.cam.x; this.cam.targetY = this.cam.y; this.cam.smoothActive = true; }
       panToWorld(wx, wy, zoom = null) { this.cam.targetX = wx; this.cam.targetY = wy; if (zoom !== null) this.cam.targetZoom = Math.max(this.cam.minZoom, Math.min(this.cam.maxZoom, zoom)); this.cam.smoothActive = true; }
@@ -2562,7 +2773,7 @@
           if (pad.pipeState === 'active') {
             // El agua llega sola por la cañería: sin bidón, sin alerta (!), sin transportista.
             pad.pipeAcc += (this._padFillPerSec(pad, cyc) / 100) * dt;
-            while (pad.pipeAcc >= 1) { pad.pipeAcc -= 1; this._onWaterDelivered(true); }
+            while (pad.pipeAcc >= 1) { pad.pipeAcc -= 1; this._onWaterDelivered(true, pad.connectedVillageId ?? 0); }
             continue;
           }
           if (!pad.alertActive) {
@@ -2596,7 +2807,7 @@
           } else {
             c.segProgress += speed * 1.08 * dt;
             while (c.segProgress >= 1 && c.pathIdx > 0) { c.segProgress -= 1; c.pathIdx -= 1; }
-            if (c.pathIdx <= 0) { c.gx = path[0].gx; c.gy = path[0].gy; c.carryingWater = false; c.state = 'idle'; c.padId = null; this._onWaterDelivered(); }
+            if (c.pathIdx <= 0) { c.gx = path[0].gx; c.gy = path[0].gy; c.carryingWater = false; c.state = 'idle'; const vid = c.villageId ?? 0; c.padId = null; this._onWaterDelivered(false, vid); }
             else {
               const a = path[c.pathIdx], b = path[c.pathIdx - 1];
               const screenDx = (b.gx - a.gx) - (b.gy - a.gy);
@@ -2678,14 +2889,14 @@
         return base * (viaPipe ? (this.cfg.pipeLiterDiscount || 0.65) : 1);
       }
 
-      _onWaterDelivered(viaPipe = false) {
-        const tier = this.getStorageTierObj(), rawLiters = Math.round(this.cfg.waterPerDrum * tier.waterBonusMult);
-        const room = Math.max(0, tier.capacity - this.water);
+      _onWaterDelivered(viaPipe = false, villageId = 0) {
+        const tier = this.getStorageTierObj(), cap = this.getTotalCapacity(), rawLiters = Math.round(this.cfg.waterPerDrum * tier.waterBonusMult);
+        const room = Math.max(0, cap - this.water);
         const storedLiters = Math.min(rawLiters, room);
         const overflowed = storedLiters < rawLiters * 0.15;
         const earned = Math.round(storedLiters * this.getLiterPrice(viaPipe) * 10) / 10;
 
-        this.water = Math.min(tier.capacity, this.water + storedLiters);
+        this.water = Math.min(cap, this.water + storedLiters);
         this.totalWaterHarvested += storedLiters;
         this.funds += earned;
 
@@ -2695,7 +2906,9 @@
           for (const o of this.orchards) o.dried = false;
         }
         if (!viaPipe) this.sound.playDeliver();
-        const sp = this.storageTier >= 1 ? this.map.storagePos.tank : this.map.storagePos.drums;
+        const v = this.map.villages?.[villageId] || this.map.villages?.[0] || { storagePos: this.map.storagePos, hub: this.map.hub };
+        const vSp = v.storagePos || this.map.storagePos;
+        const sp = this.storageTier >= 1 ? vSp.tank : vSp.drums;
         const wp = isoToWorld(sp.gx, sp.gy, sp.h, this.map.originX, this.map.originY);
         this._spawnDust(wp.x, wp.y - 6, overflowed ? '#ffd470' : '#57baff', viaPipe ? 3 : 9);
 
@@ -2703,22 +2916,35 @@
         if (overflowed) {
           if (!viaPipe || !this._lastOverflowTextAt || (this.time - this._lastOverflowTextAt > 3.5)) {
             this._lastOverflowTextAt = this.time;
-            this._addFloatingText(wp.x, wp.y - 20, this.getNextStorageTier() ? '¡Estanque lleno! Rebalse ($0)' : 'Estanque al máximo ($0)', '#ff9d66');
+            const hasMoreCap = Boolean(this.getNextStorageTier() || this.map.villages?.some((vl) => !vl.unlocked));
+            this._addFloatingText(wp.x, wp.y - 20, hasMoreCap ? '¡Estanque lleno! Rebalse ($0)' : 'Red al máximo ($0)', '#ff9d66');
           }
         } else {
           this._addFloatingText(wp.x, wp.y - 20, `+${Math.round(storedLiters)}L · +$${earnedWhole}`, '#74d4ff');
         }
 
+        const unlockedIds = new Set((this.map.villages || []).filter((vl) => vl.unlocked).map((vl) => vl.id));
         while (this.milestoneIndex < GROWTH_MILESTONES.length) {
           const m = GROWTH_MILESTONES[this.milestoneIndex];
           if (this.water < Math.round(m.water * this.cfg.milestoneScale)) break;
           this.milestoneIndex += 1; this.population += m.popAdd;
-          for (let i = 0; i < m.houses; i++) if (this.houses.length < this.map.houseSlots.length) this.houses.push({ ...this.map.houseSlots[this.houses.length], anim: 0, abandoned: false });
-          for (let i = 0; i < m.orchards; i++) if (this.orchards.length < this.map.orchardSlots.length) this.orchards.push({ ...this.map.orchardSlots[this.orchards.length], anim: 0, dried: false });
+          for (let i = 0; i < m.houses; i++) {
+            const nextH = this.map.houseSlots.find((s) => unlockedIds.has(s.villageId ?? 0) && !this.houses.some((eh) => eh.gx === s.gx && eh.gy === s.gy));
+            if (nextH) this.houses.push({ ...nextH, anim: 0, abandoned: false });
+          }
+          for (let i = 0; i < m.orchards; i++) {
+            const nextO = this.map.orchardSlots.find((s) => unlockedIds.has(s.villageId ?? 0) && !this.orchards.some((eo) => eo.gx === s.gx && eo.gy === s.gy));
+            if (nextO) this.orchards.push({ ...nextO, anim: 0, dried: false });
+          }
           for (let i = 0; i < m.trees; i++) if (this.trees.length < this.map.treeSlots.length) this.trees.push({ ...this.map.treeSlots[this.trees.length], anim: 0 });
-          for (let i = 0; i < m.carriersAdd; i++) { this._createCarrier(this.carriers.length); this.maxCarriers = this.carriers.length; }
+          const uArr = Array.from(unlockedIds);
+          for (let i = 0; i < m.carriersAdd; i++) {
+            const cvId = uArr[this.carriers.length % Math.max(1, uArr.length)] || 0;
+            this._createCarrier(this.carriers.length, cvId);
+            this.maxCarriers = this.carriers.length;
+          }
           this.sound.playGrowth();
-          const cp = isoToWorld(42.5, 43.2, 2, this.map.originX, this.map.originY);
+          const cp = isoToWorld(v.hub.gx, v.hub.gy, 2, this.map.originX, this.map.originY);
           this._addFloatingText(cp.x, cp.y - 26, `+${m.popAdd} hab. · +1 transp.`, '#a8ff9e');
           this.callbacks.onToast?.(m.label);
         }
@@ -2734,6 +2960,12 @@
         if (!force && Math.floor(this.time * 10) === this._lastHudTick) return;
         this._lastHudTick = Math.floor(this.time * 10);
         const tier = this.getStorageTierObj(), next = this.getNextStorageTier(), cost = this.getStorageUpgradeCost();
+        const totalCap = this.getTotalCapacity();
+        const villageItems = (this.map.villages || []).map((v) => {
+          const vCost = Math.round((v.cost || 0) * this.cfg.storageCostScale);
+          return { id: v.id, name: v.name, shortName: v.shortName, unlocked: v.unlocked, cost: vCost, canUnlock: !v.unlocked && this.funds >= vCost, popAdd: v.popAdd, capBonus: v.capBonus };
+        });
+        const canUnlockAnyVillage = villageItems.some((v) => v.canUnlock);
         const pads = this.map.pads, builtPads = pads.filter((p) => p.built);
         const padNum = new Map(); builtPads.forEach((p, i) => padNum.set(p.id, i + 1));
         const selPad = this.selectedPadId != null ? pads.find((p) => p.id === this.selectedPadId && p.built) : null;
@@ -2771,20 +3003,22 @@
           }
           return { id: t.id, state: t.state, task: t.task, padNum: num, label };
         });
+        const villBonus = totalCap - tier.capacity;
         this.callbacks.onHUD?.({
           running: this.running, finished: this.finished, mode: this.mode,
-          water: Math.floor(this.water), capacity: tier.capacity, funds: Math.floor(this.funds),
+          water: Math.floor(this.water), capacity: totalCap, funds: Math.floor(this.funds),
           literPrice: this.getLiterPrice(false),
           upkeepRate: this.upkeepRate || 0,
-          storageFull: this.water >= tier.capacity - 0.5,
+          storageFull: this.water >= totalCap - 0.5,
           waterDrainRate: this.waterDrainRate, droughtActive: this.droughtActive,
-          waterLow: this.water <= Math.max(10, tier.capacity * 0.16),
+          waterLow: this.water <= Math.max(10, totalCap * 0.16),
           abandonedHouses: this.houses.filter((h) => h.abandoned).length,
           population: this.population, meshesBuilt: this.meshesBuilt, nextMeshCost: this.getNextMeshCost(),
           carriersIdle: this.carriers.filter((c) => c.state === 'idle').length, carriersTotal: this.maxCarriers,
           pendingAlerts: this.getPendingAlerts().length, storageName: tier.name,
-          nextStorageName: next?.name || null, nextStorageCap: next?.capacity || null,
+          nextStorageName: next?.name || null, nextStorageCap: next ? next.capacity + villBonus : null,
           nextStorageCost: cost, canUpgradeStorage: cost !== null && this.funds >= cost,
+          villages: villageItems, canUnlockAnyVillage,
           selMesh, pipeHint, pipedCount,
           cycleIcon: cyc.icon, cycleLabel: cyc.label, cycleFogMult: cyc.fogMult,
           tutorialStep: this.tutorialStep,
@@ -2858,6 +3092,9 @@
       _render() {
         const ctx = this.ctx;
         const cyc = this.getCycleState();
+        const zoom = this.cam.zoom;
+        // Nivel de Detalle (LOD estilo WorldBox): cambia resolución del terreno y detalle de entidades según el zoom
+        const lod = zoom < 0.88 ? 0 : zoom < 1.55 ? 1 : 2;
         const shakeMag = this.shakeT > 0 ? this.shakeT * 5 : 0;
         const shakeX = shakeMag ? (Math.random() - 0.5) * shakeMag : 0;
         const shakeY = shakeMag ? (Math.random() - 0.5) * shakeMag : 0;
@@ -2865,59 +3102,171 @@
         ctx.fillStyle = PALETTE.fogBg; ctx.fillRect(0, 0, this.viewW, this.viewH);
         ctx.save();
         ctx.translate(Math.round(this.viewW / 2 + shakeX), Math.round(this.viewH / 2 + shakeY));
-        ctx.scale(this.cam.zoom, this.cam.zoom);
+        ctx.scale(zoom, zoom);
         ctx.translate(-Math.round(this.cam.x), -Math.round(this.cam.y));
         ctx.imageSmoothingEnabled = false;
 
-        if (this.terrainCanvas) ctx.drawImage(this.terrainCanvas, 0, 0);
+        // Culling de cámara: solo dibujar lo que entra en el viewport actual
+        const halfVW = (this.viewW * 0.5) / zoom + 130;
+        const halfVH = (this.viewH * 0.5) / zoom + 130;
+        const minWX = this.cam.x - halfVW, maxWX = this.cam.x + halfVW;
+        const minWY = this.cam.y - halfVH, maxWY = this.cam.y + halfVH;
+        const inView = (wx, wy) => wx >= minWX && wx <= maxWX && wy >= minWY && wy <= maxWY;
+
+        const terr = this.terrainLOD ? (lod === 0 ? this.terrainLOD.lo : this.terrainLOD.hi) : this.terrainCanvas;
+        if (terr) ctx.drawImage(terr, 0, 0);
         const { originX, originY } = this.map;
-        ctx.fillStyle = 'rgba(220, 248, 255, 0.5)';
-        for (let i = 0; i < 16; i++) {
-          const gx = 10 + ((i * 7) % 34), gy = 40 + ((i * 5) % 14), t = this.map.tiles[gy]?.[gx];
-          if (!t || !t.isWater || t.fogAlpha > 0.65) continue;
-          const wp = isoToWorld(gx, gy, 0, originX, originY), ph = Math.sin(this.time * 2.2 + i * 1.7);
-          if (ph > 0.15) ctx.fillRect(Math.round(wp.x - 3 + ph * 3), Math.round(wp.y + 4), 5, 1);
+        if (lod >= 1) {
+          ctx.fillStyle = 'rgba(220, 248, 255, 0.5)';
+          for (let i = 0; i < 24; i++) {
+            const gx = 8 + ((i * 9) % (this.map.mapW - 14)), gy = 34 + ((i * 5) % 18), t = this.map.tiles[gy]?.[gx];
+            if (!t || !t.isWater || t.fogAlpha > 0.65) continue;
+            const wp = isoToWorld(gx, gy, 0, originX, originY);
+            if (!inView(wp.x, wp.y)) continue;
+            const ph = Math.sin(this.time * 2.2 + i * 1.7);
+            if (ph > 0.15) ctx.fillRect(Math.round(wp.x - 3 + ph * 3), Math.round(wp.y + 4), 5, 1);
+          }
         }
-        for (const boat of this.map.boats) { const wp = isoToWorld(boat.gx, boat.gy, 0, originX, originY); drawBoat(ctx, wp.x, wp.y, boat, this.time); }
+        for (const boat of this.map.boats) {
+          const wp = isoToWorld(boat.gx, boat.gy, 0, originX, originY);
+          if (inView(wp.x, wp.y)) drawBoat(ctx, wp.x, wp.y, boat, this.time);
+        }
         drawMeshPipes(ctx, this.map, this.storageTier, this.time);
 
         // Aviso visual en el suelo: mallas del sector con ráfaga en camino
         for (const pad of this.map.pads) {
           if (!pad.built || !pad.windRisk) continue;
           const wp = isoToWorld(pad.gx, pad.gy, pad.h, originX, originY);
-          drawRiskRing(ctx, wp.x, wp.y, this.time);
+          if (inView(wp.x, wp.y)) drawRiskRing(ctx, wp.x, wp.y, this.time);
         }
 
         const drawList = [];
-        for (const pr of this.map.props) { if (this.map.tiles[pr.gy][pr.gx].isPath) continue; const wp = isoToWorld(pr.gx, pr.gy, pr.h, originX, originY); drawList.push({ depth: pr.gx + pr.gy, draw: () => pr.type === 'cactus' ? drawCactus(ctx, wp.x, wp.y, pr.variant) : drawRock(ctx, wp.x, wp.y, pr.variant) }); }
-        for (const nh of this.map.northVillage) { const wp = isoToWorld(nh.gx, nh.gy, 2, originX, originY); drawList.push({ depth: nh.gx + nh.gy, draw: () => drawHouse(ctx, wp.x, wp.y, nh, 0.86, this.time, cyc.nightFactor) }); }
-        for (const o of this.orchards) { const wp = isoToWorld(o.gx, o.gy, 2, originX, originY); drawList.push({ depth: o.gx + o.gy - 0.35, draw: () => drawOrchard(ctx, wp.x, wp.y, o.anim, o.dried) }); }
-        const ratio = this.water / this.getStorageTierObj().capacity;
-        { const p = this.map.storagePos.drums, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy, draw: () => drawStorageTambores(ctx, wp.x, wp.y, ratio) }); }
-        if (this.storageTier >= 1) { const p = this.map.storagePos.tank, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy - 0.1, draw: () => drawStorageEstanque(ctx, wp.x, wp.y, ratio, this.time) }); }
-        if (this.storageTier >= 2) { const p = this.map.storagePos.tower, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); drawList.push({ depth: p.gx + p.gy + 0.1, draw: () => drawStorageCopa(ctx, wp.x, wp.y, this.time) }); }
-        for (const h of this.houses) { const wp = isoToWorld(h.gx, h.gy, 2, originX, originY); drawList.push({ depth: h.gx + h.gy, draw: () => drawHouse(ctx, wp.x, wp.y, h, h.anim, this.time, cyc.nightFactor) }); }
-        for (const tr of this.trees) { const wp = isoToWorld(tr.gx, tr.gy, 2, originX, originY); drawList.push({ depth: tr.gx + tr.gy + 0.05, draw: () => drawTree(ctx, wp.x, wp.y, tr.anim) }); }
+        if (lod >= 1) {
+          for (let i = 0; i < this.map.props.length; i++) {
+            if (lod === 1 && (i & 1) === 1) continue; // Al alejar a nivel medio dibuja la mitad de cactus/rocas para fluidez
+            const pr = this.map.props[i];
+            if (this.map.tiles[pr.gy]?.[pr.gx]?.isPath) continue;
+            const wp = isoToWorld(pr.gx, pr.gy, pr.h, originX, originY);
+            if (!inView(wp.x, wp.y)) continue;
+            drawList.push({ depth: pr.gx + pr.gy, draw: () => pr.type === 'cactus' ? drawCactus(ctx, wp.x, wp.y, pr.variant) : drawRock(ctx, wp.x, wp.y, pr.variant) });
+          }
+        }
+
+        // Casas de caletas aún no conectadas (se ven como caserío esperando agua)
+        for (const s of this.map.houseSlots) {
+          const v = this.map.villages?.[s.villageId ?? 0];
+          if (!v || v.unlocked || !s.villageStarter) continue;
+          const wp = isoToWorld(s.gx, s.gy, 2, originX, originY);
+          if (!inView(wp.x, wp.y)) continue;
+          drawList.push({ depth: s.gx + s.gy, draw: () => drawHouse(ctx, wp.x, wp.y, { ...s, abandoned: true }, 0.9, this.time, cyc.nightFactor) });
+        }
+
+        for (const o of this.orchards) {
+          const wp = isoToWorld(o.gx, o.gy, 2, originX, originY);
+          if (inView(wp.x, wp.y)) drawList.push({ depth: o.gx + o.gy - 0.35, draw: () => drawOrchard(ctx, wp.x, wp.y, o.anim, o.dried) });
+        }
+        const ratio = this.water / Math.max(1, this.getTotalCapacity());
+        for (const v of (this.map.villages || [{ unlocked: true, storagePos: this.map.storagePos }])) {
+          if (!v.unlocked) continue;
+          const sp = v.storagePos;
+          { const p = sp.drums, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); if (inView(wp.x, wp.y)) drawList.push({ depth: p.gx + p.gy, draw: () => drawStorageTambores(ctx, wp.x, wp.y, ratio) }); }
+          if (this.storageTier >= 1) { const p = sp.tank, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); if (inView(wp.x, wp.y)) drawList.push({ depth: p.gx + p.gy - 0.1, draw: () => drawStorageEstanque(ctx, wp.x, wp.y, ratio, this.time) }); }
+          if (this.storageTier >= 2) { const p = sp.tower, wp = isoToWorld(p.gx, p.gy, p.h, originX, originY); if (inView(wp.x, wp.y)) drawList.push({ depth: p.gx + p.gy + 0.1, draw: () => drawStorageCopa(ctx, wp.x, wp.y, this.time) }); }
+        }
+        for (const h of this.houses) {
+          const wp = isoToWorld(h.gx, h.gy, 2, originX, originY);
+          if (!inView(wp.x, wp.y)) continue;
+          drawList.push({
+            depth: h.gx + h.gy,
+            draw: () => {
+              drawHouse(ctx, wp.x, wp.y, h, h.anim, this.time, cyc.nightFactor);
+              // Detalle extra al acercar la cámara (LOD 2, estilo WorldBox): humo suave de chimenea y farol cálido
+              if (lod === 2 && !h.abandoned) {
+                if (h.style === 'gable') {
+                  for (let k = 0; k < 2; k++) {
+                    const ph = (this.time * 0.8 + k * 0.5 + h.gx) % 1;
+                    ctx.fillStyle = `rgba(240, 246, 250, ${(0.42 * (1 - ph)).toFixed(2)})`;
+                    ctx.fillRect(Math.round(wp.x - 4 + Math.sin(ph * 4) * 2), Math.round(wp.y - 22 - ph * 8), 2, 2);
+                  }
+                }
+                if (cyc.nightFactor > 0.25) {
+                  ctx.fillStyle = 'rgba(255, 210, 110, 0.22)';
+                  ctx.fillRect(Math.round(wp.x - 11), Math.round(wp.y + 1), 6, 4);
+                }
+              }
+            },
+          });
+        }
+        for (const tr of this.trees) {
+          const wp = isoToWorld(tr.gx, tr.gy, 2, originX, originY);
+          if (inView(wp.x, wp.y)) drawList.push({ depth: tr.gx + tr.gy + 0.05, draw: () => drawTree(ctx, wp.x, wp.y, tr.anim) });
+        }
         const canAfford = this.funds >= this.getNextMeshCost();
         for (const pad of this.map.pads) {
-          const wp = isoToWorld(pad.gx, pad.gy, pad.h, originX, originY), hov = (this.hoveredPad && this.hoveredPad.id === pad.id) || this.selectedPadId === pad.id;
-          drawList.push({ depth: pad.gx + pad.gy + 0.15, draw: () => pad.built ? drawAtrapanieblas(ctx, wp.x, wp.y, pad, this.time, hov) : drawBuildPad(ctx, wp.x, wp.y, pad, this.time, hov, canAfford) });
+          const wp = isoToWorld(pad.gx, pad.gy, pad.h, originX, originY);
+          if (!inView(wp.x, wp.y)) continue;
+          const hov = (this.hoveredPad && this.hoveredPad.id === pad.id) || this.selectedPadId === pad.id;
+          drawList.push({
+            depth: pad.gx + pad.gy + 0.15,
+            draw: () => {
+              if (pad.built) drawAtrapanieblas(ctx, wp.x, wp.y, pad, this.time, hov);
+              else drawBuildPad(ctx, wp.x, wp.y, pad, this.time, hov, canAfford);
+              // Al acercar al máximo (LOD 2), muestra etiqueta de caudal y zona sobre las mallas construidas
+              if (lod === 2 && pad.built && hov) {
+                const fl = `${Math.round(this.getPipeFlowLps(pad) * 60)} L/m`;
+                ctx.font = 'bold 4.5px system-ui, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(12, 28, 44, 0.82)';
+                ctx.fillRect(Math.round(wp.x - 13), Math.round(wp.y + 10), 26, 7);
+                ctx.fillStyle = '#9be7ff';
+                ctx.fillText(fl, Math.round(wp.x), Math.round(wp.y + 15));
+              }
+            },
+          });
         }
         for (const c of this.carriers) {
-          const tx = Math.max(0, Math.min(this.map.size - 1, Math.round(c.gx))), ty = Math.max(0, Math.min(this.map.size - 1, Math.round(c.gy)));
-          const wp = isoToWorld(c.gx, c.gy, this._sampleElev(c.gx, c.gy, this.map.tiles[ty][tx].h), originX, originY);
-          drawList.push({ depth: c.gx + c.gy + 0.2, draw: () => drawCarrier(ctx, wp.x, wp.y, c, this.time) });
+          const tx = Math.max(0, Math.min(this.map.mapW - 1, Math.round(c.gx))), ty = Math.max(0, Math.min(this.map.mapH - 1, Math.round(c.gy)));
+          const wp = isoToWorld(c.gx, c.gy, this._sampleElev(c.gx, c.gy, this.map.tiles[ty]?.[tx]?.h ?? 2), originX, originY);
+          if (inView(wp.x, wp.y)) drawList.push({ depth: c.gx + c.gy + 0.2, draw: () => drawCarrier(ctx, wp.x, wp.y, c, this.time) });
         }
         for (const t of this.technicians) {
-          const tx = Math.max(0, Math.min(this.map.size - 1, Math.round(t.gx))), ty = Math.max(0, Math.min(this.map.size - 1, Math.round(t.gy)));
-          const wp = isoToWorld(t.gx, t.gy, this._sampleElev(t.gx, t.gy, this.map.tiles[ty][tx].h), originX, originY);
-          drawList.push({ depth: t.gx + t.gy + 0.22, draw: () => drawTechnician(ctx, wp.x, wp.y, t, this.time) });
+          const tx = Math.max(0, Math.min(this.map.mapW - 1, Math.round(t.gx))), ty = Math.max(0, Math.min(this.map.mapH - 1, Math.round(t.gy)));
+          const wp = isoToWorld(t.gx, t.gy, this._sampleElev(t.gx, t.gy, this.map.tiles[ty]?.[tx]?.h ?? 2), originX, originY);
+          if (inView(wp.x, wp.y)) drawList.push({ depth: t.gx + t.gy + 0.22, draw: () => drawTechnician(ctx, wp.x, wp.y, t, this.time) });
         }
         drawList.sort((a, b) => a.depth - b.depth);
         for (const it of drawList) it.draw();
 
-        // Bancos de camanchaca en pixel art (densidad dinámica según ciclo día/noche)
-        for (const c of this.map.fogClouds) drawFogBank(ctx, c, this.time, cyc.fogDensity, cyc.sunWarmth, cyc.nightFactor);
+        // Cartel flotante sobre las caletas por conectar ( o nombre al alejar el mapa estilo WorldBox )
+        for (const v of (this.map.villages || [])) {
+          const wp = isoToWorld(v.hub.gx, v.hub.gy, v.hub.h, originX, originY);
+          if (!inView(wp.x, wp.y)) continue;
+          if (!v.unlocked) {
+            const vCost = Math.round(v.cost * this.cfg.storageCostScale);
+            const ok = this.funds >= vCost;
+            const bob = Math.round(Math.sin(this.time * 3.8 + v.id) * 1.5);
+            const bx = Math.round(wp.x), by = Math.round(wp.y - 26 + bob);
+            const txt = `🏘️ Conectar ${v.shortName} ($${vCost})`;
+            ctx.font = 'bold 5.5px system-ui, sans-serif'; ctx.textAlign = 'center';
+            const bw = ctx.measureText(txt).width + 10;
+            ctx.fillStyle = 'rgba(14, 30, 46, 0.92)'; ctx.fillRect(bx - bw / 2, by - 11, bw, 12);
+            ctx.strokeStyle = ok ? '#5ce1a0' : '#ffd75e'; ctx.lineWidth = 0.8; ctx.strokeRect(bx - bw / 2, by - 11, bw, 12);
+            ctx.fillStyle = ok ? '#b8ffd8' : '#ffe89e'; ctx.fillText(txt, bx, by - 3);
+          } else if (lod === 0) {
+            const bx = Math.round(wp.x), by = Math.round(wp.y - 24);
+            const txt = `🏘️ ${v.shortName}`;
+            ctx.font = 'bold 7px system-ui, sans-serif'; ctx.textAlign = 'center';
+            const bw = ctx.measureText(txt).width + 10;
+            ctx.fillStyle = 'rgba(14, 30, 46, 0.85)'; ctx.fillRect(bx - bw / 2, by - 11, bw, 12);
+            ctx.fillStyle = '#eaf6ff'; ctx.fillText(txt, bx, by - 3);
+          }
+        }
+
+        // Bancos de camanchaca en pixel art (en LOD 0 salta la mitad para cero lag al alejar)
+        for (let i = 0; i < this.map.fogClouds.length; i++) {
+          if (lod === 0 && (i & 1) === 1) continue;
+          drawFogBank(ctx, this.map.fogClouds[i], this.time, cyc.fogDensity, cyc.sunWarmth, cyc.nightFactor);
+        }
         if (this.level >= 2) {
           const hubW = isoToWorld(this.map.hub.gx, this.map.hub.gy, 3, originX, originY);
           drawSignalFx(ctx, this.map, this.map.pads, this.time, hubW);
@@ -3009,8 +3358,15 @@
         }
         if (closest) return { type: closest.built ? 'mesh' : 'pad', pad: closest };
 
-        const tp = isoToWorld(this.map.storagePos.tank.gx, this.map.storagePos.tank.gy, 2, originX, originY);
-        if (Math.hypot(wx - tp.x, wy - tp.y) < 44) return { type: 'storage' };
+        for (const v of (this.map.villages || [])) {
+          if (!v.unlocked) {
+            const vp = isoToWorld(v.hub.gx, v.hub.gy, v.hub.h, originX, originY);
+            if (Math.hypot(wx - vp.x, wy - (vp.y - 16)) < 48) return { type: 'village', village: v };
+          } else {
+            const tp = isoToWorld(v.storagePos.tank.gx, v.storagePos.tank.gy, 2, originX, originY);
+            if (Math.hypot(wx - tp.x, wy - tp.y) < 44) return { type: 'storage', village: v };
+          }
+        }
         return null;
       }
 
@@ -3025,9 +3381,15 @@
         else if (hit.type === 'alert') this.dispatchToPad(hit.pad);
         else if (hit.type === 'pad') this._installMeshOnPad(hit.pad, false);
         else if (hit.type === 'mesh') this.selectPad(hit.pad);
+        else if (hit.type === 'village') this.unlockVillage(hit.village.id);
         else if (hit.type === 'storage') {
           if (this.getNextStorageTier() && this.funds >= this.getStorageUpgradeCost()) this.upgradeStorage();
-          else { const t = this.getStorageTierObj(), wp = isoToWorld(42.5, 43.5, 2, this.map.originX, this.map.originY); this._addFloatingText(wp.x, wp.y - 22, `${Math.floor(this.water)}/${t.capacity}L`, '#cceeff'); }
+          else {
+            const cap = this.getTotalCapacity();
+            const h = hit.village?.hub || this.map.hub;
+            const wp = isoToWorld(h.gx, h.gy, 2, this.map.originX, this.map.originY);
+            this._addFloatingText(wp.x, wp.y - 22, `${Math.floor(this.water)}/${cap}L`, '#cceeff');
+          }
         }
       }
 
@@ -4683,7 +5045,7 @@
         else { $('dock-alert').classList.add('hidden'); }
 
         $('storage-cur-name').textContent = `${s.storageName} (${s.capacity} L)`;
-        $('storage-dot').classList.toggle('hidden', !s.canUpgradeStorage);
+        $('storage-dot').classList.toggle('hidden', !(s.canUpgradeStorage || s.canUnlockAnyVillage));
         if (s.nextStorageName) {
           $('btn-upgrade').disabled = !s.canUpgradeStorage;
           $('storage-next-info').textContent = `Siguiente: ${s.nextStorageName} (${s.nextStorageCap} L)`;
@@ -4692,6 +5054,23 @@
           $('btn-upgrade').disabled = true;
           $('storage-next-info').textContent = 'Almacenamiento al máximo.';
           $('upgrade-title').textContent = 'Nivel máximo';
+        }
+
+        if (s.villages) {
+          const unlockedV = s.villages.filter((v) => v.unlocked).length;
+          $('villages-count').textContent = `${unlockedV}/${s.villages.length}`;
+          const vHtml = s.villages.map((v) => {
+            const sub = v.id === 0 ? 'Caleta inicial' : `+${v.popAdd} hab. · +${v.capBonus}L cap.`;
+            const right = v.unlocked
+              ? `<span class="v-tag">✓ Activa</span>`
+              : `<button class="v-btn" type="button" data-unlock-village="${v.id}" ${v.canUnlock ? '' : 'disabled'}>Conectar ($${v.cost})</button>`;
+            return `<div class="village-row${v.unlocked ? ' active' : ''}"><div class="v-info" data-focus-village="${v.id}"><span class="v-name">🏘️ ${v.shortName}</span><span class="v-sub">${sub}</span></div>${right}</div>`;
+          }).join('');
+          const vList = $('village-list');
+          if (vList.dataset.sig !== vHtml) {
+            vList.innerHTML = vHtml;
+            vList.dataset.sig = vHtml;
+          }
         }
 
         const m = s.selMesh;
@@ -4840,6 +5219,19 @@
     $('btn-menu').addEventListener('click', () => { setDrawer(null); startCampaign(true); });
     $('btn-mute').addEventListener('click', () => { const m = sound.toggleMute(); $('mute-ico').textContent = m ? '🔇' : '🔊'; $('mute-lbl').textContent = m ? 'Sonido silenciado' : 'Sonido activado'; });
     $('btn-upgrade').addEventListener('click', () => { if (game.upgradeStorage()) setDrawer(null); });
+    $('village-list').addEventListener('click', (e) => {
+      const unlockBtn = e.target.closest('[data-unlock-village]');
+      if (unlockBtn) {
+        const vid = Number(unlockBtn.dataset.unlockVillage);
+        if (game.unlockVillage(vid)) setDrawer(null);
+        return;
+      }
+      const focusEl = e.target.closest('[data-focus-village]');
+      if (focusEl) {
+        game.focusVillage(Number(focusEl.dataset.focusVillage));
+        setDrawer(null);
+      }
+    });
     $('btn-mesh-pipe').addEventListener('click', () => { game.buyPipeForSelected(); });
     $('btn-zoom-in').addEventListener('click', () => game.zoomBy(1.24));
     $('btn-zoom-out').addEventListener('click', () => game.zoomBy(0.8));
