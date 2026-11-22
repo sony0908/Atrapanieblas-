@@ -409,6 +409,48 @@
       font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; color: #8fa3b1;
     }
     .cine-hint b { color: #cfe3ee; }
+    .gameover-overlay {
+      position: fixed; inset: 0; z-index: 85;
+      background: rgba(10, 18, 28, 0.84); backdrop-filter: blur(6px);
+      display: grid; place-items: center; padding: 18px;
+    }
+    .gameover-overlay.hidden { display: none; }
+    .gameover-card {
+      width: min(430px, 94vw);
+      background: linear-gradient(180deg, #1b2d3e 0%, #12202d 100%);
+      border: 2px solid #e06d53; border-radius: 16px;
+      padding: 22px 20px 18px; color: #f4f8fb;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65); text-align: center;
+    }
+    .gameover-kicker {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 800;
+      letter-spacing: 0.14em; color: #ff9478; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .gameover-title {
+      font-size: 22px; font-weight: 900; color: #ffffff; margin: 0 0 8px;
+    }
+    .gameover-desc {
+      font-size: 13px; line-height: 1.45; color: #c7d8e6; margin: 0 0 14px;
+    }
+    .gameover-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin-bottom: 14px; background: rgba(8, 16, 24, 0.5);
+      padding: 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .gameover-stat b { display: block; font-family: var(--font-mono); font-size: 16px; color: #ffd75e; }
+    .gameover-stat span { font-size: 10.5px; color: #9ab2c4; }
+    .gameover-tip {
+      font-size: 11.5px; line-height: 1.4; color: #ffe5a3;
+      background: rgba(255, 196, 77, 0.1); border: 1px solid rgba(255, 196, 77, 0.28);
+      border-radius: 10px; padding: 9px 11px; margin-bottom: 16px; text-align: left;
+    }
+    .gameover-btn {
+      width: 100%; padding: 11px 16px; border-radius: 10px; border: none;
+      background: linear-gradient(180deg, #f2913d 0%, #d96b1b 100%);
+      color: #ffffff; font-weight: 800; font-size: 14px; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(217, 107, 27, 0.4);
+    }
+    .gameover-btn:hover { filter: brightness(1.08); }
     @media (max-width: 640px) {
       .cine-caption { left: 8px; right: 8px; bottom: 54px; padding: 9px 11px; gap: 8px; max-width: none; }
       .cine-caption.top { top: 42px; }
@@ -485,15 +527,15 @@
             <div id="village-active-box">
               <div class="drawer-meta">Agua local: <strong id="v-water-val">28/120 L</strong> · Consumo: <strong id="v-drain-val">-1.1/s</strong></div>
               <div class="mesh-bar"><div id="v-water-bar"></div></div>
-              <div class="drawer-meta">Población: <strong id="v-pop-val">12 hab.</strong> · Huertos: <strong id="v-orch-val">0</strong> · Transp.: <strong id="v-carriers-only">2/2</strong></div>
+              <div class="drawer-meta">Población: <strong id="v-pop-val">12 hab.</strong> · Huertos: <strong id="v-orch-val">0</strong></div>
               <div class="drawer-meta" style="margin-top:6px;">Estanque: <strong id="storage-cur-name">Tambores Básicos</strong></div>
               <div id="storage-next-info" class="drawer-sub">Siguiente: Estanque Comunitario (320 L)</div>
               <button id="btn-upgrade" class="drawer-cta" type="button"><span id="upgrade-title">Mejorar estanque ($49)</span></button>
-              <div class="drawer-meta" style="margin-top:8px;">Técnicos de la caleta: <strong id="v-carriers-val">0/3 libres</strong></div>
-              <div id="v-carrier-sub" class="drawer-sub">Mantienen y reparan las mallas de esta caleta y aceleran sus cañerías.</div>
-              <button id="btn-upgrade-carriers" class="drawer-cta" type="button"><span id="carrier-upgrade-title">👷 Contratar técnico ($40)</span></button>
+              <div class="drawer-meta" style="margin-top:8px;">Trabajadores (4): <strong id="v-carriers-only">4 transp.</strong> · <strong id="v-carriers-val">0 técnicos</strong></div>
+              <div id="v-carrier-sub" class="drawer-sub">Al poner cañerías, capacita a tus transportistas libres como técnicos. Cobran por cada mantención o reparación.</div>
+              <button id="btn-upgrade-carriers" class="drawer-cta" type="button"><span id="carrier-upgrade-title">🎓 Capacitar a técnico ($38)</span></button>
             </div>
-            <p class="drawer-tip">Toca cualquier <strong>pueblo en el mapa</strong> para mejorar su estanque y contratar sus propios técnicos.</p>
+            <p class="drawer-tip">Cada caleta tiene <strong>4 trabajadores</strong>: cuando pongas cañerías y queden libres, <strong>capací­talos como técnicos</strong>.</p>
           </div>
 
           <div id="panel-mesh" class="drawer-panel hidden">
@@ -512,9 +554,9 @@
             </div>
             <div id="mesh-info" class="drawer-sub"></div>
             <div id="mesh-actions" class="mesh-actions hidden">
-              <button id="btn-mesh-roll" class="drawer-mini-btn danger" type="button">🌬️ Enrollar</button>
-              <button id="btn-mesh-maintain" class="drawer-mini-btn" type="button">🧂 Mantención</button>
-              <button id="btn-mesh-repair" class="drawer-mini-btn" type="button">🔧 Reparar ($22)</button>
+              <button id="btn-mesh-roll" class="drawer-mini-btn danger" type="button">📡 Enrollar</button>
+              <button id="btn-mesh-maintain" class="drawer-mini-btn" type="button">🧂 Mantención ($18)</button>
+              <button id="btn-mesh-repair" class="drawer-mini-btn" type="button">🔧 Reparar ($35)</button>
               <button id="btn-mesh-focus" class="drawer-mini-btn" type="button">👷 Ver técnicos</button>
             </div>
             <button id="btn-mesh-dispatch" class="drawer-cta alert hidden" type="button">🚶 Enviar transportista al bidón lleno</button>
@@ -525,12 +567,12 @@
             <div class="drawer-head"><span class="drawer-title">Cuadrilla técnica</span><button class="drawer-x" data-close-drawer type="button">×</button></div>
             <div class="drawer-meta">Técnicos: <strong id="tech-count">0/0</strong> · Ociosos: <strong id="tech-idle">0</strong></div>
             <div id="tech-list" class="tech-list"></div>
-            <button id="btn-hire-tech" class="drawer-cta" type="button">Contratar técnico ($40)</button>
+            <button id="btn-hire-tech" class="drawer-cta" type="button">🎓 Capacitar trabajador a técnico ($38)</button>
             <div class="mesh-actions">
               <button id="btn-roll-all" class="drawer-mini-btn danger" type="button">📡 Enrollar por señal</button>
-              <button id="btn-maintain-all" class="drawer-mini-btn" type="button">🧂 Mantención</button>
+              <button id="btn-maintain-all" class="drawer-mini-btn" type="button">🧂 Mantención ($18 c/u)</button>
             </div>
-            <p class="drawer-tip">Ante una ráfaga, el pueblo envía una <strong>señal</strong> que enrolla las mallas a distancia. Los técnicos se ocupan de la <strong>mantención</strong> por sal y de las reparaciones: si la salinidad sube, baja el caudal.</p>
+            <p class="drawer-tip"><strong>Estrategia Nivel 2:</strong> Todas las mallas producen más agua de la que el pueblo consume. <strong>Deja enrolladas las mallas de menor niebla</strong> para ahorrar en mantenciones ($18) y reparaciones ($35), cuidando que la caleta nunca se quede sin agua.</p>
           </div>
 
           <div id="panel-camera" class="drawer-panel hidden">
@@ -598,6 +640,23 @@
       <div class="cine-hint">Toca <b>izquierda ‹</b> para retroceder · <b>derecha ›</b> para avanzar · <b>Esc</b> para cerrar</div>
     </div>
 
+    <div id="gameover-overlay" class="gameover-overlay hidden">
+      <div class="gameover-card">
+        <div class="gameover-kicker">SEQUÍA TOTAL · FIN DE LA PARTIDA</div>
+        <h2 class="gameover-title">🏜️ Caletas Deshabitadas</h2>
+        <p class="gameover-desc" id="gameover-desc">Los estanques se quedaron sin agua y todas las familias tuvieron que emigrar de la costa.</p>
+        <div class="gameover-stats">
+          <div class="gameover-stat"><b id="go-water">0 L</b><span>Agua cosechada</span></div>
+          <div class="gameover-stat"><b id="go-meshes">0</b><span>Mallas creadas</span></div>
+          <div class="gameover-stat"><b id="go-gusts">0</b><span>Ráfagas superadas</span></div>
+        </div>
+        <div class="gameover-tip">
+          💡 <strong>Consejo estratégico:</strong> Enrolla solo las mallas de <strong>Niebla Baja o Media</strong> para ahorrar en mantenciones ($18) y reparaciones ($35), pero mantén desplegadas suficientes mallas de <strong>Niebla Alta</strong> para cubrir el consumo de cada caleta.
+        </div>
+        <button id="btn-gameover-retry" class="gameover-btn" type="button">🔄 Intentar de nuevo</button>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -627,35 +686,36 @@
     // Cañerías por malla: cuestan según el largo del sendero (mallas más lejanas = cañería más cara).
     const PIPE_CFG = { baseCost: 28, perTile: 1.45 };
 
-    // ===== NIVEL 2: cuadrilla técnica por caleta, ráfagas de viento y salinidad =====
+    // ===== NIVEL 2: cuadrilla técnica por caleta (4 trabajadores por caleta), ráfagas de viento y salinidad =====
     const TECH_CFG = {
-      startCount: 1, maxPerVillage: 3, max: 9, hireBaseCost: 42, hireStep: 18, speed: 7.4,
+      startCount: 0, maxPerVillage: 4, max: 12, hireBaseCost: 38, hireStep: 14, speed: 7.4,
       taskTimes: { roll: 2.6, unroll: 1.9, maintain: 3.2, repair: 4.4 },
+      maintainCost: 18,
       repairCost: 35,
-      upkeepPerTechSec: 0.36,
-      upkeepPerPipeSec: 0.08,
+      upkeepPerTechSec: 0,
+      upkeepPerPipeSec: 0.14,
       labels: { roll: 'Enrollando', unroll: 'Desplegando', maintain: 'Mantención', repair: 'Reparando' },
     };
     const WIND_CFG = {
       firstDelay: 22, warnSeconds: 17, hitSeconds: 1.5,
       cooldownMin: 26, cooldownMax: 44, sectorMax: 8, damageBase: 30,
     };
-    const SALT_CFG = { warnAt: 60, penaltyFrom: 50, decayAt: 90, decayPerSec: 0.85, rateBase: 0.5, rateFog: 0.5 };
+    const SALT_CFG = { warnAt: 58, penaltyFrom: 45, decayAt: 85, decayPerSec: 0.95, rateBase: 0.65, rateFog: 0.65 };
 
     const GROWTH_MILESTONES = [
-      { water: 30,  popAdd: 5, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Primer huerto comunitario!' },
-      { water: 70,  popAdd: 6, houses: 1, orchards: 1, trees: 2, carriersAdd: 1, label: '¡Nuevas familias llegan!' },
-      { water: 120, popAdd: 7, houses: 2, orchards: 1, trees: 3, carriersAdd: 1, label: '¡La caleta florece!' },
-      { water: 190, popAdd: 8, houses: 2, orchards: 2, trees: 3, carriersAdd: 1, label: '¡Cosecha verde en el desierto!' },
-      { water: 280, popAdd: 9, houses: 2, orchards: 2, trees: 3, carriersAdd: 1, label: '¡Caleta modelo nortina!' },
-      { water: 400, popAdd: 11, houses: 2, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Comunidad autosustentable!' },
-      { water: 560, popAdd: 13, houses: 3, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Oasis costero consolidado!' },
-      { water: 760, popAdd: 15, houses: 3, orchards: 2, trees: 4, carriersAdd: 1, label: '¡Corredor hídrico del desierto!' },
+      { water: 30,  popAdd: 5, houses: 1, orchards: 1, trees: 2, carriersAdd: 0, label: '¡Primer huerto comunitario!' },
+      { water: 70,  popAdd: 6, houses: 1, orchards: 1, trees: 2, carriersAdd: 0, label: '¡Nuevas familias llegan!' },
+      { water: 120, popAdd: 7, houses: 2, orchards: 1, trees: 3, carriersAdd: 0, label: '¡La caleta florece!' },
+      { water: 190, popAdd: 8, houses: 2, orchards: 2, trees: 3, carriersAdd: 0, label: '¡Cosecha verde en el desierto!' },
+      { water: 280, popAdd: 9, houses: 2, orchards: 2, trees: 3, carriersAdd: 0, label: '¡Caleta modelo nortina!' },
+      { water: 400, popAdd: 11, houses: 2, orchards: 2, trees: 4, carriersAdd: 0, label: '¡Comunidad autosustentable!' },
+      { water: 560, popAdd: 13, houses: 3, orchards: 2, trees: 4, carriersAdd: 0, label: '¡Oasis costero consolidado!' },
+      { water: 760, popAdd: 15, houses: 3, orchards: 2, trees: 4, carriersAdd: 0, label: '¡Corredor hídrico del desierto!' },
     ];
 
     const MODE_CONFIG = {
-      // Campaña única: economía por litro efectivamente almacenado (rebalse = $0) y múltiples caletas costeras.
-      campaign: { id: 'campaign', cycleDuration: 58, startFunds: 85, startWater: 28, startCarriers: 2, meshBaseCost: 30, meshCostStep: 7, fillSpeedMult: 1.45, carrierSpeedBase: 6.0, waterPerDrum: 30, fundsPerLiter: 0.40, pipeLiterDiscount: 0.65, orchardLiterBonus: 0.03, orchardWaterDrain: 0.42, milestoneScale: 0.9, storageCostScale: 0.95, waterDrainPerPop: 0.14, droughtTickSeconds: 4.4, recoveryWaterMin: 18 },
+      // Campaña única: 4 trabajadores por caleta (se capacitan a técnicos), economía por litro y múltiples caletas.
+      campaign: { id: 'campaign', cycleDuration: 58, startFunds: 85, startWater: 28, startCarriers: 4, meshBaseCost: 30, meshCostStep: 7, fillSpeedMult: 1.45, carrierSpeedBase: 6.0, waterPerDrum: 30, fundsPerLiter: 0.40, pipeLiterDiscount: 0.65, orchardLiterBonus: 0.03, orchardWaterDrain: 0.42, milestoneScale: 0.9, storageCostScale: 0.95, waterDrainPerPop: 0.14, droughtTickSeconds: 4.0, recoveryWaterMin: 18 },
     };
 
 
@@ -930,25 +990,25 @@
         return { ...pt, gx: Math.round(gx * 10) / 10, gy: Math.round(gy * 10) / 10, h: Math.max(1.8, s.h) };
       };
 
-      // Definición de las 3 Caletas Costeras Independientes (cada una con su propio estanque, agua, nivel, población y transportistas)
+      // Definición de las 3 Caletas Costeras Independientes (cada una con 4 trabajadores locales, su propio estanque, agua y población)
       const rawVillages = [
         {
           id: 0, name: 'Caleta Chungungo (Sur)', shortName: 'Chungungo', unlocked: true, cost: 0,
-          pop: 12, startPop: 12, storageTier: 0, water: 28, carrierLevels: 0, baseCarriers: 2,
+          pop: 12, startPop: 12, storageTier: 0, water: 28, carrierLevels: 0, baseCarriers: 4,
           milestoneIndex: 0, droughtActive: false, droughtTimer: 0, recoveryTimer: 0,
           hub: { gx: 68.0, gy: 40.2 },
           storagePos: { drums: { gx: 67.2, gy: 40.8 }, tank: { gx: 67.8, gy: 42.1 }, tower: { gx: 69.5, gy: 39.8 } },
         },
         {
           id: 1, name: 'Caleta Punta Choros (Centro)', shortName: 'Punta Choros', unlocked: false, cost: 95,
-          pop: 0, startPop: 10, storageTier: 0, water: 0, carrierLevels: 0, baseCarriers: 1,
+          pop: 0, startPop: 10, storageTier: 0, water: 0, carrierLevels: 0, baseCarriers: 4,
           milestoneIndex: 0, droughtActive: false, droughtTimer: 0, recoveryTimer: 0,
           hub: { gx: 44.0, gy: 36.2 },
           storagePos: { drums: { gx: 43.2, gy: 36.8 }, tank: { gx: 44.2, gy: 38.0 }, tower: { gx: 45.6, gy: 35.9 } },
         },
         {
           id: 2, name: 'Caleta Alto Patache (Norte)', shortName: 'Alto Patache', unlocked: false, cost: 165,
-          pop: 0, startPop: 14, storageTier: 0, water: 0, carrierLevels: 0, baseCarriers: 2,
+          pop: 0, startPop: 14, storageTier: 0, water: 0, carrierLevels: 0, baseCarriers: 4,
           milestoneIndex: 0, droughtActive: false, droughtTimer: 0, recoveryTimer: 0,
           hub: { gx: 19.0, gy: 31.2 },
           storagePos: { drums: { gx: 18.2, gy: 31.8 }, tank: { gx: 19.2, gy: 33.0 }, tower: { gx: 20.6, gy: 31.1 } },
@@ -2099,22 +2159,38 @@
       getVillageTechs(villageId = this.selectedVillageId ?? 0) {
         return this.technicians.filter((t) => (t.villageId ?? 0) === villageId);
       }
+      _convertCarrierToTech(villageId = 0) {
+        const v = this.map.villages?.[villageId] || this.map.villages?.[0] || { id: 0, hub: this.map.hub };
+        let cIdx = this.carriers.findIndex((c) => (c.villageId ?? 0) === v.id && c.state === 'idle');
+        if (cIdx === -1) cIdx = this.carriers.findIndex((c) => (c.villageId ?? 0) === v.id);
+        if (cIdx !== -1) {
+          const oldC = this.carriers.splice(cIdx, 1)[0];
+          if (oldC.padId != null) {
+            const p = this.map.pads.find((x) => x.id === oldC.padId);
+            if (p) p.dispatched = false;
+          }
+        }
+        this.maxCarriers = this.carriers.length;
+        this._createTechnician(v.id);
+      }
       getTechHireCost(villageId = this.selectedVillageId ?? 0) {
         const v = this.map.villages?.[villageId] || this.map.villages?.[0];
         if (!v || !v.unlocked) return null;
+        const localCarriers = this.carriers.filter((c) => (c.villageId ?? 0) === v.id).length;
         const localCount = this.getVillageTechs(v.id).length;
-        if (localCount >= TECH_CFG.maxPerVillage) return null;
+        if (localCarriers <= 0 || localCount >= TECH_CFG.maxPerVillage) return null;
         return Math.round((TECH_CFG.hireBaseCost + localCount * TECH_CFG.hireStep) * this.cfg.storageCostScale);
       }
       hireTechnician(villageId = this.selectedVillageId ?? 0) {
         if (!this.running || this.finished) return false;
         const v = this.map.villages?.[villageId] || this.map.villages?.[0];
         if (!v || !v.unlocked) return false;
+        const localCarriers = this.carriers.filter((c) => (c.villageId ?? 0) === v.id).length;
         const localCount = this.getVillageTechs(v.id).length;
         const wp = isoToWorld(v.hub.gx, v.hub.gy, v.hub.h, this.map.originX, this.map.originY);
-        if (localCount >= TECH_CFG.maxPerVillage) {
+        if (localCarriers <= 0 || localCount >= TECH_CFG.maxPerVillage) {
           this.sound.playError();
-          this.callbacks.onToast?.(`Cuadrilla técnica completa en ${v.shortName} (máx. ${TECH_CFG.maxPerVillage})`);
+          this.callbacks.onToast?.(`Los 4 trabajadores de ${v.shortName} ya fueron capacitados como técnicos`);
           return false;
         }
         const cost = this.getTechHireCost(v.id);
@@ -2122,17 +2198,17 @@
           this.sound.playError();
           if (cost !== null) {
             this._addFloatingText(wp.x, wp.y - 24, `Faltan $${cost - Math.floor(this.funds)}`, '#f26d52');
-            this.callbacks.onToast?.(`Faltan $${cost - Math.floor(this.funds)} para contratar técnico en ${v.shortName}`, 'warn');
+            this.callbacks.onToast?.(`Faltan $${cost - Math.floor(this.funds)} para capacitar técnico en ${v.shortName}`, 'warn');
           }
           return false;
         }
         this.funds -= cost;
         this.techHireCount += 1;
-        this._createTechnician(v.id);
+        this._convertCarrierToTech(v.id);
         this.sound.playHire();
         this._spawnDust(wp.x, wp.y - 4, '#ffc46b', 12);
-        this._addFloatingText(wp.x, wp.y - 26, `+1 Técnico en ${v.shortName}`, '#ffe28a');
-        this.callbacks.onToast?.(`👷 Técnico contratado en ${v.shortName} (${localCount + 1}/${TECH_CFG.maxPerVillage})`);
+        this._addFloatingText(wp.x, wp.y - 26, `🎓 Técnico en ${v.shortName} (-$${cost})`, '#ffe28a');
+        this.callbacks.onToast?.(`🎓 Trabajador de ${v.shortName} capacitado a Técnico (${localCount + 1}/${TECH_CFG.maxPerVillage})`);
         this._emitHUD(true);
         return true;
       }
@@ -2140,11 +2216,9 @@
       // ===== NIVEL 2 =====
       startLevelTwo(silent = false) {
         this.level = 2; this.levelUpPending = false; this.paused = false; this.running = true;
-        // Cada caleta conectada conserva los técnicos ya contratados y asegura al menos 1 técnico base en la caleta inicial
-        for (const v of (this.map.villages || [])) {
-          if (v.unlocked && this.getVillageTechs(v.id).length === 0) {
-            this._createTechnician(v.id);
-          }
+        // Si el jugador aún no había capacitado ningún trabajador al pasar a Nivel 2, capacita al primero de la caleta inicial sin costo extra
+        if (this.technicians.length === 0) {
+          this._convertCarrierToTech(0);
         }
         for (const pad of this.map.pads) {
           if (!pad.built) continue;
@@ -2154,7 +2228,7 @@
         this.wind = { phase: 'idle', timer: WIND_CFG.firstDelay, sector: [], strength: 1, label: '' };
         this.gustsSurvived = 0; this.tutorialStep = 2;
         if (!silent) this.sound.playLevelUp();
-        this.callbacks.onToast?.(silent ? '🧪 Modo Libre: prueba las ráfagas y la salinidad' : '🌬️ Nivel 2: cada caleta usa sus propios técnicos para mantener sus mallas');
+        this.callbacks.onToast?.(silent ? '🧪 Modo Libre: prueba las ráfagas y la salinidad' : '🎓 Nivel 2: Capacita trabajadores en cada caleta y enrolla mallas de poca niebla para ahorrar mantención');
         this.callbacks.onLevel2?.(silent);
         this._emitHUD(true);
       }
@@ -2324,10 +2398,12 @@
         if (kind === 'roll' && !pad.meshUp) return false;
         if (kind === 'unroll' && pad.meshUp) return false;
         if (kind === 'repair' && pad.condition > 99 && !pad.torn) return false;
-        if (kind === 'repair' && this.funds < TECH_CFG.repairCost) {
+        const jobCost = kind === 'repair' ? TECH_CFG.repairCost : kind === 'maintain' ? TECH_CFG.maintainCost : 0;
+        if (jobCost > 0 && this.funds < jobCost) {
           this.sound.playError();
           const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
-          this._addFloatingText(pos.x, pos.y - 24, `Faltan $${TECH_CFG.repairCost - Math.floor(this.funds)}`, '#f26d52');
+          this._addFloatingText(pos.x, pos.y - 24, `Faltan $${jobCost - Math.floor(this.funds)}`, '#f26d52');
+          this.callbacks.onToast?.(`Faltan $${jobCost - Math.floor(this.funds)} para pagar ${kind === 'repair' ? 'la reparación' : 'la mantención'} ($${jobCost})`, 'warn');
           return false;
         }
         const vId = pad.connectedVillageId ?? 0;
@@ -2339,7 +2415,7 @@
         } else {
           pad.pendingTask = kind;
           if (localTechs.length === 0) {
-            this.callbacks.onToast?.(`⚠️ ${v ? v.shortName : 'Esta caleta'} no tiene técnicos: pincha el pueblo para contratar uno`, 'warn');
+            this.callbacks.onToast?.(`⚠️ ${v ? v.shortName : 'Esta caleta'} no tiene técnicos: pincha el pueblo para capacitar a un trabajador`, 'warn');
           } else {
             this.callbacks.onToast?.(`Técnicos de ${v ? v.shortName : 'la caleta'} ocupados: tarea en cola`);
           }
@@ -2348,8 +2424,13 @@
       }
 
       _assignTech(tech, pad, kind, fromPad = null) {
-        if (kind === 'repair' && this.funds < TECH_CFG.repairCost) { pad.pendingTask = null; return false; }
-        if (kind === 'repair') this.funds -= TECH_CFG.repairCost;
+        const jobCost = kind === 'repair' ? TECH_CFG.repairCost : kind === 'maintain' ? TECH_CFG.maintainCost : 0;
+        if (jobCost > 0 && this.funds < jobCost) { pad.pendingTask = null; return false; }
+        if (jobCost > 0) {
+          this.funds -= jobCost;
+          const pos = isoToWorld(pad.gx, pad.gy, pad.h, this.map.originX, this.map.originY);
+          this._addFloatingText(pos.x, pos.y - 26, `-$${jobCost} (${kind === 'repair' ? 'reparación' : 'mantención'})`, '#ffd494');
+        }
         tech.state = 'climbing'; tech.padId = pad.id; tech.task = kind;
         const homeV = this.map.villages?.[tech.villageId ?? 0] || this.map.villages?.[0];
         const homeHub = homeV ? homeV.hub : this.map.hub;
@@ -2685,12 +2766,9 @@
         }
         const oSlot = this.map.orchardSlots.find((o) => o.villageId === v.id && !this.orchards.some((eo) => eo.gx === o.gx && eo.gy === o.gy));
         if (oSlot) this.orchards.push({ ...oSlot, anim: 0, dried: false });
-        for (let i = 0; i < (v.baseCarriers || 1); i++) {
+        for (let i = 0; i < (v.baseCarriers || 4); i++) {
           this._createCarrier(this.carriers.length, v.id);
           this.maxCarriers = this.carriers.length;
-        }
-        if (this.level >= 2 && this.getVillageTechs(v.id).length === 0) {
-          this._createTechnician(v.id);
         }
         // Reconectar mallas cercanas a esta nueva caleta si les queda más cerca
         for (const pad of this.map.pads) {
@@ -2918,11 +2996,11 @@
 
         const activeOrchards = this.orchards.filter((o) => !o.dried).length;
 
-        // En Nivel 2 la red completa y la cuadrilla tienen un costo continuo de mantención
+        // En Nivel 2 las cañerías de mallas desplegadas tienen costo continuo de operación (enrollar mallas bajas o excedentes ahorra mantención)
         this.upkeepRate = 0;
         if (this.level >= 2) {
-          const pipedCount = this.map.pads.filter((p) => p.pipeState === 'active').length;
-          this.upkeepRate = this.technicians.length * TECH_CFG.upkeepPerTechSec + pipedCount * TECH_CFG.upkeepPerPipeSec;
+          const activeDeployedPipes = this.map.pads.filter((p) => p.built && p.pipeState === 'active' && p.meshUp !== false && !p.torn).length;
+          this.upkeepRate = this.technicians.length * TECH_CFG.upkeepPerTechSec + activeDeployedPipes * TECH_CFG.upkeepPerPipeSec;
           if (this.upkeepRate > 0) this.funds = Math.max(0, this.funds - this.upkeepRate * dt);
         }
 
@@ -3103,22 +3181,30 @@
           for (const h of this.houses) if ((h.villageId ?? 0) === v.id) h.abandoned = true;
         }
 
-        const inhabitedCount = this.houses.filter((h) => (h.villageId ?? 0) === v.id && !h.abandoned).length;
-        const vCarriers = this.carriers.filter((c) => (c.villageId ?? 0) === v.id);
-        if (vCarriers.length > Math.max(1, inhabitedCount)) {
-          const idleIdx = this.carriers.findIndex((c) => (c.villageId ?? 0) === v.id && c.state === 'idle');
-          if (idleIdx !== -1) {
-            this.carriers.splice(idleIdx, 1);
-            this.maxCarriers = this.carriers.length;
-          }
-        }
-
         this.sound.playDrought();
         const target = abandonedHouse || v.hub;
         const wp = isoToWorld(target.gx, target.gy, 2, this.map.originX, this.map.originY);
         this._spawnDust(wp.x, wp.y - 6, '#a39789', 10);
         this._addFloatingText(wp.x, wp.y - 24, abandonedHouse ? `-${popLoss} hab. · Casa abandonada` : `-${popLoss} hab. · ¡Sequía!`, '#ff7b5c');
+        if (this.population <= 0) {
+          this._triggerGameOver();
+          return;
+        }
         this.callbacks.onToast?.(v.pop === 0 ? `¡${v.shortName} quedó deshabitada! Lleva agua para revivirla` : `¡Falta agua en ${v.shortName}! Familias abandonan sus casas`, 'warn');
+        this._emitHUD(true);
+      }
+
+      _triggerGameOver() {
+        if (this.finished) return;
+        this.finished = true;
+        this.paused = true;
+        this.gameOver = true;
+        this.sound.playDrought();
+        this.callbacks.onGameOver?.({
+          water: Math.round(this.totalWaterHarvested || 0),
+          meshes: this.meshesBuilt || 0,
+          gusts: this.gustsSurvived || 0,
+        });
         this._emitHUD(true);
       }
 
@@ -3131,12 +3217,6 @@
         const popGain = 3;
         v.pop += popGain;
         this.population = this.getTotalPop();
-        const vCarriersCount = this.carriers.filter((c) => (c.villageId ?? 0) === v.id).length;
-        const targetCarriers = (v.baseCarriers || 1) + (v.carrierLevels || 0) + (v.milestoneIndex || 0);
-        if (vCarriersCount < targetCarriers) {
-          this._createCarrier(this.carriers.length, v.id);
-          this.maxCarriers = this.carriers.length;
-        }
         this.sound.playGrowth();
         const wp = isoToWorld(house.gx, house.gy, 2, this.map.originX, this.map.originY);
         this._spawnDust(wp.x, wp.y - 6, '#90f2a8', 10);
@@ -3274,6 +3354,7 @@
           techTask: selPad.techTask ? { kind: selPad.techTask.kind, progress: selPad.techTask.progress || 0 } : null,
           remote: selPad.remote ? { kind: selPad.remote.kind, progress: Math.min(1, selPad.remote.t / selPad.remote.dur) } : null,
           pendingTask: selPad.pendingTask || null,
+          maintainCost: TECH_CFG.maintainCost, canMaintain: this.funds >= TECH_CFG.maintainCost,
           repairCost: TECH_CFG.repairCost, canRepair: this.funds >= TECH_CFG.repairCost,
           efficiency: Math.round(this.getMeshEfficiency(selPad) * 100),
           zone: selPad.zone,
@@ -5347,8 +5428,8 @@
         const svForTech = s.selVillage || (s.villages && s.villages[0]);
         $('btn-hire-tech').disabled = !s.techCanHire;
         $('btn-hire-tech').textContent = (svForTech && svForTech.techHireCost === null)
-          ? `Cuadrilla de ${svForTech.shortName} completa`
-          : (s.techCanHire ? `👷 Contratar técnico en ${svForTech ? svForTech.shortName : 'caleta'} ($${s.techHireCost})` : `Requiere $${s.techHireCost} (${svForTech ? svForTech.shortName : 'caleta'})`);
+          ? `Los 4 trabajadores de ${svForTech.shortName} ya son técnicos`
+          : (s.techCanHire ? `🎓 Capacitar trabajador en ${svForTech ? svForTech.shortName : 'caleta'} ($${s.techHireCost})` : `Requiere $${s.techHireCost} (${svForTech ? svForTech.shortName : 'caleta'})`);
         $('btn-roll-all').disabled = !(s.level >= 2);
         if (s.windPhase === 'warn' && s.windCount > 0) {
           $('btn-roll-all').textContent = `📡 Señal: enrollar en riesgo (${s.windCount})`;
@@ -5358,6 +5439,7 @@
           $('btn-roll-all').textContent = '📡 Señal: enrollar todas';
         }
         $('btn-maintain-all').disabled = !(s.level >= 2);
+        $('btn-maintain-all').textContent = `🧂 Mantención ($${TECH_CFG.maintainCost} c/u)`;
 
         if (s.pendingAlerts > 0) { $('dock-alert').classList.remove('hidden'); $('alert-badge').textContent = String(s.pendingAlerts); }
         else { $('dock-alert').classList.add('hidden'); }
@@ -5392,7 +5474,7 @@
               $('v-water-bar').style.width = `${Math.min(100, Math.round((sv.water / Math.max(1, sv.capacity)) * 100))}%`;
               $('v-pop-val').textContent = `${sv.pop} hab.`;
               $('v-orch-val').textContent = `${sv.orchards}`;
-              if ($('v-carriers-only')) $('v-carriers-only').textContent = `${sv.carriersIdle}/${sv.carriersTotal}`;
+              if ($('v-carriers-only')) $('v-carriers-only').textContent = `🚶 ${sv.carriersIdle}/${sv.carriersTotal} transp.`;
               $('storage-cur-name').textContent = `${sv.storageName} (${sv.capacity} L)`;
               if (sv.nextStorageName) {
                 $('btn-upgrade').disabled = !sv.canUpgradeStorage;
@@ -5403,18 +5485,18 @@
                 $('storage-next-info').textContent = 'Almacenamiento de esta caleta al máximo.';
                 $('upgrade-title').textContent = 'Estanque al máximo';
               }
-              $('v-carriers-val').textContent = `${sv.techsIdle}/${sv.techsTotal} libres (máx. ${sv.techMaxLocal})`;
+              $('v-carriers-val').textContent = `👷 ${sv.techsIdle}/${sv.techsTotal} técnicos`;
               $('v-carrier-sub').textContent = s.level >= 2
-                ? `Limpian la salinidad y reparan las mallas conectadas a ${sv.shortName}.`
-                : `Aceleran la instalación de cañerías (+35% c/u) y mantienen las mallas de ${sv.shortName} en el Nivel 2.`;
+                ? `De los 4 trabajadores de ${sv.shortName}, capacita a los que quedaron libres tras instalar cañerías. Cobran $${TECH_CFG.maintainCost} por mantención y $${TECH_CFG.repairCost} por reparación.`
+                : `De los 4 trabajadores de ${sv.shortName}, capacita a los que queden libres por las cañerías (+35% velocidad de obra y mantención en Nivel 2).`;
               if (sv.techHireCost !== null) {
                 $('btn-upgrade-carriers').disabled = !sv.canHireTech;
                 $('carrier-upgrade-title').textContent = sv.canHireTech
-                  ? `👷 Contratar técnico en ${sv.shortName} ($${sv.techHireCost})`
-                  : `Requiere $${sv.techHireCost}`;
+                  ? `🎓 Capacitar trabajador a técnico ($${sv.techHireCost})`
+                  : `Requiere $${sv.techHireCost} para capacitar`;
               } else {
                 $('btn-upgrade-carriers').disabled = true;
-                $('carrier-upgrade-title').textContent = `Cuadrilla completa (${sv.techsTotal}/${sv.techMaxLocal})`;
+                $('carrier-upgrade-title').textContent = `4/4 trabajadores capacitados en ${sv.shortName}`;
               }
             }
           }
@@ -5444,9 +5526,10 @@
             else if (m.pendingTask) info = 'Tarea en cola: no hay técnico libre todavía.';
             $('mesh-info').textContent = info;
             const rollBtn = $('btn-mesh-roll');
-            rollBtn.textContent = m.remote ? `📡 Señal ${Math.round(m.remote.progress * 100)}%` : m.meshUp ? '📡 Enrollar' : '📡 Desplegar';
+            rollBtn.textContent = m.remote ? `📡 Señal ${Math.round(m.remote.progress * 100)}%` : m.meshUp ? '📡 Enrollar (ahorra mant.)' : '📡 Desplegar';
             rollBtn.disabled = Boolean(m.techTask) || Boolean(m.pendingTask) || Boolean(m.remote);
-            $('btn-mesh-maintain').disabled = Boolean(m.techTask) || Boolean(m.pendingTask) || m.torn || m.salt < 3;
+            $('btn-mesh-maintain').disabled = !m.canMaintain || Boolean(m.techTask) || Boolean(m.pendingTask) || m.torn || m.salt < 3;
+            $('btn-mesh-maintain').textContent = `🧂 Mantención ($${m.maintainCost})`;
             $('btn-mesh-repair').disabled = !m.canRepair || Boolean(m.techTask) || Boolean(m.pendingTask) || (!m.torn && m.condition >= 90);
             $('btn-mesh-repair').textContent = `🔧 Reparar ($${m.repairCost})`;
           } else {
@@ -5507,6 +5590,13 @@
       onLevel2() {
         techHintDismissed = false;
       },
+      onGameOver(stats) {
+        setDrawer(null);
+        $('go-water').textContent = `${stats.water} L`;
+        $('go-meshes').textContent = `${stats.meshes}`;
+        $('go-gusts').textContent = `${stats.gusts}`;
+        $('gameover-overlay').classList.remove('hidden');
+      },
     });
     game.setPreviewCanvas($('mesh-preview'));
     window.__game = game; // hook de depuración (consola del navegador / pruebas)
@@ -5517,6 +5607,7 @@
     $('btn-hint-close').addEventListener('click', () => { if (hintKind === 'pipe') pipeHintDismissed = true; else if (hintKind === 'tech') techHintDismissed = true; else hintDismissed = true; $('hint-banner').classList.add('hidden'); });
 
     const startCampaign = (fresh) => {
+      $('gameover-overlay').classList.add('hidden');
       if (fresh) game.reset('campaign', false);
       hintDismissed = false;
       pipeHintDismissed = false;
@@ -5581,6 +5672,15 @@
     $('btn-zoom-out').addEventListener('click', () => game.zoomBy(0.8));
     $('btn-caleta').addEventListener('click', () => { game.centerOnCaleta(false); setDrawer(null); });
     $('btn-full-map').addEventListener('click', () => { game.showFullMap(); setDrawer(null); });
+    $('btn-gameover-retry').addEventListener('click', () => {
+      $('gameover-overlay').classList.add('hidden');
+      game.reset('campaign', true);
+      hintDismissed = false;
+      pipeHintDismissed = false;
+      techHintDismissed = false;
+      lastFunds = null;
+      setDrawer(null);
+    });
   })();
   </script>
 </body>
